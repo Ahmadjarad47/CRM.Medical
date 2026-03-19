@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CRM.Medical.Domain\CRM.Medical.Domain.csproj" />
+    <ProjectReference Include="..\CRM.Medical.Application\CRM.Medical.Application.csproj" />
+  </ItemGroup>
+
+</Project>
