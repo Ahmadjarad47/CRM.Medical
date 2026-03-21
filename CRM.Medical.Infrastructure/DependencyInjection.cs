@@ -34,11 +34,14 @@ public static class DependencyInjection
             options.UseNpgsql(connectionStringBuilder.Build(settings));
         });
 
+        // AddIdentity registers cookie auth and overrides default schemes (redirects API to /Account/Login).
+        // JWT API: IdentityCore + roles + EF stores — no cookie authentication.
         services
-            .AddIdentity<User, IdentityRole>(options =>
+            .AddIdentityCore<User>(options =>
             {
                 options.User.RequireUniqueEmail = true;
             })
+            .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<MedicalDbContext>()
             .AddDefaultTokenProviders();
 
