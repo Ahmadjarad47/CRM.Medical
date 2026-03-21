@@ -17,4 +17,4 @@ public sealed record LoginCommand(
     [property: MinLength(1, ErrorMessage = "Password is required.")]
     [property: MaxLength(512, ErrorMessage = "Password is too long.")]
     string Password)
-    : IRequest<LoginResponse?>;
+    : IRequest<LoginResponse>;

@@ -32,6 +32,7 @@ public sealed class DevelopmentUserSeedHostedService(
         await using var scope = scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<MedicalDbContext>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
         await db.Database.MigrateAsync(cancellationToken);
 
@@ -55,6 +56,16 @@ public sealed class DevelopmentUserSeedHostedService(
             var errors = string.Join("; ", result.Errors.Select(e => $"{e.Code}: {e.Description}"));
             logger.LogError("Failed to create development seed user: {Errors}", errors);
             return;
+        }
+
+        if (await roleManager.RoleExistsAsync(DefaultIdentityRoles.User))
+        {
+            var roleResult = await userManager.AddToRoleAsync(user, DefaultIdentityRoles.User);
+            if (!roleResult.Succeeded)
+            {
+                var errors = string.Join("; ", roleResult.Errors.Select(e => $"{e.Code}: {e.Description}"));
+                logger.LogWarning("Seed user created but assigning role failed: {Errors}", errors);
+            }
         }
 
         logger.LogInformation(

@@ -22,8 +22,11 @@ public sealed class ValidationExceptionHandler : IExceptionHandler
         {
             Title = "One or more validation errors occurred.",
             Status = StatusCodes.Status400BadRequest,
-            Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+            Instance = httpContext.Request.Path.Value,
         };
+
+        problem.Extensions["traceId"] = httpContext.TraceIdentifier;
 
         httpContext.Response.StatusCode = problem.Status.Value;
         await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken: cancellationToken);

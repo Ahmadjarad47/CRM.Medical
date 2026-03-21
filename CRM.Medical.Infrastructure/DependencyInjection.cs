@@ -1,6 +1,7 @@
 using CRM.Medical.Application.Auth;
 using CRM.Medical.Application.Configuration.Database;
 using CRM.Medical.Application.Health;
+using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Auth;
 using CRM.Medical.Infrastructure.Configuration;
@@ -40,16 +41,23 @@ public static class DependencyInjection
             .AddIdentityCore<User>(options =>
             {
                 options.User.RequireUniqueEmail = true;
+                options.SignIn.RequireConfirmedEmail = true;
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddRoles<IdentityRole>()
+            .AddSignInManager()
             .AddEntityFrameworkStores<MedicalDbContext>()
             .AddDefaultTokenProviders();
 
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IUserCredentialValidator, UserCredentialValidator>();
+        services.AddScoped<IEmailVerificationSender, LoggingEmailVerificationSender>();
         services.AddSingleton<IDatabaseHealthSnapshotProvider, DatabaseHealthSnapshotProvider>();
 
         services.Configure<DevelopmentSeedOptions>(configuration.GetSection(DevelopmentSeedOptions.SectionName));
+        services.AddHostedService<IdentityRoleSeedHostedService>();
         services.AddHostedService<DevelopmentUserSeedHostedService>();
 
         services.AddSingleton<DatabaseConnectionReport>();

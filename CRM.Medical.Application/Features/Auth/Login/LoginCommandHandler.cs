@@ -1,19 +1,33 @@
 using CRM.Medical.Application.Auth;
+using FluentValidation;
+using FluentValidation.Results;
 using MediatR;
 
 namespace CRM.Medical.Application.Features.Auth.Login;
 
 public sealed class LoginCommandHandler(IUserCredentialValidator credentialValidator, IJwtTokenGenerator tokenGenerator)
-    : IRequestHandler<LoginCommand, LoginResponse?>
+    : IRequestHandler<LoginCommand, LoginResponse>
 {
-    public async Task<LoginResponse?> Handle(LoginCommand request, CancellationToken cancellationToken)
+    public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         var email = request.Email.Trim();
-        var user = await credentialValidator.ValidateAsync(email, request.Password, cancellationToken);
-        if (user is null)
-            return null;
+        var validationResult = await credentialValidator.ValidateAsync(email, request.Password, cancellationToken);
+        if (validationResult.User is null)
+        {
+            var message = validationResult.FailureReason switch
+            {
+                CredentialFailureReason.UserNotFound => "User is not registered.",
+                CredentialFailureReason.InvalidPassword => "Wrong credentials: password is incorrect.",
+                CredentialFailureReason.LockedOut => "User is locked.",
+                CredentialFailureReason.EmailNotConfirmed => "Email is not confirmed.",
+                _ => "Invalid credentials."
+            };
 
-        var (accessToken, expiresAtUtc) = tokenGenerator.CreateAccessToken(user);
-        return new LoginResponse(accessToken, expiresAtUtc, user.Email, user.DisplayName);
+            throw new ValidationException(
+                [new ValidationFailure(nameof(LoginCommand.Email), message)]);
+        }
+
+        var (accessToken, expiresAtUtc) = tokenGenerator.CreateAccessToken(validationResult.User);
+        return new LoginResponse(accessToken, expiresAtUtc, validationResult.User.Email, validationResult.User.DisplayName);
     }
 }
