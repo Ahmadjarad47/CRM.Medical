@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using CRM.Medical.Application.Auth;
 using CRM.Medical.Application.Features.Auth.Login;
 using MediatR;
@@ -9,6 +11,15 @@ public static class AuthEndpoints
 {
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapGet("/api/auth/me", GetCurrentUser)
+            .WithName("GetCurrentUser")
+            .WithTags("Auth")
+            .WithSummary("Test JWT authorization")
+            .WithDescription("Requires a valid Bearer token from POST /api/auth/login. Returns the user id and email from the token.")
+            .Produces<CurrentUserResponse>(StatusCodes.Status200OK, "application/json")
+            .Produces(StatusCodes.Status401Unauthorized)
+            .RequireAuthorization();
+
         app.MapPost("/api/auth/login", LoginAsync)
             .WithName("Login")
             .WithTags("Auth")
@@ -23,6 +34,16 @@ public static class AuthEndpoints
             .AllowAnonymous();
 
         return app;
+    }
+
+    private static CurrentUserResponse GetCurrentUser(ClaimsPrincipal user)
+    {
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? user.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? string.Empty;
+        var email = user.FindFirstValue(JwtRegisteredClaimNames.Email)
+            ?? user.FindFirstValue(ClaimTypes.Email);
+        return new CurrentUserResponse(userId, email);
     }
 
     private static async Task<IResult> LoginAsync(LoginCommand body, ISender mediator)
