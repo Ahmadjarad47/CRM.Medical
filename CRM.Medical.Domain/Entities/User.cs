@@ -9,3 +9,4 @@ public sealed class User : IdentityUser
 {
     public string DisplayName { get; set; } = string.Empty;
 }
+
