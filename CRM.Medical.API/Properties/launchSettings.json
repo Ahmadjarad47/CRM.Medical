@@ -1,13 +1,73 @@
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:49365/",
+      "sslPort": 44344
+    }
+  },
   "profiles": {
     "http": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
-      "applicationUrl": "http://localhost:5091",
+      "launchUrl": "swagger",
+      "applicationUrl": "http://127.0.0.1:5000",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DB_HOST": "187.124.172.7",
+        "DB_PORT": "5432",
+        "DB_NAME": "medical.taani",
+        "DB_USER": "db.taani.medical",
+        "DB_PASSWORD": "hjgZtdjN+#TF#je1Strong",
+        "DB_POOLING": "true",
+        "DB_MAX_POOL_SIZE": "100",
+        "DB_TIMEOUT": "15",
+        "DB_COMMAND_TIMEOUT": "30",
+        "DB_SSL_MODE": "Disable",
+        "DB_MULTIPLEXING": "true"
+      }
+    },
+    "https": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "applicationUrl": "https://127.0.0.1:5001;http://127.0.0.1:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DB_HOST": "187.124.172.7",
+        "DB_PORT": "5432",
+        "DB_NAME": "medical.taani",
+        "DB_USER": "db.taani.medical",
+        "DB_PASSWORD": "hjgZtdjN+#TF#je1Strong",
+        "DB_POOLING": "true",
+        "DB_MAX_POOL_SIZE": "100",
+        "DB_TIMEOUT": "15",
+        "DB_COMMAND_TIMEOUT": "30",
+        "DB_SSL_MODE": "Disable",
+        "DB_MULTIPLEXING": "true"
+      }
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "launchUrl": "swagger",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "DB_HOST": "187.124.172.7",
+        "DB_PORT": "5432",
+        "DB_NAME": "medical.taani",
+        "DB_USER": "db.taani.medical",
+        "DB_PASSWORD": "hjgZtdjN+#TF#je1Strong",
+        "DB_POOLING": "true",
+        "DB_MAX_POOL_SIZE": "100",
+        "DB_TIMEOUT": "15",
+        "DB_COMMAND_TIMEOUT": "30",
+        "DB_SSL_MODE": "Disable",
+        "DB_MULTIPLEXING": "true"
       }
     }
   }

@@ -58,6 +58,9 @@ dlldata.c
 # Benchmark Results
 BenchmarkDotNet.Artifacts/
 
+# EF Core design-time remote connection (copy from appsettings.ef.example.json)
+**/appsettings.ef.json
+
 # .NET Core
 project.lock.json
 project.fragment.lock.json
