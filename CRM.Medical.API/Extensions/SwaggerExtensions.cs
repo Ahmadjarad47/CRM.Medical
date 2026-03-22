@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.OpenApi;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace CRM.Medical.API.Extensions;
 
@@ -10,6 +11,7 @@ public static class SwaggerExtensions
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
         {
+            options.EnableAnnotations();
             options.SwaggerDoc("v1", new OpenApiInfo
             {
                 Title = "CRM Medical API",

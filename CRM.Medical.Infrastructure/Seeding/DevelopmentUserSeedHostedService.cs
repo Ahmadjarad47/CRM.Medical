@@ -58,9 +58,9 @@ public sealed class DevelopmentUserSeedHostedService(
             return;
         }
 
-        if (await roleManager.RoleExistsAsync(DefaultIdentityRoles.User))
+        if (await roleManager.RoleExistsAsync(DefaultIdentityRoles.Patient))
         {
-            var roleResult = await userManager.AddToRoleAsync(user, DefaultIdentityRoles.User);
+            var roleResult = await userManager.AddToRoleAsync(user, DefaultIdentityRoles.Patient);
             if (!roleResult.Succeeded)
             {
                 var errors = string.Join("; ", roleResult.Errors.Select(e => $"{e.Code}: {e.Description}"));

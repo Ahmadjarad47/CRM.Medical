@@ -26,10 +26,11 @@ builder.Services.AddProblemDetails(options =>
 
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddApplication();
+builder.Services.AddApplication(typeof(Program).Assembly);
 builder.Services.AddCrmSwagger();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
@@ -74,6 +75,6 @@ app.UseSwaggerUI(options =>
     options.RoutePrefix = "swagger";
 });
 
-app.MapCrmEndpoints();
+app.MapControllers();
 
 app.Run();

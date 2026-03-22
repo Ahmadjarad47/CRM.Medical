@@ -39,6 +39,6 @@ public sealed class UpdateUserPermissionsCommandHandler(UserManager<User> userMa
             addResult.ThrowIfFailed(nameof(UpdateUserPermissionsCommand));
         }
 
-        return new UserPermissionsDto(user.Id, normalizedPermissions.OrderBy(x => x).ToArray());
+        return user.ToPermissionsDto(normalizedPermissions);
     }
 }

@@ -1,3 +1,3 @@
-namespace CRM.Medical.API.Endpoints.Auth.Models;
+namespace CRM.Medical.API.Controllers.User.Models;
 
 public sealed record CurrentUserResponse(string UserId, string? Email);

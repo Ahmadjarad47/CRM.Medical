@@ -24,6 +24,6 @@ public sealed class RemoveRolesCommandHandler(UserManager<User> userManager)
         result.ThrowIfFailed(nameof(RemoveRolesCommand));
 
         var roles = await userManager.GetRolesAsync(user);
-        return new UserRolesDto(user.Id, roles.OrderBy(x => x).ToArray());
+        return user.ToRolesDto(roles);
     }
 }

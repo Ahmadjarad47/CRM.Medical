@@ -40,6 +40,6 @@ public sealed class AddUserPermissionsCommandHandler(UserManager<User> userManag
             .OrderBy(x => x)
             .ToArray();
 
-        return new UserPermissionsDto(user.Id, allPermissions);
+        return user.ToPermissionsDto(allPermissions);
     }
 }

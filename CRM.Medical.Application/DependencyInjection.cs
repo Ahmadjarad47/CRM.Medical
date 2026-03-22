@@ -1,6 +1,8 @@
 using System.Reflection;
 using CRM.Medical.Application.Behaviors;
 using FluentValidation;
+using Mapster;
+using MapsterMapper;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,8 +10,18 @@ namespace CRM.Medical.Application;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApplication(this IServiceCollection services)
+    public static IServiceCollection AddApplication(this IServiceCollection services, params Assembly[] additionalMappingAssemblies)
     {
+        var mappingAssemblies = new[] { Assembly.GetExecutingAssembly() }
+            .Concat(additionalMappingAssemblies)
+            .Distinct()
+            .ToArray();
+
+        var typeAdapterConfig = TypeAdapterConfig.GlobalSettings;
+        typeAdapterConfig.Scan(mappingAssemblies);
+        services.AddSingleton(typeAdapterConfig);
+        services.AddScoped<IMapper, ServiceMapper>();
+
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
         services.AddMediatR(cfg =>

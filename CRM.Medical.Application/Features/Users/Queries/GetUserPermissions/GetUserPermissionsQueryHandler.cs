@@ -1,5 +1,6 @@
 using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Application.Features.Users.DTOs;
+using CRM.Medical.Application.Features.Users.Common;
 using CRM.Medical.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -22,6 +23,6 @@ public sealed class GetUserPermissionsQueryHandler(UserManager<User> userManager
             .OrderBy(x => x)
             .ToArray();
 
-        return new UserPermissionsDto(user.Id, permissions);
+        return user.ToPermissionsDto(permissions);
     }
 }

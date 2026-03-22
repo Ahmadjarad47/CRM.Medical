@@ -39,6 +39,6 @@ public sealed class RemoveUserPermissionsCommandHandler(UserManager<User> userMa
             .OrderBy(x => x)
             .ToArray();
 
-        return new UserPermissionsDto(user.Id, remainingPermissions);
+        return user.ToPermissionsDto(remainingPermissions);
     }
 }

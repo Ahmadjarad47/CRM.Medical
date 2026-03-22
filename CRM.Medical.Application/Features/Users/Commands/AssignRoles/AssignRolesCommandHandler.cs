@@ -31,6 +31,6 @@ public sealed class AssignRolesCommandHandler(
         result.ThrowIfFailed(nameof(AssignRolesCommand));
 
         var roles = await userManager.GetRolesAsync(user);
-        return new UserRolesDto(user.Id, roles.OrderBy(x => x).ToArray());
+        return user.ToRolesDto(roles);
     }
 }

@@ -1,36 +1,25 @@
 using CRM.Medical.Application.Features.Users.DTOs;
+using CRM.Medical.Application.Mappings;
 using CRM.Medical.Domain.Entities;
+using Mapster;
 
 namespace CRM.Medical.Application.Features.Users.Common;
 
 internal static class UserMappingExtensions
 {
-    public static UserSummaryDto ToSummaryDto(this User user)
-    {
-        var lockoutEndUtc = user.LockoutEnd?.ToUniversalTime();
-        var isLocked = lockoutEndUtc is not null && lockoutEndUtc > DateTimeOffset.UtcNow;
+    public static UserSummaryDto ToSummaryDto(this User user) => user.Adapt<UserSummaryDto>();
 
-        return new UserSummaryDto(
-            user.Id,
-            user.Email ?? string.Empty,
-            user.DisplayName,
-            user.EmailConfirmed,
-            user.LockoutEnabled,
-            isLocked);
+    public static UserDetailDto ToDetailDto(this User user) => user.Adapt<UserDetailDto>();
+
+    public static UserRolesDto ToRolesDto(this User user, IEnumerable<string> roles)
+    {
+        var model = new UserRolesMappingModel(user.Id, roles.OrderBy(x => x).ToArray());
+        return model.Adapt<UserRolesDto>();
     }
 
-    public static UserDetailDto ToDetailDto(this User user)
+    public static UserPermissionsDto ToPermissionsDto(this User user, IEnumerable<string> permissions)
     {
-        var lockoutEndUtc = user.LockoutEnd?.ToUniversalTime();
-        var isLocked = lockoutEndUtc is not null && lockoutEndUtc > DateTimeOffset.UtcNow;
-
-        return new UserDetailDto(
-            user.Id,
-            user.Email ?? string.Empty,
-            user.DisplayName,
-            user.EmailConfirmed,
-            user.LockoutEnabled,
-            lockoutEndUtc,
-            isLocked);
+        var model = new UserPermissionsMappingModel(user.Id, permissions.OrderBy(x => x).ToArray());
+        return model.Adapt<UserPermissionsDto>();
     }
 }

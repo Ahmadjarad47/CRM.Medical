@@ -1,4 +1,5 @@
 using CRM.Medical.Application.Features.Users.DTOs;
+using CRM.Medical.Application.Features.Users.Common;
 using CRM.Medical.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -14,6 +15,6 @@ public sealed class GetUserRolesQueryHandler(UserManager<User> userManager)
             ?? throw new KeyNotFoundException($"User '{request.UserId}' was not found.");
 
         var roles = await userManager.GetRolesAsync(user);
-        return new UserRolesDto(user.Id, roles.OrderBy(x => x).ToArray());
+        return user.ToRolesDto(roles);
     }
 }

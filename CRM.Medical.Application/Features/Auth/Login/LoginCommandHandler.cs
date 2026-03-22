@@ -1,6 +1,8 @@
 using CRM.Medical.Application.Auth;
+using CRM.Medical.Application.Mappings;
 using FluentValidation;
 using FluentValidation.Results;
+using Mapster;
 using MediatR;
 
 namespace CRM.Medical.Application.Features.Auth.Login;
@@ -28,6 +30,11 @@ public sealed class LoginCommandHandler(IUserCredentialValidator credentialValid
         }
 
         var (accessToken, expiresAtUtc) = tokenGenerator.CreateAccessToken(validationResult.User);
-        return new LoginResponse(accessToken, expiresAtUtc, validationResult.User.Email, validationResult.User.DisplayName);
+        var model = new LoginResponseMappingModel(
+            accessToken,
+            expiresAtUtc,
+            validationResult.User.Email,
+            validationResult.User.DisplayName);
+        return model.Adapt<LoginResponse>();
     }
 }
