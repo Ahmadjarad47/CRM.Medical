@@ -1,5 +1,6 @@
 using System.Reflection;
 using CRM.Medical.Application.Behaviors;
+using CRM.Medical.Application.Common.Time;
 using FluentValidation;
 using Mapster;
 using MapsterMapper;
@@ -21,6 +22,7 @@ public static class DependencyInjection
         typeAdapterConfig.Scan(mappingAssemblies);
         services.AddSingleton(typeAdapterConfig);
         services.AddScoped<IMapper, ServiceMapper>();
+        services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 

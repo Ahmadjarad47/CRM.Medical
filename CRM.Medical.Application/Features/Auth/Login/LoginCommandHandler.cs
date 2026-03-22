@@ -7,7 +7,10 @@ using MediatR;
 
 namespace CRM.Medical.Application.Features.Auth.Login;
 
-public sealed class LoginCommandHandler(IUserCredentialValidator credentialValidator, IJwtTokenGenerator tokenGenerator)
+public sealed class LoginCommandHandler(
+    IUserCredentialValidator credentialValidator,
+    IJwtTokenGenerator tokenGenerator,
+    IRefreshTokenService refreshTokenService)
     : IRequestHandler<LoginCommand, LoginResponse>
 {
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
@@ -30,9 +33,13 @@ public sealed class LoginCommandHandler(IUserCredentialValidator credentialValid
         }
 
         var (accessToken, expiresAtUtc) = tokenGenerator.CreateAccessToken(validationResult.User);
+        var refreshResult = await refreshTokenService.IssueAsync(validationResult.User.Id, cancellationToken);
         var model = new LoginResponseMappingModel(
+            validationResult.User.Id,
             accessToken,
             expiresAtUtc,
+            refreshResult.Token,
+            refreshResult.ExpiresAtUtc,
             validationResult.User.Email,
             validationResult.User.DisplayName);
         return model.Adapt<LoginResponse>();

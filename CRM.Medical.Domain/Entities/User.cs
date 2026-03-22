@@ -8,6 +8,7 @@ namespace CRM.Medical.Domain.Entities;
 public sealed class User : IdentityUser
 {
     public string DisplayName { get; set; } = string.Empty;
+    public UserType UserType { get; set; } = UserType.Patient;
 
     // Shared profile details
     public DateOnly? DateOfBirth { get; set; }

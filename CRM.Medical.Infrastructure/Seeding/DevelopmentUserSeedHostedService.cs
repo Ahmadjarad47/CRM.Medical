@@ -48,6 +48,7 @@ public sealed class DevelopmentUserSeedHostedService(
             Email = seed.Email,
             EmailConfirmed = true,
             DisplayName = string.IsNullOrWhiteSpace(seed.DisplayName) ? "Test user" : seed.DisplayName,
+            UserType = UserType.Patient,
         };
 
         var result = await userManager.CreateAsync(user, seed.Password);

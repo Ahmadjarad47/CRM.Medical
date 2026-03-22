@@ -52,8 +52,10 @@ public static class DependencyInjection
             .AddDefaultTokenProviders();
 
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IUserCredentialValidator, UserCredentialValidator>();
         services.AddScoped<IEmailVerificationSender, LoggingEmailVerificationSender>();
+        services.AddScoped<IPasswordResetSender, LoggingPasswordResetSender>();
         services.AddSingleton<IDatabaseHealthSnapshotProvider, DatabaseHealthSnapshotProvider>();
 
         services.Configure<DevelopmentSeedOptions>(configuration.GetSection(DevelopmentSeedOptions.SectionName));

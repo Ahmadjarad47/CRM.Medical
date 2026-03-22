@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CRM.Medical.Application.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
@@ -40,6 +41,8 @@ public sealed class GlobalExceptionHandler(
 
         if (Activity.Current?.Id is { } activityId)
             problemDetails.Extensions["traceParent"] = activityId;
+        if (!string.IsNullOrWhiteSpace(mapped.ErrorCode))
+            problemDetails.Extensions["errorCode"] = mapped.ErrorCode;
 
         httpContext.Response.StatusCode = mapped.Status;
 
@@ -63,6 +66,13 @@ public sealed class GlobalExceptionHandler(
                     : badReq.Message,
                 ProblemTypes.BadRequest,
                 LogLevel.Warning),
+
+            ApplicationExceptionBase appEx => new(
+                appEx.StatusCode,
+                appEx.Message,
+                ProblemTypeFromStatusCode(appEx.StatusCode),
+                LogLevel.Warning,
+                appEx.ErrorCode),
 
             ArgumentNullException => new(
                 StatusCodes.Status400BadRequest,
@@ -125,6 +135,18 @@ public sealed class GlobalExceptionHandler(
                 LogLevel.Error),
         };
 
+    private static string ProblemTypeFromStatusCode(int statusCode) =>
+        statusCode switch
+        {
+            StatusCodes.Status400BadRequest => ProblemTypes.BadRequest,
+            StatusCodes.Status403Forbidden => ProblemTypes.Forbidden,
+            StatusCodes.Status404NotFound => ProblemTypes.NotFound,
+            StatusCodes.Status409Conflict => ProblemTypes.Conflict,
+            StatusCodes.Status501NotImplemented => ProblemTypes.NotImplemented,
+            StatusCodes.Status504GatewayTimeout => ProblemTypes.GatewayTimeout,
+            _ => ProblemTypes.InternalServerError,
+        };
+
     /// <summary>
     /// Avoids a direct EF Core package reference from the API project.
     /// </summary>
@@ -138,7 +160,8 @@ public sealed class GlobalExceptionHandler(
         int Status,
         string Title,
         string Type,
-        LogLevel LogLevel);
+        LogLevel LogLevel,
+        string? ErrorCode = null);
 
     private static class ProblemTypes
     {

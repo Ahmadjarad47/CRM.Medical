@@ -1,4 +1,5 @@
 using CRM.Medical.Application.Features.Users.DTOs;
+using CRM.Medical.Domain.Entities;
 using MediatR;
 
 namespace CRM.Medical.Application.Features.Users.Commands.UpdateUser;
@@ -7,6 +8,7 @@ public sealed record UpdateUserCommand(
     string UserId,
     string DisplayName,
     string Email,
+    UserType UserType,
     DateOnly? DateOfBirth,
     string? PhoneSecondary,
     string? AddressLine1,

@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 using CRM.Medical.API.ExceptionHandlers;
 using CRM.Medical.API.Extensions;
+using CRM.Medical.API.Middlewares;
 using CRM.Medical.Application;
 using CRM.Medical.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics;
@@ -26,14 +28,20 @@ builder.Services.AddProblemDetails(options =>
 
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddApplication(typeof(Program).Assembly);
+builder.Services.AddApplication();
 builder.Services.AddCrmSwagger();
+builder.Services.AddCrmMiddlewares(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 var app = builder.Build();
 
+app.UseCrmMiddlewares();
 app.UseExceptionHandler();
 
 app.UseStatusCodePages(async statusCodeContext =>

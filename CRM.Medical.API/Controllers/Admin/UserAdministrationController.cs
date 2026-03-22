@@ -1,5 +1,6 @@
 using CRM.Medical.Application.Features.Users.Commands.AddUserPermissions;
 using CRM.Medical.Application.Features.Users.Commands.AssignRoles;
+using CRM.Medical.Application.Features.Users.Commands.CreateUser;
 using CRM.Medical.Application.Features.Users.Commands.LockUser;
 using CRM.Medical.Application.Features.Users.Commands.RemoveRoles;
 using CRM.Medical.Application.Features.Users.Commands.RemoveUserPermissions;
@@ -15,7 +16,7 @@ using CRM.Medical.Application.Features.Users.Queries.GetUserById;
 using CRM.Medical.Application.Features.Users.Queries.GetUserPermissions;
 using CRM.Medical.Application.Features.Users.Queries.GetUserRoles;
 using CRM.Medical.Application.Features.Users.Queries.GetUsers;
-using Mapster;
+using CRM.Medical.API.Controllers.Admin.Models;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
@@ -24,6 +25,18 @@ namespace CRM.Medical.API.Controllers.Admin;
 
 public sealed class UserAdministrationController(ISender sender) : AdminBaseController(sender)
 {
+    [HttpPost("")]
+    [SwaggerOperation(
+        OperationId = "Users_Create",
+        Summary = "Create user (Admin)",
+        Description = "Creates a new user with selected user type and profile details. Requires Admin role.")]
+    [ProducesResponseType(typeof(UserDetailDto), StatusCodes.Status201Created)]
+    public async Task<ActionResult<UserDetailDto>> CreateUserAsync([FromBody] CreateUserRequest body)
+    {
+        var result = await Sender.Send(body.ToCommand());
+        return CreatedAtAction(nameof(GetUserByIdAsync), new { userId = result.Id }, result);
+    }
+
     [HttpGet("")]
     [SwaggerOperation(
         OperationId = "Users_GetAll",
@@ -44,8 +57,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(typeof(UserDetailDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<UserDetailDto>> GetUserByIdAsync(string userId)
     {
-        var query = new UserIdRouteRequest(userId).Adapt<GetUserByIdQuery>();
-        var result = await Sender.Send(query);
+        var result = await Sender.Send(new GetUserByIdQuery(userId));
         return Ok(result);
     }
 
@@ -57,8 +69,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(typeof(UserDetailDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<UserDetailDto>> UpdateUserAsync(string userId, [FromBody] UpdateUserRequest body)
     {
-        var command = body.Adapt<UpdateUserCommand>() with { UserId = userId };
-        var result = await Sender.Send(command);
+        var result = await Sender.Send(body.ToCommand(userId));
         return Ok(result);
     }
 
@@ -70,8 +81,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> UpdateUserPasswordAsync(string userId, [FromBody] UpdateUserPasswordRequest body)
     {
-        var command = body.Adapt<UpdateUserPasswordCommand>() with { UserId = userId };
-        await Sender.Send(command);
+        await Sender.Send(body.ToCommand(userId));
         return NoContent();
     }
 
@@ -95,8 +105,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(typeof(UserRolesDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<UserRolesDto>> GetUserRolesAsync(string userId)
     {
-        var query = new UserIdRouteRequest(userId).Adapt<GetUserRolesQuery>();
-        var result = await Sender.Send(query);
+        var result = await Sender.Send(new GetUserRolesQuery(userId));
         return Ok(result);
     }
 
@@ -108,8 +117,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(typeof(UserRolesDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<UserRolesDto>> AssignRolesAsync(string userId, [FromBody] ManageRolesRequest body)
     {
-        var command = body.Adapt<AssignRolesCommand>() with { UserId = userId };
-        var result = await Sender.Send(command);
+        var result = await Sender.Send(body.ToAssignRolesCommand(userId));
         return Ok(result);
     }
 
@@ -121,8 +129,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(typeof(UserRolesDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<UserRolesDto>> RemoveRolesAsync(string userId, [FromBody] ManageRolesRequest body)
     {
-        var command = body.Adapt<RemoveRolesCommand>() with { UserId = userId };
-        var result = await Sender.Send(command);
+        var result = await Sender.Send(body.ToRemoveRolesCommand(userId));
         return Ok(result);
     }
 
@@ -146,8 +153,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(typeof(UserPermissionsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<UserPermissionsDto>> GetUserPermissionsAsync(string userId)
     {
-        var query = new UserIdRouteRequest(userId).Adapt<GetUserPermissionsQuery>();
-        var result = await Sender.Send(query);
+        var result = await Sender.Send(new GetUserPermissionsQuery(userId));
         return Ok(result);
     }
 
@@ -159,8 +165,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(typeof(UserPermissionsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<UserPermissionsDto>> AddPermissionsAsync(string userId, [FromBody] ManagePermissionsRequest body)
     {
-        var command = body.Adapt<AddUserPermissionsCommand>() with { UserId = userId };
-        var result = await Sender.Send(command);
+        var result = await Sender.Send(body.ToAddPermissionsCommand(userId));
         return Ok(result);
     }
 
@@ -172,8 +177,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(typeof(UserPermissionsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<UserPermissionsDto>> UpdatePermissionsAsync(string userId, [FromBody] ManagePermissionsRequest body)
     {
-        var command = body.Adapt<UpdateUserPermissionsCommand>() with { UserId = userId };
-        var result = await Sender.Send(command);
+        var result = await Sender.Send(body.ToUpdatePermissionsCommand(userId));
         return Ok(result);
     }
 
@@ -185,8 +189,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(typeof(UserPermissionsDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<UserPermissionsDto>> RemovePermissionsAsync(string userId, [FromBody] ManagePermissionsRequest body)
     {
-        var command = body.Adapt<RemoveUserPermissionsCommand>() with { UserId = userId };
-        var result = await Sender.Send(command);
+        var result = await Sender.Send(body.ToRemovePermissionsCommand(userId));
         return Ok(result);
     }
 
@@ -198,8 +201,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> LockUserAsync(string userId, [FromBody] LockUserRequest body)
     {
-        var command = body.Adapt<LockUserCommand>() with { UserId = userId };
-        await Sender.Send(command);
+        await Sender.Send(body.ToCommand(userId));
         return NoContent();
     }
 
@@ -211,8 +213,7 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> UnlockUserAsync(string userId)
     {
-        var command = new UserIdRouteRequest(userId).Adapt<UnlockUserCommand>();
-        await Sender.Send(command);
+        await Sender.Send(new UnlockUserCommand(userId));
         return NoContent();
     }
 
@@ -224,46 +225,8 @@ public sealed class UserAdministrationController(ISender sender) : AdminBaseCont
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> SendEmailVerificationAsync(string userId, [FromBody] SendEmailVerificationRequest body)
     {
-        var command = body.Adapt<SendEmailVerificationCommand>() with { UserId = userId };
-        await Sender.Send(command);
+        await Sender.Send(body.ToCommand(userId));
         return NoContent();
     }
 
-    private sealed record UserIdRouteRequest(string UserId);
-
-    public sealed record ManageRolesRequest(IReadOnlyCollection<string> Roles);
-
-    public sealed record ManagePermissionsRequest(IReadOnlyCollection<string> Permissions);
-
-    public sealed record LockUserRequest(int LockoutMinutes);
-
-    public sealed record SendEmailVerificationRequest(string ConfirmationBaseUrl);
-
-    public sealed record UpdateUserPasswordRequest(string CurrentPassword, string NewPassword);
-
-    public sealed record UpdateUserRequest(
-        string DisplayName,
-        string Email,
-        DateOnly? DateOfBirth,
-        string? PhoneSecondary,
-        string? AddressLine1,
-        string? AddressLine2,
-        string? City,
-        string? Region,
-        string? PostalCode,
-        string? Country,
-        string? NationalIdNumber,
-        string? InsuranceProvider,
-        string? InsurancePolicyNumber,
-        string? EmergencyContactName,
-        string? EmergencyContactPhone,
-        string? MedicalLicenseNumber,
-        string? Specialty,
-        string? ClinicName,
-        string? LabName,
-        string? LabLicenseNumber,
-        string? LabContactName,
-        string? LabContactPhone,
-        string? SpecialAccountCode,
-        string? SpecialNotes);
 }

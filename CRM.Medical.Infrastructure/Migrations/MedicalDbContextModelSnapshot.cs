@@ -30,9 +30,27 @@ namespace CRM.Medical.Infrastructure.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("AddressLine1")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AddressLine2")
+                        .HasColumnType("text");
+
+                    b.Property<string>("City")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClinicName")
+                        .HasColumnType("text");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("text");
+
+                    b.Property<string>("Country")
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly?>("DateOfBirth")
+                        .HasColumnType("date");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
@@ -45,11 +63,41 @@ namespace CRM.Medical.Infrastructure.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("EmergencyContactName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmergencyContactPhone")
+                        .HasColumnType("text");
+
+                    b.Property<string>("InsurancePolicyNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("InsuranceProvider")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LabContactName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LabContactPhone")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LabLicenseNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LabName")
+                        .HasColumnType("text");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MedicalLicenseNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("NationalIdNumber")
+                        .HasColumnType("text");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
@@ -68,7 +116,25 @@ namespace CRM.Medical.Infrastructure.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("PhoneSecondary")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PostalCode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Region")
+                        .HasColumnType("text");
+
                     b.Property<string>("SecurityStamp")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SpecialAccountCode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SpecialNotes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Specialty")
                         .HasColumnType("text");
 
                     b.Property<bool>("TwoFactorEnabled")
@@ -77,6 +143,9 @@ namespace CRM.Medical.Infrastructure.Migrations
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<int>("UserType")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
