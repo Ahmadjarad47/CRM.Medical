@@ -1,29 +1,34 @@
-using CRM.Medical.Application.Features.Users.Common;
-using CRM.Medical.Application.Features.Users.DTOs;
+using CRM.Medical.Application.Common.Caching;
+using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 
 namespace CRM.Medical.Application.Features.Users.Commands.RemoveRoles;
 
-public sealed class RemoveRolesCommandHandler(UserManager<User> userManager)
-    : IRequestHandler<RemoveRolesCommand, UserRolesDto>
+public sealed class RemoveRolesCommandHandler(
+    UserManager<User> userManager,
+    ICacheService cache)
+    : IRequestHandler<RemoveRolesCommand>
 {
-    public async Task<UserRolesDto> Handle(RemoveRolesCommand request, CancellationToken cancellationToken)
+    public async Task Handle(RemoveRolesCommand request, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByIdAsync(request.UserId)
-            ?? throw new KeyNotFoundException($"User '{request.UserId}' was not found.");
+            ?? throw new ApplicationNotFoundException($"User '{request.UserId}' not found.");
 
-        var normalizedRoles = request.Roles
-            .Select(x => x.Trim())
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var currentRoles = await userManager.GetRolesAsync(user);
+        var rolesToRemove = request.Roles
+            .Intersect(currentRoles, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        var result = await userManager.RemoveFromRolesAsync(user, normalizedRoles);
-        result.ThrowIfFailed(nameof(RemoveRolesCommand));
+        if (rolesToRemove.Count == 0)
+            return;
 
-        var roles = await userManager.GetRolesAsync(user);
-        return user.ToRolesDto(roles);
+        var result = await userManager.RemoveFromRolesAsync(user, rolesToRemove);
+        if (!result.Succeeded)
+            throw new ApplicationBadRequestException(
+                string.Join("; ", result.Errors.Select(e => e.Description)));
+
+        await cache.RemoveAsync(CacheKeys.UserById(user.Id), cancellationToken);
     }
 }

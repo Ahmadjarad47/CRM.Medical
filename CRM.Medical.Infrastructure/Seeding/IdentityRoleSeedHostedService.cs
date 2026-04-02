@@ -1,3 +1,4 @@
+using CRM.Medical.Application.Features.Users.Constants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -6,28 +7,29 @@ using Microsoft.Extensions.Logging;
 namespace CRM.Medical.Infrastructure.Seeding;
 
 public sealed class IdentityRoleSeedHostedService(
-    IServiceScopeFactory scopeFactory,
-    ILogger<IdentityRoleSeedHostedService> logger) : IHostedService
+    IServiceProvider services,
+    ILogger<IdentityRoleSeedHostedService> logger)
+    : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        await using var scope = scopeFactory.CreateAsyncScope();
+        using var scope = services.CreateScope();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-        foreach (var roleName in DefaultIdentityRoles.All)
+        foreach (var roleName in UserRoles.All)
         {
             if (await roleManager.RoleExistsAsync(roleName))
                 continue;
 
             var result = await roleManager.CreateAsync(new IdentityRole(roleName));
-            if (!result.Succeeded)
-            {
-                var errors = string.Join("; ", result.Errors.Select(x => $"{x.Code}: {x.Description}"));
-                logger.LogError("Failed seeding role {Role}: {Errors}", roleName, errors);
-                continue;
-            }
 
-            logger.LogInformation("Seeded Identity role {Role}.", roleName);
+            if (result.Succeeded)
+                logger.LogInformation("Created identity role: {Role}", roleName);
+            else
+                logger.LogError(
+                    "Failed to create role '{Role}': {Errors}",
+                    roleName,
+                    string.Join(", ", result.Errors.Select(e => e.Description)));
         }
     }
 

@@ -6,43 +6,36 @@ using Microsoft.Extensions.Logging;
 
 namespace CRM.Medical.Infrastructure.Diagnostics;
 
-public sealed class DatabaseConnectivityHostedService : IHostedService
+public sealed class DatabaseConnectivityHostedService(
+    IServiceProvider services,
+    DatabaseConnectionReport report,
+    ILogger<DatabaseConnectivityHostedService> logger)
+    : BackgroundService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<DatabaseConnectivityHostedService> _logger;
-    private readonly DatabaseConnectionReport _report;
+    private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(30);
 
-    public DatabaseConnectivityHostedService(
-        IServiceScopeFactory scopeFactory,
-        ILogger<DatabaseConnectivityHostedService> logger,
-        DatabaseConnectionReport report)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-        _report = report;
-    }
-
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<MedicalDbContext>();
-
-        _report.Verified = true;
-
-        try
+        while (!stoppingToken.IsCancellationRequested)
         {
-            await db.Database.ExecuteSqlRawAsync("SELECT 1", cancellationToken);
-            _report.Success = true;
-            _report.ErrorMessage = null;
-            _logger.LogInformation("Database connection OK. PostgreSQL responded successfully.");
-        }
-        catch (Exception ex)
-        {
-            _report.Success = false;
-            _report.ErrorMessage = ex.Message;
-            _logger.LogError(ex, "Database connection failed. Verify DB_* environment variables and that PostgreSQL is running.");
+            try
+            {
+                using var scope = services.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<MedicalDbContext>();
+                await dbContext.Database.ExecuteSqlRawAsync("SELECT 1", stoppingToken);
+                report.ReportSuccess();
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                report.ReportFailure(ex.Message);
+                logger.LogWarning(ex, "Database connectivity check failed");
+            }
+
+            await Task.Delay(CheckInterval, stoppingToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         }
     }
-
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

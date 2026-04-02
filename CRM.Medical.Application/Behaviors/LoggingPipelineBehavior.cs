@@ -1,10 +1,10 @@
-using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace CRM.Medical.Application.Behaviors;
 
-public sealed class LoggingPipelineBehavior<TRequest, TResponse>(ILogger<LoggingPipelineBehavior<TRequest, TResponse>> logger)
+public sealed class LoggingPipelineBehavior<TRequest, TResponse>(
+    ILogger<LoggingPipelineBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
@@ -13,28 +13,18 @@ public sealed class LoggingPipelineBehavior<TRequest, TResponse>(ILogger<Logging
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
-        var name = typeof(TRequest).Name;
-        logger.LogInformation("MediatR begin {RequestName}", name);
+        var requestName = typeof(TRequest).Name;
+        logger.LogInformation("Handling {RequestName}", requestName);
 
-        var stopwatch = Stopwatch.StartNew();
         try
         {
             var response = await next(cancellationToken);
-            stopwatch.Stop();
-            logger.LogInformation(
-                "MediatR end {RequestName} in {ElapsedMs}ms",
-                name,
-                stopwatch.ElapsedMilliseconds);
+            logger.LogInformation("Handled {RequestName} successfully", requestName);
             return response;
         }
         catch (Exception ex)
         {
-            stopwatch.Stop();
-            logger.LogError(
-                ex,
-                "MediatR failed {RequestName} after {ElapsedMs}ms",
-                name,
-                stopwatch.ElapsedMilliseconds);
+            logger.LogError(ex, "Error handling {RequestName}", requestName);
             throw;
         }
     }

@@ -2,5 +2,5 @@ namespace CRM.Medical.Application.Features.Users.Services;
 
 public interface IPasswordResetSender
 {
-    Task SendAsync(string email, string resetLink, CancellationToken cancellationToken);
+    Task SendAsync(string email, string resetToken, CancellationToken ct = default);
 }

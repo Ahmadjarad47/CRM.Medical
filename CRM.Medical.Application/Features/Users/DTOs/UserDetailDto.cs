@@ -1,35 +1,18 @@
-using CRM.Medical.Domain.Entities;
+using System.Text.Json;
 
 namespace CRM.Medical.Application.Features.Users.DTOs;
 
 public sealed record UserDetailDto(
     string Id,
     string Email,
-    string DisplayName,
-    UserType UserType,
+    string FullName,
+    string? City,
+    string? PhoneNumber,
+    bool IsActive,
     bool EmailConfirmed,
     bool LockoutEnabled,
     DateTimeOffset? LockoutEnd,
-    bool IsLocked,
-    DateOnly? DateOfBirth,
-    string? PhoneSecondary,
-    string? AddressLine1,
-    string? AddressLine2,
-    string? City,
-    string? Region,
-    string? PostalCode,
-    string? Country,
-    string? NationalIdNumber,
-    string? InsuranceProvider,
-    string? InsurancePolicyNumber,
-    string? EmergencyContactName,
-    string? EmergencyContactPhone,
-    string? MedicalLicenseNumber,
-    string? Specialty,
-    string? ClinicName,
-    string? LabName,
-    string? LabLicenseNumber,
-    string? LabContactName,
-    string? LabContactPhone,
-    string? SpecialAccountCode,
-    string? SpecialNotes);
+    DateTime CreatedAt,
+    DateTime? UpdatedAt,
+    IReadOnlyList<string> Roles,
+    JsonElement? ProfileMetadata);

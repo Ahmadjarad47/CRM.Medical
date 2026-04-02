@@ -1,5 +1,5 @@
+using System.Text;
 using CRM.Medical.Application.Configuration.Database;
-using Npgsql;
 
 namespace CRM.Medical.Infrastructure.Configuration;
 
@@ -7,30 +7,18 @@ public sealed class NpgsqlDatabaseConnectionStringBuilder : IDatabaseConnectionS
 {
     public string Build(DatabaseSettings settings)
     {
-        ArgumentNullException.ThrowIfNull(settings);
-
-        if (settings.Multiplexing && !settings.Pooling)
-            throw new InvalidOperationException("Multiplexing requires connection pooling (DB_POOLING=true).");
-
-        var builder = new NpgsqlConnectionStringBuilder
-        {
-            Host = settings.Host,
-            Port = settings.Port,
-            Database = settings.Name,
-            Username = settings.User,
-            Password = settings.Password,
-            Pooling = settings.Pooling,
-            MaxPoolSize = settings.MaxPoolSize,
-            Timeout = settings.Timeout,
-            CommandTimeout = settings.CommandTimeout,
-            Multiplexing = settings.Multiplexing,
-        };
-
-        if (!Enum.TryParse<SslMode>(settings.SslMode, ignoreCase: true, out var sslMode))
-            throw new InvalidOperationException($"Invalid DB_SSL_MODE value: '{settings.SslMode}'.");
-
-        builder.SslMode = sslMode;
-
-        return builder.ConnectionString;
+        var sb = new StringBuilder();
+        sb.Append($"Host={settings.Host};");
+        sb.Append($"Port={settings.Port};");
+        sb.Append($"Database={settings.Database};");
+        sb.Append($"Username={settings.Username};");
+        sb.Append($"Password={settings.Password};");
+        sb.Append($"Pooling={settings.Pooling};");
+        sb.Append($"Maximum Pool Size={settings.MaxPoolSize};");
+        sb.Append($"Timeout={settings.Timeout};");
+        sb.Append($"Command Timeout={settings.CommandTimeout};");
+        sb.Append($"SSL Mode={settings.SslMode};");
+        sb.Append($"Multiplexing={settings.Multiplexing}");
+        return sb.ToString();
     }
 }

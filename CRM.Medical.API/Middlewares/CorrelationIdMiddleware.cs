@@ -16,17 +16,24 @@ public sealed class CorrelationIdMiddleware(
             return;
         }
 
-        var headerName = _options.HeaderName;
-        var incomingCorrelationId = context.Request.Headers[headerName].FirstOrDefault();
-        var correlationId = string.IsNullOrWhiteSpace(incomingCorrelationId)
-            ? (_options.UseTraceIdentifierWhenMissing ? context.TraceIdentifier : Guid.NewGuid().ToString("N"))
-            : incomingCorrelationId.Trim();
+        string correlationId;
 
-        context.Items[headerName] = correlationId;
-        context.TraceIdentifier = correlationId;
+        if (context.Request.Headers.TryGetValue(_options.HeaderName, out var headerValue)
+            && !string.IsNullOrWhiteSpace(headerValue))
+        {
+            correlationId = headerValue!;
+        }
+        else if (_options.UseTraceIdentifierWhenMissing)
+        {
+            correlationId = context.TraceIdentifier;
+        }
+        else
+        {
+            correlationId = Guid.NewGuid().ToString();
+        }
 
         if (_options.IncludeInResponse)
-            context.Response.Headers[headerName] = correlationId;
+            context.Response.Headers[_options.HeaderName] = correlationId;
 
         await next(context);
     }

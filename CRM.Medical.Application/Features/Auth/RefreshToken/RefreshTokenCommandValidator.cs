@@ -6,7 +6,6 @@ public sealed class RefreshTokenCommandValidator : AbstractValidator<RefreshToke
 {
     public RefreshTokenCommandValidator()
     {
-        RuleFor(x => x.UserId).NotEmpty().MaximumLength(128);
-        RuleFor(x => x.RefreshToken).NotEmpty().MaximumLength(2048);
+        RuleFor(x => x.Token).NotEmpty().WithMessage("Refresh token is required.");
     }
 }

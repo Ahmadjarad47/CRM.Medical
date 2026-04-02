@@ -1,29 +1,21 @@
+using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Domain.Entities;
-using FluentValidation;
-using FluentValidation.Results;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 
 namespace CRM.Medical.Application.Features.Auth.ResetPassword;
 
-public sealed class ResetPasswordCommandHandler(UserManager<User> userManager) : IRequestHandler<ResetPasswordCommand>
+public sealed class ResetPasswordCommandHandler(UserManager<User> userManager)
+    : IRequestHandler<ResetPasswordCommand>
 {
     public async Task Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
     {
-        var normalizedEmail = request.Email.Trim();
-        var user = await userManager.FindByEmailAsync(normalizedEmail);
-        if (user is null)
-        {
-            throw new ValidationException(
-                [new ValidationFailure(nameof(ResetPasswordCommand.Token), "Reset token is invalid or expired.")]);
-        }
+        var user = await userManager.FindByEmailAsync(request.Email)
+            ?? throw new ApplicationBadRequestException("Invalid password reset request.");
 
-        var token = Uri.UnescapeDataString(request.Token);
-        var result = await userManager.ResetPasswordAsync(user, token, request.NewPassword);
+        var result = await userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
         if (!result.Succeeded)
-        {
-            throw new ValidationException(
-                [new ValidationFailure(nameof(ResetPasswordCommand.Token), "Reset token is invalid or expired.")]);
-        }
+            throw new ApplicationBadRequestException(
+                string.Join("; ", result.Errors.Select(e => e.Description)));
     }
 }

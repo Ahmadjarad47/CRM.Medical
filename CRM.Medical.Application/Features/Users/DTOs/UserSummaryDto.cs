@@ -1,12 +1,11 @@
-using CRM.Medical.Domain.Entities;
-
 namespace CRM.Medical.Application.Features.Users.DTOs;
 
 public sealed record UserSummaryDto(
     string Id,
     string Email,
-    string DisplayName,
-    UserType UserType,
+    string FullName,
+    string? City,
+    string? PhoneNumber,
+    bool IsActive,
     bool EmailConfirmed,
-    bool LockoutEnabled,
-    bool IsLocked);
+    DateTime CreatedAt);

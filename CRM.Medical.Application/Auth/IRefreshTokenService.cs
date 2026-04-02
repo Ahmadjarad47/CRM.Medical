@@ -2,15 +2,8 @@ namespace CRM.Medical.Application.Auth;
 
 public interface IRefreshTokenService
 {
-    Task<RefreshTokenIssueResult> IssueAsync(string userId, CancellationToken cancellationToken);
-
-    Task<RefreshTokenIssueResult?> RotateAsync(
-        string userId,
-        string refreshToken,
-        CancellationToken cancellationToken);
+    Task<string> GenerateAsync(string userId, CancellationToken ct = default);
+    Task<string?> ValidateAndGetUserIdAsync(string token, CancellationToken ct = default);
+    Task RevokeAsync(string token, CancellationToken ct = default);
+    Task RevokeAllForUserAsync(string userId, CancellationToken ct = default);
 }
-
-public sealed record RefreshTokenIssueResult(
-    string Token,
-    DateTimeOffset ExpiresAtUtc,
-    AuthenticatedUser User);

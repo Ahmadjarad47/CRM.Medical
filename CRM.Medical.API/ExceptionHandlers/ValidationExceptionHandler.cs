@@ -1,6 +1,5 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.ExceptionHandlers;
 
@@ -11,25 +10,27 @@ public sealed class ValidationExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        if (exception is not ValidationException vex)
+        if (exception is not ValidationException validationException)
             return false;
 
-        var errors = vex.Errors
+        var errors = validationException.Errors
             .GroupBy(e => e.PropertyName)
-            .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray());
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(e => e.ErrorMessage).ToArray());
 
-        var problem = new ValidationProblemDetails(errors)
-        {
-            Title = "One or more validation errors occurred.",
-            Status = StatusCodes.Status400BadRequest,
-            Type = "https://tools.ietf.org/html/rfc9110#section-15.5.1",
-            Instance = httpContext.Request.Path.Value,
-        };
+        httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
 
-        problem.Extensions["traceId"] = httpContext.TraceIdentifier;
+        await httpContext.Response.WriteAsJsonAsync(
+            new ValidationProblemDetails(errors)
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "One or more validation errors occurred.",
+                Type = "https://httpstatus.es/400",
+                Instance = httpContext.Request.Path
+            },
+            cancellationToken);
 
-        httpContext.Response.StatusCode = problem.Status.Value;
-        await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken: cancellationToken);
         return true;
     }
 }

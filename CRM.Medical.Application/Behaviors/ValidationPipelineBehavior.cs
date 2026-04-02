@@ -3,7 +3,8 @@ using MediatR;
 
 namespace CRM.Medical.Application.Behaviors;
 
-public sealed class ValidationPipelineBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
+public sealed class ValidationPipelineBehavior<TRequest, TResponse>(
+    IEnumerable<IValidator<TRequest>> validators)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
@@ -16,10 +17,14 @@ public sealed class ValidationPipelineBehavior<TRequest, TResponse>(IEnumerable<
             return await next(cancellationToken);
 
         var context = new ValidationContext<TRequest>(request);
-        var validationResults = await Task.WhenAll(
+        var results = await Task.WhenAll(
             validators.Select(v => v.ValidateAsync(context, cancellationToken)));
 
-        var failures = validationResults.SelectMany(r => r.Errors).Where(f => f is not null).ToList();
+        var failures = results
+            .SelectMany(r => r.Errors)
+            .Where(f => f is not null)
+            .ToList();
+
         if (failures.Count > 0)
             throw new ValidationException(failures);
 

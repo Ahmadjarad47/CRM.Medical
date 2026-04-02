@@ -3,4 +3,4 @@ using MediatR;
 
 namespace CRM.Medical.Application.Features.Auth.RefreshToken;
 
-public sealed record RefreshTokenCommand(string UserId, string RefreshToken) : IRequest<LoginResponse>;
+public sealed record RefreshTokenCommand(string Token) : IRequest<LoginResponse>;

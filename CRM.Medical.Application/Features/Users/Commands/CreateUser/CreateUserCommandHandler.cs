@@ -1,4 +1,6 @@
-using CRM.Medical.Application.Features.Users.Common;
+using System.Text.Json;
+using CRM.Medical.Application.Common.Time;
+using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.Users.DTOs;
 using CRM.Medical.Domain.Entities;
 using MediatR;
@@ -6,54 +8,61 @@ using Microsoft.AspNetCore.Identity;
 
 namespace CRM.Medical.Application.Features.Users.Commands.CreateUser;
 
-public sealed class CreateUserCommandHandler(UserManager<User> userManager)
+public sealed class CreateUserCommandHandler(
+    UserManager<User> userManager,
+    IDateTimeProvider dateTimeProvider)
     : IRequestHandler<CreateUserCommand, UserDetailDto>
 {
     public async Task<UserDetailDto> Handle(CreateUserCommand request, CancellationToken cancellationToken)
     {
-        var normalizedEmail = request.Email.Trim();
+        var existing = await userManager.FindByEmailAsync(request.Email);
+        if (existing is not null)
+            throw new ApplicationConflictException($"A user with email '{request.Email}' already exists.");
 
+        var now = dateTimeProvider.UtcNow;
         var user = new User
         {
-            UserName = normalizedEmail,
-            Email = normalizedEmail,
-            DisplayName = request.DisplayName.Trim(),
-            UserType = request.UserType,
-            DateOfBirth = request.DateOfBirth,
-            PhoneSecondary = NormalizeOptional(request.PhoneSecondary),
-            AddressLine1 = NormalizeOptional(request.AddressLine1),
-            AddressLine2 = NormalizeOptional(request.AddressLine2),
-            City = NormalizeOptional(request.City),
-            Region = NormalizeOptional(request.Region),
-            PostalCode = NormalizeOptional(request.PostalCode),
-            Country = NormalizeOptional(request.Country),
-            NationalIdNumber = NormalizeOptional(request.NationalIdNumber),
-            InsuranceProvider = NormalizeOptional(request.InsuranceProvider),
-            InsurancePolicyNumber = NormalizeOptional(request.InsurancePolicyNumber),
-            EmergencyContactName = NormalizeOptional(request.EmergencyContactName),
-            EmergencyContactPhone = NormalizeOptional(request.EmergencyContactPhone),
-            MedicalLicenseNumber = NormalizeOptional(request.MedicalLicenseNumber),
-            Specialty = NormalizeOptional(request.Specialty),
-            ClinicName = NormalizeOptional(request.ClinicName),
-            LabName = NormalizeOptional(request.LabName),
-            LabLicenseNumber = NormalizeOptional(request.LabLicenseNumber),
-            LabContactName = NormalizeOptional(request.LabContactName),
-            LabContactPhone = NormalizeOptional(request.LabContactPhone),
-            SpecialAccountCode = NormalizeOptional(request.SpecialAccountCode),
-            SpecialNotes = NormalizeOptional(request.SpecialNotes),
+            UserName = request.Email,
+            Email = request.Email,
+            FullName = request.FullName,
+            City = request.City,
+            PhoneNumber = request.PhoneNumber,
+            IsActive = true,
+            EmailConfirmed = true, // admin-created users bypass email verification
+            CreatedAt = now,
+            ProfileMetadata = request.ProfileMetadata.HasValue
+                ? JsonDocument.Parse(request.ProfileMetadata.Value.GetRawText())
+                : null
         };
 
-        var result = await userManager.CreateAsync(user, request.Password);
-        result.ThrowIfFailed(nameof(CreateUserCommand));
+        var createResult = await userManager.CreateAsync(user, request.Password);
+        if (!createResult.Succeeded)
+            throw new ApplicationBadRequestException(
+                string.Join("; ", createResult.Errors.Select(e => e.Description)));
 
-        return user.ToDetailDto();
-    }
+        if (request.Roles.Count > 0)
+        {
+            var rolesResult = await userManager.AddToRolesAsync(user, request.Roles);
+            if (!rolesResult.Succeeded)
+                throw new ApplicationBadRequestException(
+                    string.Join("; ", rolesResult.Errors.Select(e => e.Description)));
+        }
 
-    private static string? NormalizeOptional(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return null;
+        var roles = await userManager.GetRolesAsync(user);
 
-        return value.Trim();
+        return new UserDetailDto(
+            user.Id,
+            user.Email!,
+            user.FullName,
+            user.City,
+            user.PhoneNumber,
+            user.IsActive,
+            user.EmailConfirmed,
+            user.LockoutEnabled,
+            user.LockoutEnd,
+            user.CreatedAt,
+            user.UpdatedAt,
+            roles.ToList().AsReadOnly(),
+            request.ProfileMetadata);
     }
 }

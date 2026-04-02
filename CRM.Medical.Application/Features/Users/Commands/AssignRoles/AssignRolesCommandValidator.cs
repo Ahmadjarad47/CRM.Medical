@@ -7,7 +7,7 @@ public sealed class AssignRolesCommandValidator : AbstractValidator<AssignRolesC
     public AssignRolesCommandValidator()
     {
         RuleFor(x => x.UserId).NotEmpty();
-        RuleFor(x => x.Roles).NotNull().NotEmpty();
-        RuleForEach(x => x.Roles).NotEmpty().MaximumLength(256);
+        RuleFor(x => x.Roles).NotEmpty().WithMessage("At least one role must be specified.");
+        RuleForEach(x => x.Roles).NotEmpty().WithMessage("Role name cannot be empty.");
     }
 }

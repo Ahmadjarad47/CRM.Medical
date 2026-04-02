@@ -1,8 +1,8 @@
+using System.Security.Claims;
+using CRM.Medical.Application.Common.Time;
+using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Domain.Entities;
-using CRM.Medical.Infrastructure.Persistence;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,67 +11,68 @@ using Microsoft.Extensions.Options;
 namespace CRM.Medical.Infrastructure.Seeding;
 
 public sealed class DevelopmentUserSeedHostedService(
-    IServiceScopeFactory scopeFactory,
-    IHostEnvironment hostEnvironment,
-    IOptions<DevelopmentSeedOptions> options,
-    ILogger<DevelopmentUserSeedHostedService> logger) : IHostedService
+    IServiceProvider services,
+    ILogger<DevelopmentUserSeedHostedService> logger)
+    : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        if (!hostEnvironment.IsDevelopment() || !options.Value.Enabled)
+        using var scope = services.CreateScope();
+        var seedOptions = scope.ServiceProvider
+            .GetRequiredService<IOptions<DevelopmentSeedOptions>>().Value;
+
+        if (!seedOptions.Enabled)
             return;
 
-        var seed = options.Value;
-        if (string.IsNullOrWhiteSpace(seed.Email) || string.IsNullOrWhiteSpace(seed.Password))
-        {
-            logger.LogWarning(
-                "Development seed is enabled but Email or Password is missing. Skipping user seed.");
-            return;
-        }
-
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<MedicalDbContext>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        var dateTimeProvider = scope.ServiceProvider.GetRequiredService<IDateTimeProvider>();
 
-        await db.Database.MigrateAsync(cancellationToken);
-
-        if (await userManager.FindByEmailAsync(seed.Email) is not null)
-        {
-            logger.LogInformation("Development seed user already exists ({Email}). Skipping.", seed.Email);
+        var existing = await userManager.FindByEmailAsync(seedOptions.Email);
+        if (existing is not null)
             return;
-        }
 
         var user = new User
         {
-            UserName = seed.Email,
-            Email = seed.Email,
+            UserName = seedOptions.Email,
+            Email = seedOptions.Email,
+            FullName = seedOptions.DisplayName,
+            IsActive = true,
             EmailConfirmed = true,
-            DisplayName = string.IsNullOrWhiteSpace(seed.DisplayName) ? "Test user" : seed.DisplayName,
-            UserType = UserType.Patient,
+            CreatedAt = dateTimeProvider.UtcNow
         };
 
-        var result = await userManager.CreateAsync(user, seed.Password);
+        var result = await userManager.CreateAsync(user, seedOptions.Password);
         if (!result.Succeeded)
         {
-            var errors = string.Join("; ", result.Errors.Select(e => $"{e.Code}: {e.Description}"));
-            logger.LogError("Failed to create development seed user: {Errors}", errors);
+            logger.LogError(
+                "Failed to seed development user '{Email}': {Errors}",
+                seedOptions.Email,
+                string.Join(", ", result.Errors.Select(e => e.Description)));
             return;
         }
 
-        if (await roleManager.RoleExistsAsync(DefaultIdentityRoles.Patient))
+        // Assign Admin role for classification
+        await userManager.AddToRoleAsync(user, UserRoles.Admin);
+
+        // Assign all permissions as user-level claims
+        var permissionClaims = UserPermissions.All
+            .Select(p => new Claim(UserPermissions.ClaimType, p))
+            .ToList();
+
+        var claimsResult = await userManager.AddClaimsAsync(user, permissionClaims);
+        if (!claimsResult.Succeeded)
         {
-            var roleResult = await userManager.AddToRoleAsync(user, DefaultIdentityRoles.Patient);
-            if (!roleResult.Succeeded)
-            {
-                var errors = string.Join("; ", roleResult.Errors.Select(e => $"{e.Code}: {e.Description}"));
-                logger.LogWarning("Seed user created but assigning role failed: {Errors}", errors);
-            }
+            logger.LogWarning(
+                "Seeded user '{Email}' but failed to assign permission claims: {Errors}",
+                seedOptions.Email,
+                string.Join(", ", claimsResult.Errors.Select(e => e.Description)));
+            return;
         }
 
         logger.LogInformation(
-            "Development seed user created. Email: {Email}. Use this account only in Development.",
-            seed.Email);
+            "Seeded development admin user '{Email}' with {Count} permissions.",
+            seedOptions.Email,
+            UserPermissions.All.Count);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

@@ -7,22 +7,19 @@ namespace CRM.Medical.Application.Features.Auth.ResendEmailVerification;
 
 public sealed class ResendEmailVerificationCommandHandler(
     UserManager<User> userManager,
-    IEmailVerificationSender emailVerificationSender) : IRequestHandler<ResendEmailVerificationCommand>
+    IEmailVerificationSender emailSender)
+    : IRequestHandler<ResendEmailVerificationCommand>
 {
-    public async Task Handle(ResendEmailVerificationCommand request, CancellationToken cancellationToken)
+    public async Task Handle(
+        ResendEmailVerificationCommand request,
+        CancellationToken cancellationToken)
     {
-        var normalizedEmail = request.Email.Trim();
-        var user = await userManager.FindByEmailAsync(normalizedEmail);
-        if (user is null || user.EmailConfirmed || string.IsNullOrWhiteSpace(user.Email))
+        // Always return success to prevent account enumeration
+        var user = await userManager.FindByEmailAsync(request.Email);
+        if (user is null || user.EmailConfirmed)
             return;
 
         var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
-        var encodedToken = Uri.EscapeDataString(token);
-        var encodedUserId = Uri.EscapeDataString(user.Id);
-
-        var separator = request.ConfirmationBaseUrl.Contains('?', StringComparison.Ordinal) ? "&" : "?";
-        var link = $"{request.ConfirmationBaseUrl}{separator}userId={encodedUserId}&token={encodedToken}";
-
-        await emailVerificationSender.SendAsync(user.Email, link, cancellationToken);
+        await emailSender.SendAsync(user.Email!, token, cancellationToken);
     }
 }

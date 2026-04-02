@@ -1,47 +1,47 @@
 using CRM.Medical.Application.Auth;
-using CRM.Medical.Application.Mappings;
-using FluentValidation;
-using FluentValidation.Results;
-using Mapster;
+using CRM.Medical.Application.Exceptions;
+using CRM.Medical.Application.Features.Users.Constants;
+using CRM.Medical.Domain.Entities;
 using MediatR;
+using Microsoft.AspNetCore.Identity;
 
 namespace CRM.Medical.Application.Features.Auth.Login;
 
 public sealed class LoginCommandHandler(
     IUserCredentialValidator credentialValidator,
-    IJwtTokenGenerator tokenGenerator,
+    UserManager<User> userManager,
+    IJwtTokenGenerator jwtTokenGenerator,
     IRefreshTokenService refreshTokenService)
     : IRequestHandler<LoginCommand, LoginResponse>
 {
     public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var email = request.Email.Trim();
-        var validationResult = await credentialValidator.ValidateAsync(email, request.Password, cancellationToken);
-        if (validationResult.User is null)
-        {
-            var message = validationResult.FailureReason switch
-            {
-                CredentialFailureReason.UserNotFound => "User is not registered.",
-                CredentialFailureReason.InvalidPassword => "Wrong credentials: password is incorrect.",
-                CredentialFailureReason.LockedOut => "User is locked.",
-                CredentialFailureReason.EmailNotConfirmed => "Email is not confirmed.",
-                _ => "Invalid credentials."
-            };
+        var user = await credentialValidator.ValidateAsync(request.Email, request.Password, cancellationToken)
+            ?? throw new ApplicationBadRequestException("Invalid email or password.");
 
-            throw new ValidationException(
-                [new ValidationFailure(nameof(LoginCommand.Email), message)]);
-        }
+        if (!user.IsActive)
+            throw new ApplicationForbiddenException("Account is deactivated. Please contact an administrator.");
 
-        var (accessToken, expiresAtUtc) = tokenGenerator.CreateAccessToken(validationResult.User);
-        var refreshResult = await refreshTokenService.IssueAsync(validationResult.User.Id, cancellationToken);
-        var model = new LoginResponseMappingModel(
-            validationResult.User.Id,
-            accessToken,
-            expiresAtUtc,
-            refreshResult.Token,
-            refreshResult.ExpiresAtUtc,
-            validationResult.User.Email,
-            validationResult.User.DisplayName);
-        return model.Adapt<LoginResponse>();
+        var roles = await userManager.GetRolesAsync(user);
+
+        var allClaims = await userManager.GetClaimsAsync(user);
+        var permissions = allClaims
+            .Where(c => c.Type == UserPermissions.ClaimType)
+            .Select(c => c.Value)
+            .ToList()
+            .AsReadOnly();
+
+        var authenticatedUser = new AuthenticatedUser(
+            user.Id,
+            user.Email!,
+            user.FullName,
+            roles.ToList().AsReadOnly(),
+            permissions);
+
+        var accessToken = jwtTokenGenerator.GenerateToken(authenticatedUser);
+        var refreshToken = await refreshTokenService.GenerateAsync(user.Id, cancellationToken);
+        var expiresAt = jwtTokenGenerator.GetExpiration();
+
+        return new LoginResponse(accessToken, refreshToken, expiresAt, authenticatedUser);
     }
 }

@@ -1,177 +1,56 @@
-using System.Diagnostics;
 using CRM.Medical.Application.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace CRM.Medical.API.ExceptionHandlers;
 
-/// <summary>
-/// Fallback handler for all unhandled exceptions. Runs after more specific <see cref="IExceptionHandler"/> implementations.
-/// </summary>
-public sealed class GlobalExceptionHandler(
-    ILogger<GlobalExceptionHandler> logger,
-    IProblemDetailsService problemDetailsService,
-    IHostEnvironment environment) : IExceptionHandler
+public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
         CancellationToken cancellationToken)
     {
-        var mapped = MapException(exception);
-
-        logger.Log(
-            mapped.LogLevel,
-            exception,
-            "HTTP {Method} {Path} failed with {StatusCode} ({ExceptionType})",
-            httpContext.Request.Method,
-            httpContext.Request.Path,
-            mapped.Status,
-            exception.GetType().Name);
-
-        var problemDetails = new ProblemDetails
+        if (exception is ApplicationExceptionBase appEx)
         {
-            Status = mapped.Status,
-            Title = mapped.Title,
-            Type = mapped.Type,
-            Detail = environment.IsDevelopment() ? exception.ToString() : null,
-            Instance = httpContext.Request.Path.Value,
-        };
+            httpContext.Response.StatusCode = appEx.StatusCode;
+            await httpContext.Response.WriteAsJsonAsync(
+                new ProblemDetails
+                {
+                    Status = appEx.StatusCode,
+                    Title = GetTitle(appEx.StatusCode),
+                    Detail = appEx.Message,
+                    Type = $"https://httpstatus.es/{appEx.StatusCode}",
+                    Instance = httpContext.Request.Path
+                },
+                cancellationToken);
+            return true;
+        }
 
-        if (Activity.Current?.Id is { } activityId)
-            problemDetails.Extensions["traceParent"] = activityId;
-        if (!string.IsNullOrWhiteSpace(mapped.ErrorCode))
-            problemDetails.Extensions["errorCode"] = mapped.ErrorCode;
+        logger.LogError(exception, "Unhandled exception while processing {Method} {Path}",
+            httpContext.Request.Method, httpContext.Request.Path);
 
-        httpContext.Response.StatusCode = mapped.Status;
-
-        await problemDetailsService.WriteAsync(new ProblemDetailsContext
-        {
-            HttpContext = httpContext,
-            ProblemDetails = problemDetails,
-            Exception = exception,
-        });
+        httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await httpContext.Response.WriteAsJsonAsync(
+            new ProblemDetails
+            {
+                Status = StatusCodes.Status500InternalServerError,
+                Title = "An unexpected error occurred.",
+                Type = "https://httpstatus.es/500",
+                Instance = httpContext.Request.Path
+            },
+            cancellationToken);
 
         return true;
     }
 
-    private static MappedException MapException(Exception exception) =>
-        exception switch
-        {
-            BadHttpRequestException badReq => new(
-                badReq.StatusCode,
-                string.IsNullOrWhiteSpace(badReq.Message)
-                    ? ReasonPhrases.GetReasonPhrase(badReq.StatusCode)
-                    : badReq.Message,
-                ProblemTypes.BadRequest,
-                LogLevel.Warning),
-
-            ApplicationExceptionBase appEx => new(
-                appEx.StatusCode,
-                appEx.Message,
-                ProblemTypeFromStatusCode(appEx.StatusCode),
-                LogLevel.Warning,
-                appEx.ErrorCode),
-
-            ArgumentNullException => new(
-                StatusCodes.Status400BadRequest,
-                "A required argument was missing.",
-                ProblemTypes.BadRequest,
-                LogLevel.Warning),
-
-            ArgumentException argEx => new(
-                StatusCodes.Status400BadRequest,
-                string.IsNullOrWhiteSpace(argEx.Message) ? "The request was invalid." : argEx.Message,
-                ProblemTypes.BadRequest,
-                LogLevel.Warning),
-
-            UnauthorizedAccessException => new(
-                StatusCodes.Status403Forbidden,
-                "You are not allowed to perform this action.",
-                ProblemTypes.Forbidden,
-                LogLevel.Warning),
-
-            KeyNotFoundException => new(
-                StatusCodes.Status404NotFound,
-                "The requested resource was not found.",
-                ProblemTypes.NotFound,
-                LogLevel.Information),
-
-            FileNotFoundException => new(
-                StatusCodes.Status404NotFound,
-                "The requested resource was not found.",
-                ProblemTypes.NotFound,
-                LogLevel.Information),
-
-            NotImplementedException => new(
-                StatusCodes.Status501NotImplemented,
-                "This feature is not implemented.",
-                ProblemTypes.NotImplemented,
-                LogLevel.Warning),
-
-            OperationCanceledException => new(
-                StatusCodes.Status499ClientClosedRequest,
-                "The request was cancelled.",
-                ProblemTypes.ClientClosedRequest,
-                LogLevel.Information),
-
-            TimeoutException => new(
-                StatusCodes.Status504GatewayTimeout,
-                "The operation timed out.",
-                ProblemTypes.GatewayTimeout,
-                LogLevel.Warning),
-
-            _ when IsEfConcurrencyException(exception) => new(
-                StatusCodes.Status409Conflict,
-                "The record was modified by another request. Refresh and try again.",
-                ProblemTypes.Conflict,
-                LogLevel.Warning),
-
-            _ => new(
-                StatusCodes.Status500InternalServerError,
-                "An unexpected error occurred.",
-                ProblemTypes.InternalServerError,
-                LogLevel.Error),
-        };
-
-    private static string ProblemTypeFromStatusCode(int statusCode) =>
-        statusCode switch
-        {
-            StatusCodes.Status400BadRequest => ProblemTypes.BadRequest,
-            StatusCodes.Status403Forbidden => ProblemTypes.Forbidden,
-            StatusCodes.Status404NotFound => ProblemTypes.NotFound,
-            StatusCodes.Status409Conflict => ProblemTypes.Conflict,
-            StatusCodes.Status501NotImplemented => ProblemTypes.NotImplemented,
-            StatusCodes.Status504GatewayTimeout => ProblemTypes.GatewayTimeout,
-            _ => ProblemTypes.InternalServerError,
-        };
-
-    /// <summary>
-    /// Avoids a direct EF Core package reference from the API project.
-    /// </summary>
-    private static bool IsEfConcurrencyException(Exception exception) =>
-        string.Equals(
-            exception.GetType().FullName,
-            "Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException",
-            StringComparison.Ordinal);
-
-    private readonly record struct MappedException(
-        int Status,
-        string Title,
-        string Type,
-        LogLevel LogLevel,
-        string? ErrorCode = null);
-
-    private static class ProblemTypes
+    private static string GetTitle(int statusCode) => statusCode switch
     {
-        public const string BadRequest = "https://tools.ietf.org/html/rfc9110#section-15.5.1";
-        public const string Forbidden = "https://tools.ietf.org/html/rfc9110#section-15.5.4";
-        public const string NotFound = "https://tools.ietf.org/html/rfc9110#section-15.5.5";
-        public const string Conflict = "https://tools.ietf.org/html/rfc9110#section-15.5.10";
-        public const string InternalServerError = "https://tools.ietf.org/html/rfc9110#section-15.6.1";
-        public const string NotImplemented = "https://tools.ietf.org/html/rfc9110#section-15.6.2";
-        public const string GatewayTimeout = "https://tools.ietf.org/html/rfc9110#section-15.6.5";
-        public const string ClientClosedRequest = "about:blank";
-    }
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        409 => "Conflict",
+        422 => "Unprocessable Entity",
+        _ => "An error occurred"
+    };
 }

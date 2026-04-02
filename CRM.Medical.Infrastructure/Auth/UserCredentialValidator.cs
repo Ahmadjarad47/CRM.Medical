@@ -4,32 +4,25 @@ using Microsoft.AspNetCore.Identity;
 
 namespace CRM.Medical.Infrastructure.Auth;
 
-public sealed class UserCredentialValidator(
-    UserManager<User> userManager,
-    SignInManager<User> signInManager) : IUserCredentialValidator
+public sealed class UserCredentialValidator(UserManager<User> userManager) : IUserCredentialValidator
 {
-    public async Task<CredentialValidationResult> ValidateAsync(
-        string email,
-        string password,
-        CancellationToken cancellationToken)
+    public async Task<User?> ValidateAsync(string email, string password, CancellationToken ct = default)
     {
         var user = await userManager.FindByEmailAsync(email);
         if (user is null)
-            return new CredentialValidationResult(null, CredentialFailureReason.UserNotFound);
+            return null;
 
-        var signInResult = await signInManager.CheckPasswordSignInAsync(user, password, lockoutOnFailure: true);
-        if (signInResult.IsLockedOut)
-            return new CredentialValidationResult(null, CredentialFailureReason.LockedOut);
+        if (await userManager.IsLockedOutAsync(user))
+            return null;
 
-        if (signInResult.IsNotAllowed)
-            return new CredentialValidationResult(null, CredentialFailureReason.EmailNotConfirmed);
+        var passwordValid = await userManager.CheckPasswordAsync(user, password);
+        if (!passwordValid)
+        {
+            await userManager.AccessFailedAsync(user);
+            return null;
+        }
 
-        if (!signInResult.Succeeded)
-            return new CredentialValidationResult(null, CredentialFailureReason.InvalidPassword);
-
-        var resolvedEmail = user.Email ?? email;
-        return new CredentialValidationResult(
-            new AuthenticatedUser(user.Id, resolvedEmail, user.DisplayName),
-            null);
+        await userManager.ResetAccessFailedCountAsync(user);
+        return user;
     }
 }

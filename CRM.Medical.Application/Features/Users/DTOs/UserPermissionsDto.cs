@@ -1,3 +1,5 @@
 namespace CRM.Medical.Application.Features.Users.DTOs;
 
-public sealed record UserPermissionsDto(string UserId, IReadOnlyList<string> Permissions);
+public sealed record UserPermissionsDto(
+    string UserId,
+    IReadOnlyList<string> Permissions);

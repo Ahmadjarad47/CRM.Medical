@@ -1,5 +1,5 @@
-using CRM.Medical.Application.Features.Users.Common;
-using CRM.Medical.Application.Features.Users.DTOs;
+using CRM.Medical.Application.Common.Caching;
+using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -8,29 +8,27 @@ namespace CRM.Medical.Application.Features.Users.Commands.AssignRoles;
 
 public sealed class AssignRolesCommandHandler(
     UserManager<User> userManager,
-    RoleManager<IdentityRole> roleManager) : IRequestHandler<AssignRolesCommand, UserRolesDto>
+    ICacheService cache)
+    : IRequestHandler<AssignRolesCommand>
 {
-    public async Task<UserRolesDto> Handle(AssignRolesCommand request, CancellationToken cancellationToken)
+    public async Task Handle(AssignRolesCommand request, CancellationToken cancellationToken)
     {
         var user = await userManager.FindByIdAsync(request.UserId)
-            ?? throw new KeyNotFoundException($"User '{request.UserId}' was not found.");
+            ?? throw new ApplicationNotFoundException($"User '{request.UserId}' not found.");
 
-        var normalizedRoles = request.Roles
-            .Select(x => x.Trim())
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var currentRoles = await userManager.GetRolesAsync(user);
+        var rolesToAdd = request.Roles
+            .Except(currentRoles, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        foreach (var role in normalizedRoles)
-        {
-            if (!await roleManager.RoleExistsAsync(role))
-                throw new KeyNotFoundException($"Role '{role}' does not exist.");
-        }
+        if (rolesToAdd.Count == 0)
+            return;
 
-        var result = await userManager.AddToRolesAsync(user, normalizedRoles);
-        result.ThrowIfFailed(nameof(AssignRolesCommand));
+        var result = await userManager.AddToRolesAsync(user, rolesToAdd);
+        if (!result.Succeeded)
+            throw new ApplicationBadRequestException(
+                string.Join("; ", result.Errors.Select(e => e.Description)));
 
-        var roles = await userManager.GetRolesAsync(user);
-        return user.ToRolesDto(roles);
+        await cache.RemoveAsync(CacheKeys.UserById(user.Id), cancellationToken);
     }
 }

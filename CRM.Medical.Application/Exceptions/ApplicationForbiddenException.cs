@@ -1,4 +1,6 @@
 namespace CRM.Medical.Application.Exceptions;
 
-public sealed class ApplicationForbiddenException(string message, string errorCode = "forbidden")
-    : ApplicationExceptionBase(message, errorCode, 403);
+public sealed class ApplicationForbiddenException(string message) : ApplicationExceptionBase(message)
+{
+    public override int StatusCode => 403;
+}

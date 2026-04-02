@@ -2,12 +2,15 @@ namespace CRM.Medical.API.Middlewares;
 
 public static class MiddlewareRegistrationExtensions
 {
-    public static IServiceCollection AddCrmMiddlewares(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddCrmMiddlewares(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
         services.Configure<CorrelationIdMiddlewareOptions>(
-            configuration.GetSection(CorrelationIdMiddlewareOptions.SectionName));
+            configuration.GetSection("Middlewares:CorrelationId"));
+
         services.Configure<SecurityHeadersMiddlewareOptions>(
-            configuration.GetSection(SecurityHeadersMiddlewareOptions.SectionName));
+            configuration.GetSection("Middlewares:SecurityHeaders"));
 
         return services;
     }
