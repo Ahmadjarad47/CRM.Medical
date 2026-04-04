@@ -1,4 +1,3 @@
-using System.Text.Json;
 using CRM.Medical.API.Controllers.Admin.Models;
 using CRM.Medical.Application.Features.Users.Commands.AssignPermissions;
 using CRM.Medical.Application.Features.Users.Commands.AssignRoles;
@@ -22,15 +21,10 @@ namespace CRM.Medical.API.Controllers.Admin;
 [Route("api/admin/users")]
 public sealed class UsersController(ISender mediator) : AdminBaseController
 {
-    // ─── User list & detail ───────────────────────────────────────────────────
-
     [HttpGet]
     [Authorize(Policy = UserPermissions.UsersView)]
-    public async Task<IActionResult> GetUsers(
-        [FromQuery] GetUsersRequest request,
-        CancellationToken ct)
-    {
-        var result = await mediator.Send(
+    public async Task<IActionResult> GetUsers([FromQuery] GetUsersRequest request, CancellationToken ct) =>
+        Ok(await mediator.Send(
             new GetUsersQuery(
                 request.Page,
                 request.PageSize,
@@ -39,58 +33,36 @@ public sealed class UsersController(ISender mediator) : AdminBaseController
                 request.Role,
                 request.SortBy,
                 request.SortDesc),
-            ct);
-        return Ok(result);
-    }
+            ct));
 
     [HttpGet("{id}")]
     [Authorize(Policy = UserPermissions.UsersView)]
-    public async Task<IActionResult> GetUserById(string id, CancellationToken ct)
-    {
-        var result = await mediator.Send(new GetUserByIdQuery(id), ct);
-        return Ok(result);
-    }
-
-    // ─── Create / update / delete ─────────────────────────────────────────────
+    public async Task<IActionResult> GetUserById(string id, CancellationToken ct) =>
+        Ok(await mediator.Send(new GetUserByIdQuery(id), ct));
 
     [HttpPost]
     [Authorize(Policy = UserPermissions.UsersCreate)]
-    public async Task<IActionResult> CreateUser(
-        [FromBody] CreateUserRequest request,
-        CancellationToken ct)
+    public async Task<IActionResult> CreateUser([FromBody] CreateUserRequest request, CancellationToken ct)
     {
-        JsonElement? metadata = request.ProfileMetadata is null
-            ? null
-            : JsonSerializer.SerializeToElement(request.ProfileMetadata);
-
-        var command = new CreateUserCommand(
-            request.Email,
-            request.FullName,
-            request.Password,
-            request.City,
-            request.PhoneNumber,
-            request.Roles ?? [],
-            metadata);
-
-        var user = await mediator.Send(command, ct);
+        var user = await mediator.Send(
+            new CreateUserCommand(
+                request.Email,
+                request.FullName,
+                request.Password,
+                request.City,
+                request.PhoneNumber,
+                request.Roles ?? [],
+                request.ProfileMetadata),
+            ct);
         return CreatedAtAction(nameof(GetUserById), new { id = user.Id }, user);
     }
 
     [HttpPut("{id}")]
     [Authorize(Policy = UserPermissions.UsersUpdate)]
-    public async Task<IActionResult> UpdateUser(
-        string id,
-        [FromBody] UpdateUserRequest request,
-        CancellationToken ct)
-    {
-        JsonElement? metadata = request.ProfileMetadata is null
-            ? null
-            : JsonSerializer.SerializeToElement(request.ProfileMetadata);
-
-        var result = await mediator.Send(
-            new UpdateUserCommand(id, request.FullName, request.City, request.PhoneNumber, metadata), ct);
-        return Ok(result);
-    }
+    public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserRequest request, CancellationToken ct) =>
+        Ok(await mediator.Send(
+            new UpdateUserCommand(id, request.FullName, request.City, request.PhoneNumber, request.ProfileMetadata),
+            ct));
 
     [HttpDelete("{id}")]
     [Authorize(Policy = UserPermissions.UsersDelete)]
@@ -99,8 +71,6 @@ public sealed class UsersController(ISender mediator) : AdminBaseController
         await mediator.Send(new DeleteUserCommand(id), ct);
         return NoContent();
     }
-
-    // ─── Activate / deactivate ────────────────────────────────────────────────
 
     [HttpPost("{id}/activate")]
     [Authorize(Policy = UserPermissions.UsersUpdate)]
@@ -118,14 +88,9 @@ public sealed class UsersController(ISender mediator) : AdminBaseController
         return NoContent();
     }
 
-    // ─── Role management (classification only) ────────────────────────────────
-
     [HttpPost("{id}/roles")]
     [Authorize(Policy = UserPermissions.UsersUpdate)]
-    public async Task<IActionResult> AssignRoles(
-        string id,
-        [FromBody] AssignRolesRequest request,
-        CancellationToken ct)
+    public async Task<IActionResult> AssignRoles(string id, [FromBody] AssignRolesRequest request, CancellationToken ct)
     {
         await mediator.Send(new AssignRolesCommand(id, request.Roles), ct);
         return NoContent();
@@ -133,27 +98,17 @@ public sealed class UsersController(ISender mediator) : AdminBaseController
 
     [HttpDelete("{id}/roles")]
     [Authorize(Policy = UserPermissions.UsersUpdate)]
-    public async Task<IActionResult> RemoveRoles(
-        string id,
-        [FromBody] RemoveRolesRequest request,
-        CancellationToken ct)
+    public async Task<IActionResult> RemoveRoles(string id, [FromBody] RemoveRolesRequest request, CancellationToken ct)
     {
         await mediator.Send(new RemoveRolesCommand(id, request.Roles), ct);
         return NoContent();
     }
 
-    // ─── Permission management ────────────────────────────────────────────────
-
-    /// <summary>Returns all permission claims assigned to the user.</summary>
     [HttpGet("{id}/permissions")]
     [Authorize(Policy = UserPermissions.UsersView)]
-    public async Task<IActionResult> GetUserPermissions(string id, CancellationToken ct)
-    {
-        var result = await mediator.Send(new GetUserPermissionsQuery(id), ct);
-        return Ok(result);
-    }
+    public async Task<IActionResult> GetUserPermissions(string id, CancellationToken ct) =>
+        Ok(await mediator.Send(new GetUserPermissionsQuery(id), ct));
 
-    /// <summary>Assigns one or more permissions to a user (idempotent).</summary>
     [HttpPost("{id}/permissions")]
     [Authorize(Policy = UserPermissions.UsersManagePermissions)]
     public async Task<IActionResult> AssignPermissions(
@@ -165,13 +120,9 @@ public sealed class UsersController(ISender mediator) : AdminBaseController
         return NoContent();
     }
 
-    /// <summary>Removes a single named permission from a user (idempotent).</summary>
     [HttpDelete("{id}/permissions/{permission}")]
     [Authorize(Policy = UserPermissions.UsersManagePermissions)]
-    public async Task<IActionResult> RemovePermission(
-        string id,
-        string permission,
-        CancellationToken ct)
+    public async Task<IActionResult> RemovePermission(string id, string permission, CancellationToken ct)
     {
         await mediator.Send(new RemovePermissionFromUserCommand(id, permission), ct);
         return NoContent();

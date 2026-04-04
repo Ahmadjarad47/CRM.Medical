@@ -12,9 +12,9 @@ public sealed class RegisterCommandHandler(
     UserManager<User> userManager,
     IDateTimeProvider dateTimeProvider,
     IEmailVerificationSender emailSender)
-    : IRequestHandler<RegisterCommand>
+    : IRequestHandler<RegisterCommand, RegisterResponse>
 {
-    public async Task Handle(RegisterCommand request, CancellationToken cancellationToken)
+    public async Task<RegisterResponse> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
         var existing = await userManager.FindByEmailAsync(request.Email);
         if (existing is not null)
@@ -42,5 +42,8 @@ public sealed class RegisterCommandHandler(
 
         var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
         await emailSender.SendAsync(user.Email!, token, cancellationToken);
+
+        return new RegisterResponse(
+            "Registration successful. Please check your email to verify your account.");
     }
 }

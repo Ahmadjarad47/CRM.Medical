@@ -15,12 +15,27 @@ public static class UserPermissions
     public const string UsersDelete = "users.delete";
     public const string UsersManagePermissions = "users.manage_permissions";
 
+    public const string ComplaintsView = "complaints.view";
+    public const string ComplaintsUpdateStatus = "complaints.update_status";
+
+    public const string AppointmentsView = "appointments.view";
+    public const string AppointmentsManage = "appointments.manage";
+
+    public const string SubscriptionsView = "subscriptions.view";
+    public const string SubscriptionsManage = "subscriptions.manage";
+
     public static readonly IReadOnlyList<string> All =
     [
         UsersView,
         UsersCreate,
         UsersUpdate,
         UsersDelete,
-        UsersManagePermissions
+        UsersManagePermissions,
+        ComplaintsView,
+        ComplaintsUpdateStatus,
+        AppointmentsView,
+        AppointmentsManage,
+        SubscriptionsView,
+        SubscriptionsManage
     ];
 }

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using CRM.Medical.Application.Features.Users.DTOs;
 using MediatR;
 
@@ -9,4 +8,4 @@ public sealed record UpdateUserCommand(
     string FullName,
     string? City,
     string? PhoneNumber,
-    JsonElement? ProfileMetadata) : IRequest<UserDetailDto>;
+    object? ProfileMetadata) : IRequest<UserDetailDto>;

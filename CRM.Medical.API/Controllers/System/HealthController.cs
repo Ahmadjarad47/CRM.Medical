@@ -1,5 +1,7 @@
 using CRM.Medical.Application.Features.Health.GetStatus;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.Controllers.System;
 
@@ -13,9 +15,6 @@ public sealed class HealthController(ISender mediator) : SystemBaseController
     public async Task<IActionResult> GetStatus(CancellationToken ct)
     {
         var result = await mediator.Send(new GetHealthStatusQuery(), ct);
-        var statusCode = result.Status == "Healthy"
-            ? StatusCodes.Status200OK
-            : StatusCodes.Status503ServiceUnavailable;
-        return StatusCode(statusCode, result);
+        return StatusCode(result.HttpStatusCode, result);
     }
 }

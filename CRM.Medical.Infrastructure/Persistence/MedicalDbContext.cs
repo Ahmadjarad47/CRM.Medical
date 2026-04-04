@@ -10,6 +10,14 @@ public sealed class MedicalDbContext(DbContextOptions<MedicalDbContext> options)
 {
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<Complaint> Complaints => Set<Complaint>();
+
+    public DbSet<Appointment> Appointments => Set<Appointment>();
+
+    public DbSet<AppointmentType> AppointmentTypes => Set<AppointmentType>();
+
+    public DbSet<SubscriptionPackage> SubscriptionPackages => Set<SubscriptionPackage>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

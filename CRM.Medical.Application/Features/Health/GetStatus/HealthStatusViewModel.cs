@@ -4,7 +4,8 @@ public sealed record HealthStatusViewModel(
     string Status,
     string Environment,
     DateTime Timestamp,
-    DatabaseStatus Database);
+    DatabaseStatus Database,
+    int HttpStatusCode);
 
 public sealed record DatabaseStatus(
     bool IsHealthy,

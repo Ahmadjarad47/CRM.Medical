@@ -18,4 +18,14 @@ public class User : IdentityUser
     public JsonDocument? ProfileMetadata { get; set; }
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    public ICollection<Complaint> Complaints { get; set; } = new List<Complaint>();
+
+    public ICollection<Appointment> AppointmentsAsPatient { get; set; } = new List<Appointment>();
+
+    public ICollection<Appointment> AppointmentsAsDoctor { get; set; } = new List<Appointment>();
+
+    public ICollection<Appointment> AppointmentsAsLabPartner { get; set; } = new List<Appointment>();
+
+    public ICollection<Appointment> AppointmentsCreated { get; set; } = new List<Appointment>();
 }

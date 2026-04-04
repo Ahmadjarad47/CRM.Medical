@@ -1,6 +1,15 @@
+using Amazon;
+using Amazon.Runtime;
+using Amazon.S3;
 using CRM.Medical.Application.Auth;
 using CRM.Medical.Application.Common.Caching;
+using CRM.Medical.Application.Common.Storage;
 using CRM.Medical.Application.Configuration.Database;
+using CRM.Medical.Application.Configuration.S3;
+using CRM.Medical.Application.Features.AppointmentTypes;
+using CRM.Medical.Application.Features.Appointments;
+using CRM.Medical.Application.Features.Complaints;
+using CRM.Medical.Application.Features.SubscriptionPackages;
 using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Application.Health;
 using CRM.Medical.Domain.Entities;
@@ -11,6 +20,7 @@ using CRM.Medical.Infrastructure.Diagnostics;
 using CRM.Medical.Infrastructure.Email;
 using CRM.Medical.Infrastructure.Persistence;
 using CRM.Medical.Infrastructure.Seeding;
+using CRM.Medical.Infrastructure.Storage;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -29,7 +39,33 @@ public static class DependencyInjection
         services.AddOptions<DatabaseSettings>();
         services.ConfigureOptions<DatabaseSettingsFromEnvironmentConfigurer>();
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
+        services.Configure<S3StorageSettings>(configuration.GetSection(S3StorageSettings.SectionName));
         services.AddSingleton<IDatabaseConnectionStringBuilder, NpgsqlDatabaseConnectionStringBuilder>();
+
+        services.AddSingleton<IAmazonS3>(sp =>
+        {
+            var o = sp.GetRequiredService<IOptions<S3StorageSettings>>().Value;
+            var credentials = new BasicAWSCredentials(o.AccessKey, o.SecretKey);
+
+            if (!string.IsNullOrWhiteSpace(o.ServiceUrl))
+            {
+                var cfg = new AmazonS3Config
+                {
+                    ServiceURL = o.ServiceUrl,
+                    ForcePathStyle = o.ForcePathStyle
+                };
+                return new AmazonS3Client(credentials, cfg);
+            }
+
+            var regionName = string.IsNullOrWhiteSpace(o.Region) ? "us-east-1" : o.Region;
+            return new AmazonS3Client(credentials, RegionEndpoint.GetBySystemName(regionName));
+        });
+
+        services.AddScoped<IObjectStorageService, S3ObjectStorageService>();
+        services.AddScoped<IComplaintRepository, ComplaintRepository>();
+        services.AddScoped<IAppointmentRepository, AppointmentRepository>();
+        services.AddScoped<IAppointmentTypeRepository, AppointmentTypeRepository>();
+        services.AddScoped<ISubscriptionPackageRepository, SubscriptionPackageRepository>();
 
         services.AddDbContext<MedicalDbContext>((sp, options) =>
         {

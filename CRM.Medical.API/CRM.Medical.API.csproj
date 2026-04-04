@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CRM.Medical.Application\CRM.Medical.Application.csproj" />
+    <ProjectReference Include="..\CRM.Medical.Domain\CRM.Medical.Domain.csproj" />
     <ProjectReference Include="..\CRM.Medical.Infrastructure\CRM.Medical.Infrastructure.csproj" />
   </ItemGroup>
 

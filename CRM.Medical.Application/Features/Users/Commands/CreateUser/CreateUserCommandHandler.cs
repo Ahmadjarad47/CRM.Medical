@@ -1,4 +1,4 @@
-using System.Text.Json;
+using CRM.Medical.Application.Common.Json;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.Users.DTOs;
@@ -30,9 +30,7 @@ public sealed class CreateUserCommandHandler(
             IsActive = true,
             EmailConfirmed = true, // admin-created users bypass email verification
             CreatedAt = now,
-            ProfileMetadata = request.ProfileMetadata.HasValue
-                ? JsonDocument.Parse(request.ProfileMetadata.Value.GetRawText())
-                : null
+            ProfileMetadata = ProfileMetadataMapper.ToJsonDocument(request.ProfileMetadata)
         };
 
         var createResult = await userManager.CreateAsync(user, request.Password);
@@ -63,6 +61,6 @@ public sealed class CreateUserCommandHandler(
             user.CreatedAt,
             user.UpdatedAt,
             roles.ToList().AsReadOnly(),
-            request.ProfileMetadata);
+            ProfileMetadataMapper.ToJsonElement(user.ProfileMetadata));
     }
 }

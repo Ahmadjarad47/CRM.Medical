@@ -1,5 +1,5 @@
-using System.Text.Json;
 using CRM.Medical.Application.Common.Caching;
+using CRM.Medical.Application.Common.Json;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.Users.DTOs;
@@ -25,10 +25,10 @@ public sealed class UpdateUserCommandHandler(
         user.PhoneNumber = request.PhoneNumber;
         user.UpdatedAt = dateTimeProvider.UtcNow;
 
-        if (request.ProfileMetadata.HasValue)
+        if (request.ProfileMetadata is not null)
         {
             user.ProfileMetadata?.Dispose();
-            user.ProfileMetadata = JsonDocument.Parse(request.ProfileMetadata.Value.GetRawText());
+            user.ProfileMetadata = ProfileMetadataMapper.ToJsonDocument(request.ProfileMetadata);
         }
 
         var result = await userManager.UpdateAsync(user);
@@ -53,6 +53,6 @@ public sealed class UpdateUserCommandHandler(
             user.CreatedAt,
             user.UpdatedAt,
             roles.ToList().AsReadOnly(),
-            request.ProfileMetadata);
+            ProfileMetadataMapper.ToJsonElement(user.ProfileMetadata));
     }
 }

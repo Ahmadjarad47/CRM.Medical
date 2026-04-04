@@ -14,11 +14,13 @@ public sealed class GetHealthStatusQueryHandler(
         var snapshot = snapshotProvider.GetLatest();
         var dbStatus = new DatabaseStatus(snapshot.IsHealthy, snapshot.ErrorMessage, snapshot.CheckedAt);
         var overallStatus = snapshot.IsHealthy ? "Healthy" : "Degraded";
+        var httpStatus = snapshot.IsHealthy ? 200 : 503;
 
         return Task.FromResult(new HealthStatusViewModel(
             overallStatus,
             environment.EnvironmentName,
             DateTime.UtcNow,
-            dbStatus));
+            dbStatus,
+            httpStatus));
     }
 }

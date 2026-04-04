@@ -3,14 +3,26 @@ using System.Text.Json.Serialization;
 using CRM.Medical.API.ExceptionHandlers;
 using CRM.Medical.API.Extensions;
 using CRM.Medical.API.Middlewares;
+using CRM.Medical.API.Services.Complaints;
 using CRM.Medical.Application;
 using CRM.Medical.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 12 * 1024 * 1024;
+});
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 12 * 1024 * 1024;
+});
 
 builder.Services.AddProblemDetails(options =>
 {
@@ -28,6 +40,8 @@ builder.Services.AddProblemDetails(options =>
 
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddScoped<IComplaintSubmitCommandFactory, ComplaintSubmitCommandFactory>();
+
 builder.Services.AddApplication();
 builder.Services.AddCrmSwagger();
 builder.Services.AddCrmMiddlewares(builder.Configuration);
