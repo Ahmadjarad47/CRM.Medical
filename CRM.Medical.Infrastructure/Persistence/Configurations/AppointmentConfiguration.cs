@@ -55,6 +55,20 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.HasIndex(a => a.AppointmentTypeId);
         builder.HasIndex(a => a.CreatedByUserId);
 
+        builder.Property(a => a.MedicalTestCompletionStatus)
+            .HasMaxLength(64);
+
+        builder.HasIndex(a => a.MedicalTestId)
+            .IsUnique();
+
+        builder.HasIndex(a => a.MedicalTestCompletionStatus);
+
+        builder.HasOne(a => a.MedicalTest)
+            .WithOne(t => t.Appointment)
+            .HasForeignKey<Appointment>(a => a.MedicalTestId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasOne(a => a.AppointmentType)
             .WithMany(t => t.Appointments)
             .HasForeignKey(a => a.AppointmentTypeId)

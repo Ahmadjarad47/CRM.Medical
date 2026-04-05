@@ -18,6 +18,14 @@ public sealed class MedicalDbContext(DbContextOptions<MedicalDbContext> options)
 
     public DbSet<SubscriptionPackage> SubscriptionPackages => Set<SubscriptionPackage>();
 
+    public DbSet<Permission> Permissions => Set<Permission>();
+
+    public DbSet<MedicalTest> MedicalTests => Set<MedicalTest>();
+
+    public DbSet<TestRequest> TestRequests => Set<TestRequest>();
+
+    public DbSet<TestResult> TestResults => Set<TestResult>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

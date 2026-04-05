@@ -87,6 +87,15 @@ public sealed class AppointmentRepository(MedicalDbContext dbContext) : IAppoint
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public Task<bool> IsMedicalTestLinkedToAnotherAppointmentAsync(
+        int medicalTestId,
+        int appointmentId,
+        CancellationToken cancellationToken = default) =>
+        dbContext.Appointments.AsNoTracking()
+            .AnyAsync(
+                a => a.MedicalTestId == medicalTestId && a.Id != appointmentId,
+                cancellationToken);
+
     private static async Task<(IReadOnlyList<Appointment> Items, int TotalCount)> ListPagedAsync(
         IQueryable<Appointment> query,
         int page,

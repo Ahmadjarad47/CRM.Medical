@@ -32,3 +32,5 @@ public sealed record AssignRolesRequest(IReadOnlyList<string> Roles);
 public sealed record RemoveRolesRequest(IReadOnlyList<string> Roles);
 
 public sealed record AssignPermissionsRequest(IReadOnlyList<string> Permissions);
+
+public sealed record ReplacePermissionsRequest(IReadOnlyList<string>? Permissions);

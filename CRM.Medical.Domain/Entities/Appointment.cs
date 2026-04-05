@@ -1,3 +1,5 @@
+using CRM.Medical.Domain.Constants;
+
 namespace CRM.Medical.Domain.Entities;
 
 public sealed class Appointment
@@ -35,6 +37,16 @@ public sealed class Appointment
 
     public string? LabPartnerId { get; set; }
     public User? LabPartner { get; set; }
+
+    /// <summary>Optional 1:1 link to a medical test instance for this appointment.</summary>
+    public int? MedicalTestId { get; set; }
+    public MedicalTest? MedicalTest { get; set; }
+
+    /// <summary>
+    /// When <see cref="MedicalTestId"/> is set, tracks whether the linked medical test work is finished (see <see cref="AppointmentMedicalTestCompletionStatuses"/>).
+    /// Must be null when <see cref="MedicalTestId"/> is null.
+    /// </summary>
+    public string? MedicalTestCompletionStatus { get; set; }
 
     public string CreatedByUserId { get; set; } = string.Empty;
     public User CreatedByUser { get; set; } = null!;

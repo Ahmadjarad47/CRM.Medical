@@ -6,6 +6,7 @@ using CRM.Medical.Application.Features.Users.Commands.CreateUser;
 using CRM.Medical.Application.Features.Users.Commands.DeactivateUser;
 using CRM.Medical.Application.Features.Users.Commands.DeleteUser;
 using CRM.Medical.Application.Features.Users.Commands.RemovePermission;
+using CRM.Medical.Application.Features.Users.Commands.ReplaceUserPermissions;
 using CRM.Medical.Application.Features.Users.Commands.RemoveRoles;
 using CRM.Medical.Application.Features.Users.Commands.UpdateUser;
 using CRM.Medical.Application.Features.Users.Constants;
@@ -117,6 +118,17 @@ public sealed class UsersController(ISender mediator) : AdminBaseController
         CancellationToken ct)
     {
         await mediator.Send(new AssignPermissionsToUserCommand(id, request.Permissions), ct);
+        return NoContent();
+    }
+
+    [HttpPut("{id}/permissions")]
+    [Authorize(Policy = UserPermissions.UsersManagePermissions)]
+    public async Task<IActionResult> ReplacePermissions(
+        string id,
+        [FromBody] ReplacePermissionsRequest request,
+        CancellationToken ct)
+    {
+        await mediator.Send(new ReplaceUserPermissionsCommand(id, request.Permissions ?? []), ct);
         return NoContent();
     }
 

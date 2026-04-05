@@ -16,6 +16,8 @@ public sealed record AppointmentDto(
     string PatientId,
     string? DoctorId,
     string? LabPartnerId,
+    int? MedicalTestId,
+    string? MedicalTestCompletionStatus,
     string CreatedByUserId,
     DateTime CreatedAt,
     DateTime? UpdatedAt);

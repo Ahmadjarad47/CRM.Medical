@@ -22,6 +22,8 @@ internal static class AppointmentMappings
             a.PatientId,
             a.DoctorId,
             a.LabPartnerId,
+            a.MedicalTestId,
+            a.MedicalTestCompletionStatus,
             a.CreatedByUserId,
             a.CreatedAt,
             a.UpdatedAt);
