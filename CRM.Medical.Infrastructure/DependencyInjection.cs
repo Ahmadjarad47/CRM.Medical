@@ -13,7 +13,6 @@ using CRM.Medical.Application.Features.Complaints;
 using CRM.Medical.Application.Features.MedicalTests;
 using CRM.Medical.Application.Features.SubscriptionPackages;
 using CRM.Medical.Application.Features.TestRequests;
-using CRM.Medical.Application.Features.TestResults;
 using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Application.Health;
 using CRM.Medical.Domain.Entities;

@@ -1,4 +1,4 @@
-using CRM.Medical.Application.Features.TestResults;
+using CRM.Medical.Application.Features.TestRequests;
 using CRM.Medical.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
