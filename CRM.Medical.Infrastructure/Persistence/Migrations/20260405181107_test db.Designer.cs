@@ -14,7 +14,7 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(MedicalDbContext))]
     [Migration("20260405181107_test db")]
-    partial class testdb
+    partial class TestDb
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

@@ -5,7 +5,7 @@
 namespace CRM.Medical.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class testdb : Migration
+    public partial class TestDb : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
