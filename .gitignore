@@ -41,8 +41,8 @@ bld/
 # Visual Studio 2017 auto generated files
 Generated\ Files/
 
-# MSTest test Results
-[Tt]est[Rr]esult*/
+# MSTest / coverage output at repo root only (broad [Tt]est[Rr]esult*/ also ignored Application source folders)
+/TestResults/
 [Bb]uild[Ll]og.*
 
 # NUnit
