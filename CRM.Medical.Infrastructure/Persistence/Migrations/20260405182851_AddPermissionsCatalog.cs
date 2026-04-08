@@ -1,5 +1,4 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -11,25 +10,19 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "permissions",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_permissions", x => x.Id);
-                });
+            migrationBuilder.Sql(
+                """
+                CREATE TABLE IF NOT EXISTS permissions (
+                    "Id" uuid NOT NULL,
+                    "Name" character varying(128) NOT NULL,
+                    "Description" character varying(500),
+                    "CreatedAt" timestamp with time zone NOT NULL,
+                    CONSTRAINT "PK_permissions" PRIMARY KEY ("Id")
+                );
+                """);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_permissions_Name",
-                table: "permissions",
-                column: "Name",
-                unique: true);
+            migrationBuilder.Sql(
+                """CREATE UNIQUE INDEX IF NOT EXISTS "IX_permissions_Name" ON permissions ("Name");""");
         }
 
         /// <inheritdoc />

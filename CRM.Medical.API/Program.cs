@@ -6,7 +6,9 @@ using CRM.Medical.API.Middlewares;
 using CRM.Medical.API.Services.Complaints;
 using CRM.Medical.Application;
 using CRM.Medical.Infrastructure;
+using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
@@ -54,6 +56,13 @@ builder.Services.AddControllers()
     });
 
 var app = builder.Build();
+
+// Apply migrations before IHostedService seeding (e.g. permission catalog) touches the database.
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<MedicalDbContext>();
+    await db.Database.MigrateAsync();
+}
 
 app.UseCrmMiddlewares();
 app.UseExceptionHandler();
