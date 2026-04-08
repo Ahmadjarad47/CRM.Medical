@@ -36,4 +36,9 @@ public interface IAppointmentRepository
         CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Appointment entity, CancellationToken cancellationToken = default);
+
+    Task<bool> IsMedicalTestLinkedToAnotherAppointmentAsync(
+        int medicalTestId,
+        int appointmentId,
+        CancellationToken cancellationToken = default);
 }

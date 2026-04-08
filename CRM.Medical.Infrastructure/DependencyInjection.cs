@@ -4,12 +4,16 @@ using Amazon.S3;
 using CRM.Medical.Application.Auth;
 using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Common.Storage;
+using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Configuration.Database;
 using CRM.Medical.Application.Configuration.S3;
 using CRM.Medical.Application.Features.AppointmentTypes;
 using CRM.Medical.Application.Features.Appointments;
 using CRM.Medical.Application.Features.Complaints;
+using CRM.Medical.Application.Features.MedicalTests;
 using CRM.Medical.Application.Features.SubscriptionPackages;
+using CRM.Medical.Application.Features.TestRequests;
+using CRM.Medical.Application.Features.TestResults;
 using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Application.Health;
 using CRM.Medical.Domain.Entities;
@@ -20,6 +24,7 @@ using CRM.Medical.Infrastructure.Diagnostics;
 using CRM.Medical.Infrastructure.Email;
 using CRM.Medical.Infrastructure.Persistence;
 using CRM.Medical.Infrastructure.Seeding;
+using CRM.Medical.Infrastructure.Persistence.Repositories;
 using CRM.Medical.Infrastructure.Storage;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -66,6 +71,10 @@ public static class DependencyInjection
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         services.AddScoped<IAppointmentTypeRepository, AppointmentTypeRepository>();
         services.AddScoped<ISubscriptionPackageRepository, SubscriptionPackageRepository>();
+        services.AddScoped<IMedicalTestRepository, MedicalTestRepository>();
+        services.AddScoped<ITestRequestRepository, TestRequestRepository>();
+        services.AddScoped<ITestResultRepository, TestResultRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
 
         services.AddDbContext<MedicalDbContext>((sp, options) =>
         {
@@ -127,6 +136,7 @@ public static class DependencyInjection
         services.Configure<DevelopmentSeedOptions>(
             configuration.GetSection(DevelopmentSeedOptions.SectionName));
         services.AddHostedService<IdentityRoleSeedHostedService>();
+        services.AddHostedService<PermissionCatalogSeedHostedService>();
         services.AddHostedService<DevelopmentUserSeedHostedService>();
 
         return services;

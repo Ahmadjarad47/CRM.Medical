@@ -28,4 +28,10 @@ public class User : IdentityUser
     public ICollection<Appointment> AppointmentsAsLabPartner { get; set; } = new List<Appointment>();
 
     public ICollection<Appointment> AppointmentsCreated { get; set; } = new List<Appointment>();
+
+    public ICollection<MedicalTest> MedicalTestsCreated { get; set; } = new List<MedicalTest>();
+
+    public ICollection<TestRequest> TestRequestsCreated { get; set; } = new List<TestRequest>();
+
+    public ICollection<TestResult> TestResultsCreated { get; set; } = new List<TestResult>();
 }

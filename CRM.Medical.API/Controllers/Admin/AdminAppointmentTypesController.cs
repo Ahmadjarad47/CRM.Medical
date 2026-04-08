@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.Controllers.Admin;
 
+
 [Route("api/admin/appointment-types")]
 public sealed class AdminAppointmentTypesController(ISender mediator) : AdminBaseController
 {

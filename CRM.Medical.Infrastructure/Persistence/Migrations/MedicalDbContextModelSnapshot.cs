@@ -68,6 +68,13 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                     b.Property<double?>("Longitude")
                         .HasColumnType("double precision");
 
+                    b.Property<string>("MedicalTestCompletionStatus")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("MedicalTestId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -101,6 +108,11 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                     b.HasIndex("DoctorId");
 
                     b.HasIndex("LabPartnerId");
+
+                    b.HasIndex("MedicalTestCompletionStatus");
+
+                    b.HasIndex("MedicalTestId")
+                        .IsUnique();
 
                     b.HasIndex("PatientId");
 
@@ -186,6 +198,92 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("complaints", (string)null);
+                });
+
+            modelBuilder.Entity("CRM.Medical.Domain.Entities.MedicalTest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NameAr")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<JsonDocument>("ParameterSchema")
+                        .HasColumnType("jsonb");
+
+                    b.Property<double>("Price")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("SampleType")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Category");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("medical_tests", (string)null);
+                });
+
+            modelBuilder.Entity("CRM.Medical.Domain.Entities.Permission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("permissions", (string)null);
                 });
 
             modelBuilder.Entity("CRM.Medical.Domain.Entities.RefreshToken", b =>
@@ -275,6 +373,109 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                     b.HasIndex("TargetAudience");
 
                     b.ToTable("subscription_packages", (string)null);
+                });
+
+            modelBuilder.Entity("CRM.Medical.Domain.Entities.TestRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("MedicalTestId")
+                        .HasColumnType("integer");
+
+                    b.Property<JsonDocument>("Metadata")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("RequestDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<double>("TotalAmount")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("MedicalTestId")
+                        .IsUnique();
+
+                    b.HasIndex("RequestDate");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("test_requests", (string)null);
+                });
+
+            modelBuilder.Entity("CRM.Medical.Domain.Entities.TestResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PdfUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<JsonDocument>("ResultData")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTime>("ResultDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("TestRequestId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ResultDate");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TestRequestId")
+                        .IsUnique();
+
+                    b.ToTable("test_results", (string)null);
                 });
 
             modelBuilder.Entity("CRM.Medical.Domain.Entities.User", b =>
@@ -529,6 +730,11 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                         .HasForeignKey("LabPartnerId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("CRM.Medical.Domain.Entities.MedicalTest", "MedicalTest")
+                        .WithOne("Appointment")
+                        .HasForeignKey("CRM.Medical.Domain.Entities.Appointment", "MedicalTestId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("CRM.Medical.Domain.Entities.User", "Patient")
                         .WithMany("AppointmentsAsPatient")
                         .HasForeignKey("PatientId")
@@ -542,6 +748,8 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                     b.Navigation("Doctor");
 
                     b.Navigation("LabPartner");
+
+                    b.Navigation("MedicalTest");
 
                     b.Navigation("Patient");
                 });
@@ -557,6 +765,17 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CRM.Medical.Domain.Entities.MedicalTest", b =>
+                {
+                    b.HasOne("CRM.Medical.Domain.Entities.User", "CreatedByUser")
+                        .WithMany("MedicalTestsCreated")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+                });
+
             modelBuilder.Entity("CRM.Medical.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("CRM.Medical.Domain.Entities.User", "User")
@@ -566,6 +785,44 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CRM.Medical.Domain.Entities.TestRequest", b =>
+                {
+                    b.HasOne("CRM.Medical.Domain.Entities.User", "CreatedByUser")
+                        .WithMany("TestRequestsCreated")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CRM.Medical.Domain.Entities.MedicalTest", "MedicalTest")
+                        .WithOne("TestRequest")
+                        .HasForeignKey("CRM.Medical.Domain.Entities.TestRequest", "MedicalTestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("MedicalTest");
+                });
+
+            modelBuilder.Entity("CRM.Medical.Domain.Entities.TestResult", b =>
+                {
+                    b.HasOne("CRM.Medical.Domain.Entities.User", "CreatedByUser")
+                        .WithMany("TestResultsCreated")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("CRM.Medical.Domain.Entities.TestRequest", "TestRequest")
+                        .WithOne("Result")
+                        .HasForeignKey("CRM.Medical.Domain.Entities.TestResult", "TestRequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("TestRequest");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -624,6 +881,18 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                     b.Navigation("Appointments");
                 });
 
+            modelBuilder.Entity("CRM.Medical.Domain.Entities.MedicalTest", b =>
+                {
+                    b.Navigation("Appointment");
+
+                    b.Navigation("TestRequest");
+                });
+
+            modelBuilder.Entity("CRM.Medical.Domain.Entities.TestRequest", b =>
+                {
+                    b.Navigation("Result");
+                });
+
             modelBuilder.Entity("CRM.Medical.Domain.Entities.User", b =>
                 {
                     b.Navigation("AppointmentsAsDoctor");
@@ -636,7 +905,13 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Complaints");
 
+                    b.Navigation("MedicalTestsCreated");
+
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("TestRequestsCreated");
+
+                    b.Navigation("TestResultsCreated");
                 });
 #pragma warning restore 612, 618
         }

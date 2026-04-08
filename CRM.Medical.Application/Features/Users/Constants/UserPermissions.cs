@@ -15,6 +15,9 @@ public static class UserPermissions
     public const string UsersDelete = "users.delete";
     public const string UsersManagePermissions = "users.manage_permissions";
 
+    public const string PermissionsManage = "permissions.manage";
+    public const string RolesManage = "roles.manage";
+
     public const string ComplaintsView = "complaints.view";
     public const string ComplaintsUpdateStatus = "complaints.update_status";
 
@@ -24,6 +27,13 @@ public static class UserPermissions
     public const string SubscriptionsView = "subscriptions.view";
     public const string SubscriptionsManage = "subscriptions.manage";
 
+    public const string MedicalWorkflowView = "medical_workflow.view";
+
+    /// <summary>
+    /// Create/update/delete medical tests, test requests, results, and appointment test links (assign to doctor, lab partner, and admin as needed).
+    /// </summary>
+    public const string MedicalWorkflowManage = "medical_workflow.manage";
+
     public static readonly IReadOnlyList<string> All =
     [
         UsersView,
@@ -31,11 +41,15 @@ public static class UserPermissions
         UsersUpdate,
         UsersDelete,
         UsersManagePermissions,
+        PermissionsManage,
+        RolesManage,
         ComplaintsView,
         ComplaintsUpdateStatus,
         AppointmentsView,
         AppointmentsManage,
         SubscriptionsView,
-        SubscriptionsManage
+        SubscriptionsManage,
+        MedicalWorkflowView,
+        MedicalWorkflowManage
     ];
 }

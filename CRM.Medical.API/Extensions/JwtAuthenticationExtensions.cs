@@ -2,6 +2,7 @@ using System.Text;
 using CRM.Medical.Application.Auth;
 using CRM.Medical.Application.Features.Users.Constants;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CRM.Medical.API.Extensions;
@@ -54,17 +55,11 @@ public static class JwtAuthenticationExtensions
                 };
             });
 
-        // Policy-based authorization: one policy per permission claim value.
+        // Permission policies are resolved dynamically via PermissionAwarePolicyProvider.
         // Endpoints use [Authorize(Policy = UserPermissions.UsersView)] etc.
         // Roles are NOT used for authorization — only for classification/filtering.
-        services.AddAuthorization(options =>
-        {
-            foreach (var permission in UserPermissions.All)
-            {
-                options.AddPolicy(permission, policy =>
-                    policy.RequireClaim(UserPermissions.ClaimType, permission));
-            }
-        });
+        services.AddAuthorization();
+        services.AddSingleton<IAuthorizationPolicyProvider, PermissionAwarePolicyProvider>();
 
         return services;
     }
