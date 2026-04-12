@@ -27,52 +27,78 @@ public sealed class DevelopmentUserSeedHostedService(
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var dateTimeProvider = scope.ServiceProvider.GetRequiredService<IDateTimeProvider>();
 
-        var existing = await userManager.FindByEmailAsync(seedOptions.Email);
+        // Seed the primary admin
+        await SeedUserAsync(
+            userManager, dateTimeProvider,
+            seedOptions.Email, seedOptions.Password, seedOptions.DisplayName,
+            UserRoles.Admin, allPermissions: true);
+
+        // Seed any additional configured users
+        foreach (var entry in seedOptions.AdditionalUsers)
+        {
+            await SeedUserAsync(
+                userManager, dateTimeProvider,
+                entry.Email, entry.Password, entry.DisplayName,
+                entry.Role, entry.AllPermissions);
+        }
+    }
+
+    private async Task SeedUserAsync(
+        UserManager<User> userManager,
+        IDateTimeProvider dateTimeProvider,
+        string email, string password, string displayName,
+        string role, bool allPermissions)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return;
+
+        var existing = await userManager.FindByEmailAsync(email);
         if (existing is not null)
             return;
 
         var user = new User
         {
-            UserName = seedOptions.Email,
-            Email = seedOptions.Email,
-            FullName = seedOptions.DisplayName,
+            UserName = email,
+            Email = email,
+            FullName = displayName,
             IsActive = true,
             EmailConfirmed = true,
             CreatedAt = dateTimeProvider.UtcNow
         };
 
-        var result = await userManager.CreateAsync(user, seedOptions.Password);
+        var result = await userManager.CreateAsync(user, password);
         if (!result.Succeeded)
         {
             logger.LogError(
-                "Failed to seed development user '{Email}': {Errors}",
-                seedOptions.Email,
+                "Failed to seed user '{Email}': {Errors}",
+                email,
                 string.Join(", ", result.Errors.Select(e => e.Description)));
             return;
         }
 
-        // Assign Admin role for classification
-        await userManager.AddToRoleAsync(user, UserRoles.Admin);
+        await userManager.AddToRoleAsync(user, role);
 
-        // Assign all permissions as user-level claims
-        var permissionClaims = UserPermissions.All
-            .Select(p => new Claim(UserPermissions.ClaimType, p))
-            .ToList();
-
-        var claimsResult = await userManager.AddClaimsAsync(user, permissionClaims);
-        if (!claimsResult.Succeeded)
+        if (allPermissions)
         {
-            logger.LogWarning(
-                "Seeded user '{Email}' but failed to assign permission claims: {Errors}",
-                seedOptions.Email,
-                string.Join(", ", claimsResult.Errors.Select(e => e.Description)));
-            return;
+            var permissionClaims = UserPermissions.All
+                .Select(p => new Claim(UserPermissions.ClaimType, p))
+                .ToList();
+
+            var claimsResult = await userManager.AddClaimsAsync(user, permissionClaims);
+            if (!claimsResult.Succeeded)
+            {
+                logger.LogWarning(
+                    "Seeded user '{Email}' but failed to assign permission claims: {Errors}",
+                    email,
+                    string.Join(", ", claimsResult.Errors.Select(e => e.Description)));
+                return;
+            }
         }
 
         logger.LogInformation(
-            "Seeded development admin user '{Email}' with {Count} permissions.",
-            seedOptions.Email,
-            UserPermissions.All.Count);
+            "Seeded {Role} user '{Email}' with {Permissions}.",
+            role, email,
+            allPermissions ? $"{UserPermissions.All.Count} permissions" : "role-only");
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
