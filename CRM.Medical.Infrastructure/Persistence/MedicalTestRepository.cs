@@ -1,20 +1,38 @@
+using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Features.MedicalTests;
 using CRM.Medical.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace CRM.Medical.Infrastructure.Persistence;
 
-public sealed class MedicalTestRepository(MedicalDbContext dbContext) : IMedicalTestRepository
+public sealed class MedicalTestRepository(MedicalDbContext dbContext, ICacheService cache)
+    : IMedicalTestRepository
 {
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
+
+    private static string CacheKey(int id) => $"medical_test:{id}";
+
     public async Task<MedicalTest> AddAsync(MedicalTest entity, CancellationToken cancellationToken = default)
     {
         dbContext.MedicalTests.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await cache.SetAsync(CacheKey(entity.Id), entity, CacheDuration, cancellationToken);
         return entity;
     }
 
-    public Task<MedicalTest?> GetByIdAsync(int id, CancellationToken cancellationToken = default) =>
-        dbContext.MedicalTests.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+    public async Task<MedicalTest?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var key = CacheKey(id);
+        var cached = await cache.GetAsync<MedicalTest>(key, cancellationToken);
+        if (cached is not null)
+            return cached;
+
+        var entity = await dbContext.MedicalTests.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        if (entity is not null)
+            await cache.SetAsync(key, entity, CacheDuration, cancellationToken);
+
+        return entity;
+    }
 
     public async Task<(IReadOnlyList<MedicalTest> Items, int TotalCount)> ListAsync(
         string? category,
@@ -45,12 +63,14 @@ public sealed class MedicalTestRepository(MedicalDbContext dbContext) : IMedical
     {
         dbContext.MedicalTests.Update(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await cache.RemoveAsync(CacheKey(entity.Id), cancellationToken);
     }
 
     public async Task DeleteAsync(MedicalTest entity, CancellationToken cancellationToken = default)
     {
         dbContext.MedicalTests.Remove(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await cache.RemoveAsync(CacheKey(entity.Id), cancellationToken);
     }
 
     public Task<bool> HasTestRequestAsync(int medicalTestId, CancellationToken cancellationToken = default) =>

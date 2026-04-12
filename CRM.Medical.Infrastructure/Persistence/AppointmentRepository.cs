@@ -1,22 +1,40 @@
+using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Features.Appointments;
 using CRM.Medical.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace CRM.Medical.Infrastructure.Persistence;
 
-public sealed class AppointmentRepository(MedicalDbContext dbContext) : IAppointmentRepository
+public sealed class AppointmentRepository(MedicalDbContext dbContext, ICacheService cache)
+    : IAppointmentRepository
 {
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
+
+    private static string CacheKey(int id) => $"appointment:{id}";
+
     public async Task<Appointment> AddAsync(Appointment entity, CancellationToken cancellationToken = default)
     {
         dbContext.Appointments.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await cache.SetAsync(CacheKey(entity.Id), entity, CacheDuration, cancellationToken);
         return entity;
     }
 
-    public Task<Appointment?> GetByIdAsync(int id, CancellationToken cancellationToken = default) =>
-        dbContext.Appointments
+    public async Task<Appointment?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var key = CacheKey(id);
+        var cached = await cache.GetAsync<Appointment>(key, cancellationToken);
+        if (cached is not null)
+            return cached;
+
+        var entity = await dbContext.Appointments
             .Include(a => a.AppointmentType)
             .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+        if (entity is not null)
+            await cache.SetAsync(key, entity, CacheDuration, cancellationToken);
+
+        return entity;
+    }
 
     public async Task<(IReadOnlyList<Appointment> Items, int TotalCount)> ListForPatientAsync(
         string patientId,
@@ -85,6 +103,7 @@ public sealed class AppointmentRepository(MedicalDbContext dbContext) : IAppoint
     {
         dbContext.Appointments.Update(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await cache.RemoveAsync(CacheKey(entity.Id), cancellationToken);
     }
 
     public Task<bool> IsMedicalTestLinkedToAnotherAppointmentAsync(

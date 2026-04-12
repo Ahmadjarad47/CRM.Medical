@@ -1,4 +1,5 @@
 using CRM.Medical.Application.Abstractions;
+using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Features.Permissions.DTOs;
 using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Domain.Entities;
@@ -6,8 +7,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CRM.Medical.Infrastructure.Persistence.Repositories;
 
-public sealed class PermissionRepository(MedicalDbContext db) : IPermissionRepository
+public sealed class PermissionRepository(MedicalDbContext db, ICacheService cache) : IPermissionRepository
 {
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
+
+    private static string CacheKey(Guid id) => $"permission:{id}";
+
     public async Task<IReadOnlyList<PermissionDto>> ListAsync(CancellationToken cancellationToken)
     {
         var rows = await db.Permissions
@@ -20,8 +25,18 @@ public sealed class PermissionRepository(MedicalDbContext db) : IPermissionRepos
 
     public async Task<PermissionDto?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
     {
+        var key = CacheKey(id);
+        var cached = await cache.GetAsync<PermissionDto>(key, cancellationToken);
+        if (cached is not null)
+            return cached;
+
         var row = await db.Permissions.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
-        return row is null ? null : Map(row);
+        if (row is null)
+            return null;
+
+        var dto = Map(row);
+        await cache.SetAsync(key, dto, CacheDuration, cancellationToken);
+        return dto;
     }
 
     public async Task<PermissionDto?> GetByNameAsync(string name, CancellationToken cancellationToken)
@@ -57,7 +72,9 @@ public sealed class PermissionRepository(MedicalDbContext db) : IPermissionRepos
         db.Permissions.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Map(entity);
+        var dto = Map(entity);
+        await cache.SetAsync(CacheKey(entity.Id), dto, CacheDuration, cancellationToken);
+        return dto;
     }
 
     public async Task UpdateDescriptionAsync(Guid id, string? description, CancellationToken cancellationToken)
@@ -68,6 +85,7 @@ public sealed class PermissionRepository(MedicalDbContext db) : IPermissionRepos
 
         entity.Description = description;
         await db.SaveChangesAsync(cancellationToken);
+        await cache.RemoveAsync(CacheKey(id), cancellationToken);
     }
 
     public async Task<PermissionDeletionOutcome?> DeleteAsync(Guid id, CancellationToken cancellationToken)
@@ -89,6 +107,7 @@ public sealed class PermissionRepository(MedicalDbContext db) : IPermissionRepos
 
         db.Permissions.Remove(entity);
         await db.SaveChangesAsync(cancellationToken);
+        await cache.RemoveAsync(CacheKey(id), cancellationToken);
 
         return new PermissionDeletionOutcome(userIds);
     }
