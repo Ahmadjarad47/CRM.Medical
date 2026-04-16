@@ -27,6 +27,7 @@ public sealed class AdminAppointmentTypesController(ISender mediator) : AdminBas
     public async Task<IActionResult> GetById(int id, CancellationToken ct) =>
         Ok(await mediator.Send(new GetAppointmentTypeByIdQuery(id), ct));
 
+
     [HttpPost]
     [Authorize(Policy = UserPermissions.AppointmentsManage)]
     [ProducesResponseType(typeof(AppointmentTypeDto), StatusCodes.Status201Created)]
