@@ -3,5 +3,5 @@ using MediatR;
 
 namespace CRM.Medical.Application.Features.Templates.Queries.GetMyTemplateById;
 
-public sealed record GetMyTemplateByIdQuery(string UserId, int Id) : IRequest<TemplateDto>;
+public sealed record GetMyTemplateByIdQuery(string Role, int Id) : IRequest<TemplateDto>;
 

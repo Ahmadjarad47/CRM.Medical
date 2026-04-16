@@ -22,19 +22,14 @@ public sealed class TemplateConfiguration : IEntityTypeConfiguration<Template>
         builder.Property(t => t.Data)
             .HasColumnType("jsonb");
 
-        builder.Property(t => t.UserId)
+        builder.Property(t => t.Role)
             .IsRequired();
 
         builder.Property(t => t.CreatedAt)
             .IsRequired();
 
-        builder.HasIndex(t => t.UserId);
+        builder.HasIndex(t => t.Role);
         builder.HasIndex(t => t.CreatedAt);
-
-        builder.HasOne(t => t.User)
-            .WithMany(u => u.Templates)
-            .HasForeignKey(t => t.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
     }
 }
 

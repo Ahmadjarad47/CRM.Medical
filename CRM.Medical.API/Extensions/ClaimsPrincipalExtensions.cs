@@ -15,4 +15,12 @@ public static class ClaimsPrincipalExtensions
             ? id
             : throw new ApplicationUnauthorizedException("Unable to identify the current user.");
     }
+
+    public static string GetRequiredRole(this ClaimsPrincipal user)
+    {
+        var role = user.FindFirstValue(ClaimTypes.Role);
+        return !string.IsNullOrEmpty(role)
+            ? role
+            : throw new ApplicationUnauthorizedException("Unable to identify the current user's role.");
+    }
 }

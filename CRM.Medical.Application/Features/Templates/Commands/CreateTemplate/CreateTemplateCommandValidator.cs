@@ -10,7 +10,7 @@ public sealed class CreateTemplateCommandValidator : AbstractValidator<CreateTem
             .NotEmpty()
             .MaximumLength(200);
 
-        RuleFor(x => x.UserId)
+        RuleFor(x => x.Role)
             .NotEmpty();
     }
 }

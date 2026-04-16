@@ -19,7 +19,7 @@ public sealed class CreateTemplateCommandHandler(
         {
             Name = request.Name.Trim(),
             Data = ProfileMetadataMapper.ToJsonDocument(request.Data),
-            UserId = request.UserId,
+            Role = request.Role,
             CreatedAt = dateTimeProvider.UtcNow
         };
 

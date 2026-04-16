@@ -34,6 +34,4 @@ public class User : IdentityUser
     public ICollection<TestRequest> TestRequestsCreated { get; set; } = new List<TestRequest>();
 
     public ICollection<TestResult> TestResultsCreated { get; set; } = new List<TestResult>();
-
-    public ICollection<Template> Templates { get; set; } = new List<Template>();
 }

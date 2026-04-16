@@ -14,7 +14,7 @@ public sealed class GetMyTemplateByIdQueryHandler(ITemplateRepository templates)
         var entity = await templates.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"Template '{request.Id}' was not found.");
 
-        if (!string.Equals(entity.UserId, request.UserId, StringComparison.Ordinal))
+        if (!string.Equals(entity.Role, request.Role, StringComparison.Ordinal))
             throw new ApplicationForbiddenException("You cannot access this template.");
 
         return entity.ToDto();

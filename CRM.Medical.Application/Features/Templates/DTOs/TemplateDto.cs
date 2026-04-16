@@ -6,7 +6,7 @@ public sealed record TemplateDto(
     int Id,
     string Name,
     JsonElement? Data,
-    string UserId,
+    string Role,
     DateTime CreatedAt,
     DateTime? UpdatedAt);
 

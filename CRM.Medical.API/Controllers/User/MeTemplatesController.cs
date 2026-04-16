@@ -20,7 +20,7 @@ public sealed class MeTemplatesController(ISender mediator) : UserBaseController
             new CreateTemplateCommand(
                 request.Name,
                 request.Data,
-                User.GetRequiredUserId()),
+                User.GetRequiredRole()),
             ct);
 
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
@@ -29,11 +29,11 @@ public sealed class MeTemplatesController(ISender mediator) : UserBaseController
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<TemplateDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(CancellationToken ct) =>
-        Ok(await mediator.Send(new ListMyTemplatesQuery(User.GetRequiredUserId()), ct));
+        Ok(await mediator.Send(new ListMyTemplatesQuery(User.GetRequiredRole()), ct));
 
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(TemplateDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetById(int id, CancellationToken ct) =>
-        Ok(await mediator.Send(new GetMyTemplateByIdQuery(User.GetRequiredUserId(), id), ct));
+        Ok(await mediator.Send(new GetMyTemplateByIdQuery(User.GetRequiredRole(), id), ct));
 }
 

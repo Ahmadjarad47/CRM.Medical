@@ -11,7 +11,7 @@ internal static class TemplateMappings
             t.Id,
             t.Name,
             ProfileMetadataMapper.ToJsonElement(t.Data),
-            t.UserId,
+            t.Role,
             t.CreatedAt,
             t.UpdatedAt);
 }

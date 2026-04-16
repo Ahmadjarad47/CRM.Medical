@@ -7,5 +7,5 @@ namespace CRM.Medical.Application.Features.Templates.Commands.CreateTemplate;
 public sealed record CreateTemplateCommand(
     string Name,
     JsonElement? Data,
-    string UserId) : IRequest<TemplateDto>;
+    string Role) : IRequest<TemplateDto>;
 

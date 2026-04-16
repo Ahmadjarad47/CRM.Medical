@@ -10,8 +10,7 @@ public sealed class Template
 
     public JsonDocument? Data { get; set; }
 
-    public string UserId { get; set; } = string.Empty;
-    public User User { get; set; } = null!;
+    public string Role { get; set; } = string.Empty;
 
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

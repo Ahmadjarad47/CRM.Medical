@@ -18,13 +18,13 @@ public sealed class TemplateRepository(MedicalDbContext dbContext) : ITemplateRe
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-    public async Task<IReadOnlyList<Template>> ListByUserIdAsync(
-        string userId,
+    public async Task<IReadOnlyList<Template>> ListByRoleAsync(
+        string role,
         CancellationToken cancellationToken = default)
     {
         return await dbContext.Templates
             .AsNoTracking()
-            .Where(t => t.UserId == userId)
+            .Where(t => t.Role == role)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync(cancellationToken);
     }

@@ -8,6 +8,6 @@ public interface ITemplateRepository
 
     Task<Template?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Template>> ListByUserIdAsync(string userId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Template>> ListByRoleAsync(string role, CancellationToken cancellationToken = default);
 }
 

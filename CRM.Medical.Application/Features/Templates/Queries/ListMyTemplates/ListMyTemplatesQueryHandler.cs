@@ -10,7 +10,7 @@ public sealed class ListMyTemplatesQueryHandler(ITemplateRepository templates)
         ListMyTemplatesQuery request,
         CancellationToken cancellationToken)
     {
-        var items = await templates.ListByUserIdAsync(request.UserId, cancellationToken);
+        var items = await templates.ListByRoleAsync(request.Role, cancellationToken);
         return items.Select(t => t.ToDto()).ToList();
     }
 }
