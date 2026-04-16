@@ -10,6 +10,22 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.Controllers.Admin;
 
+public sealed class CreateBannerRequest
+{
+    public string Title { get; init; } = default!;
+    public string Type { get; init; } = default!;
+    public string? InternalLink { get; init; }
+    public string? ExternalLink { get; init; }
+    public string TargetType { get; init; } = default!;
+    public string Location { get; init; } = default!;
+    public int DisplayOrder { get; init; }
+    public bool IsActive { get; init; }
+    public string? VisibilityRulesJson { get; init; }
+    public DateTime StartDate { get; init; }
+    public DateTime EndDate { get; init; }
+    public IFormFile Media { get; init; } = default!;
+}
+
 [Route("api/admin/banners")]
 [Authorize(Roles = UserRoles.Admin)]
 public sealed class BannersController(
@@ -25,33 +41,22 @@ public sealed class BannersController(
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(BannerDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(
-        [FromForm] string title,
-        [FromForm] string type,
-        [FromForm] string? internalLink,
-        [FromForm] string? externalLink,
-        [FromForm] string targetType,
-        [FromForm] string location,
-        [FromForm] int displayOrder,
-        [FromForm] bool isActive,
-        [FromForm] string? visibilityRulesJson,
-        [FromForm] DateTime startDate,
-        [FromForm] DateTime endDate,
-        [FromForm] IFormFile media,
+        [FromForm] CreateBannerRequest request,
         CancellationToken ct)
     {
         var command = await bannerCreateCommandFactory.CreateAsync(
-            title,
-            type,
-            internalLink,
-            externalLink,
-            targetType,
-            location,
-            displayOrder,
-            isActive,
-            visibilityRulesJson,
-            startDate,
-            endDate,
-            media,
+            request.Title,
+            request.Type,
+            request.InternalLink,
+            request.ExternalLink,
+            request.TargetType,
+            request.Location,
+            request.DisplayOrder,
+            request.IsActive,
+            request.VisibilityRulesJson,
+            request.StartDate,
+            request.EndDate,
+            request.Media,
             ct);
 
         var dto = await mediator.Send(command, ct);

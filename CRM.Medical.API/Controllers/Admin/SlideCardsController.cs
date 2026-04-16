@@ -11,6 +11,20 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.Controllers.Admin;
 
+public sealed class CreateSlideCardRequest
+{
+    public string Title { get; init; } = default!;
+    public string Description { get; init; } = default!;
+    public decimal Price { get; init; }
+    public decimal Discount { get; init; }
+    public DateTime ExpiryDate { get; init; }
+    public string Badge { get; init; } = default!;
+    public string DetailPageLink { get; init; } = default!;
+    public int DisplayOrder { get; init; }
+    public bool IsActive { get; init; }
+    public IFormFile? Image { get; init; }
+}
+
 [Route("api/admin/slide-cards")]
 [Authorize(Roles = UserRoles.Admin)]
 public sealed class SlideCardsController(
@@ -31,29 +45,20 @@ public sealed class SlideCardsController(
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(SlideCardDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(
-        [FromForm] string title,
-        [FromForm] string description,
-        [FromForm] decimal price,
-        [FromForm] decimal discount,
-        [FromForm] DateTime expiryDate,
-        [FromForm] string badge,
-        [FromForm] string detailPageLink,
-        [FromForm] int displayOrder,
-        [FromForm] bool isActive,
-        [FromForm] IFormFile? image,
+        [FromForm] CreateSlideCardRequest request,
         CancellationToken ct)
     {
         var command = await slideCardCreateCommandFactory.CreateAsync(
-            title,
-            description,
-            price,
-            discount,
-            expiryDate,
-            badge,
-            detailPageLink,
-            displayOrder,
-            isActive,
-            image,
+            request.Title,
+            request.Description,
+            request.Price,
+            request.Discount,
+            request.ExpiryDate,
+            request.Badge,
+            request.DetailPageLink,
+            request.DisplayOrder,
+            request.IsActive,
+            request.Image,
             ct);
 
         var dto = await mediator.Send(command, ct);
