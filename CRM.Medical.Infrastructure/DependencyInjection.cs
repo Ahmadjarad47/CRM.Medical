@@ -14,6 +14,7 @@ using CRM.Medical.Application.Features.MedicalTests;
 using CRM.Medical.Application.Features.Banners;
 using CRM.Medical.Application.Features.SlideCards;
 using CRM.Medical.Application.Features.SubscriptionPackages;
+using CRM.Medical.Application.Features.Templates;
 using CRM.Medical.Application.Features.TestRequests;
 using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Application.Health;
@@ -77,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<ITestResultRepository, TestResultRepository>();
         services.AddScoped<ISlideCardRepository, SlideCardRepository>();
         services.AddScoped<IBannerRepository, BannerRepository>();
+        services.AddScoped<ITemplateRepository, TemplateRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
 
         services.AddDbContext<MedicalDbContext>((sp, options) =>

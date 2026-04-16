@@ -30,6 +30,8 @@ public sealed class MedicalDbContext(DbContextOptions<MedicalDbContext> options)
 
     public DbSet<Banner> Banners => Set<Banner>();
 
+    public DbSet<Template> Templates => Set<Template>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
