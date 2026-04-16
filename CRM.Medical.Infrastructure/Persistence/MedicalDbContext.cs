@@ -26,6 +26,10 @@ public sealed class MedicalDbContext(DbContextOptions<MedicalDbContext> options)
 
     public DbSet<TestResult> TestResults => Set<TestResult>();
 
+    public DbSet<SlideCard> SlideCards => Set<SlideCard>();
+
+    public DbSet<Banner> Banners => Set<Banner>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

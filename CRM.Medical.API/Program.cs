@@ -4,6 +4,8 @@ using CRM.Medical.API.ExceptionHandlers;
 using CRM.Medical.API.Extensions;
 using CRM.Medical.API.Middlewares;
 using CRM.Medical.API.Services.Complaints;
+using CRM.Medical.API.Services.Banners;
+using CRM.Medical.API.Services.SlideCards;
 using CRM.Medical.Application;
 using CRM.Medical.Infrastructure;
 using CRM.Medical.Infrastructure.Persistence;
@@ -43,6 +45,8 @@ builder.Services.AddProblemDetails(options =>
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddScoped<IComplaintSubmitCommandFactory, ComplaintSubmitCommandFactory>();
+builder.Services.AddScoped<ISlideCardCreateCommandFactory, SlideCardCreateCommandFactory>();
+builder.Services.AddScoped<IBannerCreateCommandFactory, BannerCreateCommandFactory>();
 
 builder.Services.AddApplication();
 builder.Services.AddCrmSwagger();
