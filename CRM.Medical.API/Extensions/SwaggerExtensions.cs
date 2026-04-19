@@ -12,7 +12,10 @@ public static class SwaggerExtensions
             {
                 Title = "CRM Medical API",
                 Version = "v1",
-                Description = "Production-grade CRM Medical REST API — Clean Architecture · CQRS · JWT · Redis"
+                Description =
+                    "Production-grade CRM Medical REST API — Clean Architecture · CQRS · JWT · Redis. " +
+                    "JSON responses use a common envelope: `{ \"success\": true|false, \"message\": \"ok|bad\", \"data\": ... }`. " +
+                    "Endpoints that previously returned 204 No Content now return **200** with `data: null` and `message: \"ok\"`."
             });
 
             // JWT Bearer security definition

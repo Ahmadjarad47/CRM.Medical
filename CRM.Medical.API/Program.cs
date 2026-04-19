@@ -2,19 +2,21 @@ using System.Diagnostics;
 using System.Text.Json.Serialization;
 using CRM.Medical.API.ExceptionHandlers;
 using CRM.Medical.API.Extensions;
+using CRM.Medical.API.Filters;
 using CRM.Medical.API.Middlewares;
+using CRM.Medical.API.Models;
+using CRM.Medical.API.Services;
 using CRM.Medical.API.Services.Complaints;
 using CRM.Medical.API.Services.Banners;
 using CRM.Medical.API.Services.SlideCards;
 using CRM.Medical.Application;
+using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Infrastructure;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Extensions.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,12 +50,18 @@ builder.Services.AddScoped<IComplaintSubmitCommandFactory, ComplaintSubmitComman
 builder.Services.AddScoped<ISlideCardCreateCommandFactory, SlideCardCreateCommandFactory>();
 builder.Services.AddScoped<IBannerCreateCommandFactory, BannerCreateCommandFactory>();
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserAccessor, HttpContextCurrentUserAccessor>();
+
 builder.Services.AddApplication();
 builder.Services.AddCrmSwagger();
 builder.Services.AddCrmMiddlewares(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<ApiEnvelopeResultFilter>();
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -78,21 +86,10 @@ app.UseStatusCodePages(async statusCodeContext =>
     if (statusCode is < 400 or >= 600)
         return;
 
-    var problemDetailsService = httpContext.RequestServices.GetRequiredService<IProblemDetailsService>();
     var title = ReasonPhrases.GetReasonPhrase(statusCode);
-    var problemDetails = new ProblemDetails
-    {
-        Status = statusCode,
-        Title = string.IsNullOrEmpty(title) ? "An error occurred." : title,
-        Type = $"https://httpstatus.es/{statusCode}",
-        Instance = httpContext.Request.Path.Value,
-    };
-
-    await problemDetailsService.WriteAsync(new ProblemDetailsContext
-    {
-        HttpContext = httpContext,
-        ProblemDetails = problemDetails,
-    });
+    await httpContext.Response.WriteAsJsonAsync(
+        ApiEnvelope.Bad(string.IsNullOrEmpty(title) ? "An error occurred." : title),
+        httpContext.RequestAborted);
 });
 
 app.Logger.LogInformation(

@@ -14,5 +14,6 @@ public sealed record UserDetailDto(
     DateTimeOffset? LockoutEnd,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
+    string? CreatedByUserId,
     IReadOnlyList<string> Roles,
     JsonElement? ProfileMetadata);

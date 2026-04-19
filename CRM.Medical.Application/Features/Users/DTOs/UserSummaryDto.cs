@@ -8,4 +8,5 @@ public sealed record UserSummaryDto(
     string? PhoneNumber,
     bool IsActive,
     bool EmailConfirmed,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    string? CreatedByUserId);

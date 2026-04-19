@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.Users.Constants;
+using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -10,15 +12,21 @@ namespace CRM.Medical.Application.Features.Users.Commands.AssignPermissions;
 
 public sealed class AssignPermissionsToUserCommandHandler(
     UserManager<User> userManager,
-    ICacheService cache)
+    ICacheService cache,
+    IUserManagementAccess userManagementAccess,
+    ICurrentUserAccessor currentUser)
     : IRequestHandler<AssignPermissionsToUserCommand>
 {
     public async Task Handle(
         AssignPermissionsToUserCommand request,
         CancellationToken cancellationToken)
     {
+        var actorId = currentUser.GetRequiredUserId();
+
         var user = await userManager.FindByIdAsync(request.UserId)
             ?? throw new ApplicationNotFoundException($"User '{request.UserId}' not found.");
+
+        await userManagementAccess.EnsureActorCanManageUserAsync(actorId, user, cancellationToken);
 
         var existing = await userManager.GetClaimsAsync(user);
         var existingPermissions = existing

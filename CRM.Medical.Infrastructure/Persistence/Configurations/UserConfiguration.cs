@@ -22,6 +22,16 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.CreatedAt)
             .IsRequired();
 
+        builder.Property(u => u.CreatedByUserId)
+            .HasMaxLength(450);
+
+        builder.HasOne(u => u.CreatedBy)
+            .WithMany()
+            .HasForeignKey(u => u.CreatedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasIndex(u => u.CreatedByUserId);
+
         builder.Property(u => u.ProfileMetadata)
             .HasColumnType("jsonb");
 

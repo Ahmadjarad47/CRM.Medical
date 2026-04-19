@@ -78,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<ISlideCardRepository, SlideCardRepository>();
         services.AddScoped<IBannerRepository, BannerRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
+        services.AddScoped<IUserManagementAccess, UserManagementAccessService>();
 
         services.AddDbContext<MedicalDbContext>((sp, options) =>
         {

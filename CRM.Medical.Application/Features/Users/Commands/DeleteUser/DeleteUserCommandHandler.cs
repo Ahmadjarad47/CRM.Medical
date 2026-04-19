@@ -1,5 +1,7 @@
+using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Exceptions;
+using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -8,13 +10,19 @@ namespace CRM.Medical.Application.Features.Users.Commands.DeleteUser;
 
 public sealed class DeleteUserCommandHandler(
     UserManager<User> userManager,
-    ICacheService cache)
+    ICacheService cache,
+    IUserManagementAccess userManagementAccess,
+    ICurrentUserAccessor currentUser)
     : IRequestHandler<DeleteUserCommand>
 {
     public async Task Handle(DeleteUserCommand request, CancellationToken cancellationToken)
     {
+        var actorId = currentUser.GetRequiredUserId();
+
         var user = await userManager.FindByIdAsync(request.UserId)
             ?? throw new ApplicationNotFoundException($"User '{request.UserId}' not found.");
+
+        await userManagementAccess.EnsureActorCanManageUserAsync(actorId, user, cancellationToken);
 
         var result = await userManager.DeleteAsync(user);
         if (!result.Succeeded)

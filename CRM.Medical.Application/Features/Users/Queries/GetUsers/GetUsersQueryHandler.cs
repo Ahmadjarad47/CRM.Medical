@@ -1,6 +1,10 @@
+using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Common.Responses;
+using CRM.Medical.Application.Exceptions;
+using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Application.Features.Users.DTOs;
+using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -10,22 +14,35 @@ namespace CRM.Medical.Application.Features.Users.Queries.GetUsers;
 
 public sealed class GetUsersQueryHandler(
     UserManager<User> userManager,
-    ICacheService cache)
+    ICacheService cache,
+    IUserManagementAccess userManagementAccess,
+    ICurrentUserAccessor currentUser)
     : IRequestHandler<GetUsersQuery, PagedResult<UserSummaryDto>>
 {
     public async Task<PagedResult<UserSummaryDto>> Handle(
         GetUsersQuery request,
         CancellationToken cancellationToken)
     {
-        var cacheKey = CacheKeys.UserList(
-            request.Page, request.PageSize,
-            request.SearchTerm, request.IsActive, request.Role);
+        var actorId = currentUser.GetRequiredUserId();
 
-        var cached = await cache.GetAsync<PagedResult<UserSummaryDto>>(cacheKey, cancellationToken);
-        if (cached is not null)
-            return cached;
+        var actor = await userManager.FindByIdAsync(actorId)
+            ?? throw new ApplicationUnauthorizedException("Unable to identify the current user.");
+
+        var isAdmin = await userManager.IsInRoleAsync(actor, UserRoles.Admin);
+
+        if (isAdmin)
+        {
+            var cacheKey = CacheKeys.UserList(
+                request.Page, request.PageSize,
+                request.SearchTerm, request.IsActive, request.Role);
+
+            var cached = await cache.GetAsync<PagedResult<UserSummaryDto>>(cacheKey, cancellationToken);
+            if (cached is not null)
+                return cached;
+        }
 
         var query = userManager.Users.AsNoTracking();
+        query = await userManagementAccess.ScopeUsersQueryForActorAsync(query, actorId, cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
@@ -70,7 +87,8 @@ public sealed class GetUsersQueryHandler(
                 u.PhoneNumber,
                 u.IsActive,
                 u.EmailConfirmed,
-                u.CreatedAt))
+                u.CreatedAt,
+                u.CreatedByUserId))
             .ToListAsync(cancellationToken);
 
         var result = new PagedResult<UserSummaryDto>
@@ -81,7 +99,14 @@ public sealed class GetUsersQueryHandler(
             TotalCount = totalCount
         };
 
-        await cache.SetAsync(cacheKey, result, CacheKeys.UserListExpiry, cancellationToken);
+        if (isAdmin)
+        {
+            var cacheKey = CacheKeys.UserList(
+                request.Page, request.PageSize,
+                request.SearchTerm, request.IsActive, request.Role);
+            await cache.SetAsync(cacheKey, result, CacheKeys.UserListExpiry, cancellationToken);
+        }
+
         return result;
     }
 }

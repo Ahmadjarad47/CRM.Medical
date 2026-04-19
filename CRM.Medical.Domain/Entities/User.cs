@@ -12,6 +12,13 @@ public class User : IdentityUser
     public DateTime? UpdatedAt { get; set; }
 
     /// <summary>
+    /// When set, the user was created by this account (e.g. doctor/lab/admin). Used for scoped user management.
+    /// </summary>
+    public string? CreatedByUserId { get; set; }
+
+    public User? CreatedBy { get; set; }
+
+    /// <summary>
     /// Flexible JSONB column for role-specific profile data.
     /// Example: { "doctor": { "specialization": "cardiology" }, "patient": { "bloodType": "O+" } }
     /// </summary>

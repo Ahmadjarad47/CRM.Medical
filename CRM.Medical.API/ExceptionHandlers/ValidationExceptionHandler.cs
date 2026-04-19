@@ -1,3 +1,4 @@
+using CRM.Medical.API.Models;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 
@@ -22,12 +23,12 @@ public sealed class ValidationExceptionHandler : IExceptionHandler
         httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
 
         await httpContext.Response.WriteAsJsonAsync(
-            new ValidationProblemDetails(errors)
+            new ApiEnvelope
             {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "One or more validation errors occurred.",
-                Type = "https://httpstatus.es/400",
-                Instance = httpContext.Request.Path
+                Success = false,
+                Message = "bad",
+                Detail = "One or more validation errors occurred.",
+                Errors = errors
             },
             cancellationToken);
 
