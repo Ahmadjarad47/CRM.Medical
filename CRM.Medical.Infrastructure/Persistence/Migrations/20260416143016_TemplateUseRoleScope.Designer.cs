@@ -4,6 +4,7 @@ using System.Text.Json;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CRM.Medical.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(MedicalDbContext))]
-    partial class MedicalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260416143016_TemplateUseRoleScope")]
+    partial class TemplateUseRoleScope
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -686,10 +689,6 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("CreatedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -749,8 +748,6 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
-
-                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("Email")
                         .IsUnique();
@@ -1018,16 +1015,6 @@ namespace CRM.Medical.Infrastructure.Persistence.Migrations
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("TestRequest");
-                });
-
-            modelBuilder.Entity("CRM.Medical.Domain.Entities.User", b =>
-                {
-                    b.HasOne("CRM.Medical.Domain.Entities.User", "CreatedBy")
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("CreatedBy");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
