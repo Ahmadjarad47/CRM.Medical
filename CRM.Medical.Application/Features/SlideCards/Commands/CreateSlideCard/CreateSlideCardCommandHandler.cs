@@ -1,4 +1,3 @@
-using System.IO;
 using CRM.Medical.Application.Common.Storage;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Application.Features.SlideCards.DTOs;
@@ -10,7 +9,7 @@ namespace CRM.Medical.Application.Features.SlideCards.Commands.CreateSlideCard;
 
 public sealed class CreateSlideCardCommandHandler(
     ISlideCardRepository slideCards,
-    IObjectStorageService objectStorage,
+    IFileStorageService fileStorage,
     IDateTimeProvider dateTimeProvider)
     : IRequestHandler<CreateSlideCardCommand, SlideCardDto>
 {
@@ -18,12 +17,7 @@ public sealed class CreateSlideCardCommandHandler(
         CreateSlideCardCommand request,
         CancellationToken cancellationToken)
     {
-        await using var stream = new MemoryStream(request.ImageBytes);
-        var imageUrl = await objectStorage.UploadAsync(
-            stream,
-            request.ImageContentType,
-            request.ImageFileName,
-            cancellationToken);
+        var imageUrl = await fileStorage.UploadImageAsync(request.Image, cancellationToken);
 
         var now = dateTimeProvider.UtcNow;
         var entity = new SlideCard

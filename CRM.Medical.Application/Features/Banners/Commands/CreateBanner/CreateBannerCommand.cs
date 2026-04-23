@@ -1,15 +1,14 @@
 using System.Text.Json;
 using CRM.Medical.Application.Features.Banners.DTOs;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 
 namespace CRM.Medical.Application.Features.Banners.Commands.CreateBanner;
 
 public sealed record CreateBannerCommand(
     string Title,
     string Type,
-    byte[] MediaBytes,
-    string MediaContentType,
-    string MediaFileName,
+    IFormFile Media,
     string InternalLink,
     string ExternalLink,
     string TargetType,

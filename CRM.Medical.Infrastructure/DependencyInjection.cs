@@ -69,6 +69,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IObjectStorageService, S3ObjectStorageService>();
+        services.AddScoped<IFileStorageService, FileStorageService>();
         services.AddScoped<IComplaintRepository, ComplaintRepository>();
         services.AddScoped<IAppointmentRepository, AppointmentRepository>();
         services.AddScoped<IAppointmentTypeRepository, AppointmentTypeRepository>();

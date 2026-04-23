@@ -1,4 +1,4 @@
-using CRM.Medical.API.Controllers.Admin.Models;
+using CRM.Medical.API.Contracts.Admin.Roles;
 using CRM.Medical.Application.Features.Roles.Commands.CreateRole;
 using CRM.Medical.Application.Features.Roles.Commands.DeleteRole;
 using CRM.Medical.Application.Features.Roles.Commands.UpdateRole;

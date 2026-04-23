@@ -1,4 +1,4 @@
-using CRM.Medical.API.Controllers.Admin.Models;
+using CRM.Medical.API.Contracts.Admin.AppointmentTypes;
 using CRM.Medical.Application.Features.AppointmentTypes.Commands.CreateAppointmentType;
 using CRM.Medical.Application.Features.AppointmentTypes.Commands.UpdateAppointmentType;
 using CRM.Medical.Application.Features.AppointmentTypes.DTOs;
@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.Controllers.Admin;
-
 
 [Route("api/admin/appointment-types")]
 public sealed class AdminAppointmentTypesController(ISender mediator) : AdminBaseController
@@ -26,7 +25,6 @@ public sealed class AdminAppointmentTypesController(ISender mediator) : AdminBas
     [ProducesResponseType(typeof(AppointmentTypeDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetById(int id, CancellationToken ct) =>
         Ok(await mediator.Send(new GetAppointmentTypeByIdQuery(id), ct));
-
 
     [HttpPost]
     [Authorize(Policy = UserPermissions.AppointmentsManage)]

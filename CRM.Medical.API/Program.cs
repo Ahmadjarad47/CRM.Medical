@@ -6,9 +6,6 @@ using CRM.Medical.API.Filters;
 using CRM.Medical.API.Middlewares;
 using CRM.Medical.API.Models;
 using CRM.Medical.API.Services;
-using CRM.Medical.API.Services.Complaints;
-using CRM.Medical.API.Services.Banners;
-using CRM.Medical.API.Services.SlideCards;
 using CRM.Medical.Application;
 using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Infrastructure;
@@ -16,6 +13,7 @@ using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,10 +44,6 @@ builder.Services.AddProblemDetails(options =>
 
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-builder.Services.AddScoped<IComplaintSubmitCommandFactory, ComplaintSubmitCommandFactory>();
-builder.Services.AddScoped<ISlideCardCreateCommandFactory, SlideCardCreateCommandFactory>();
-builder.Services.AddScoped<IBannerCreateCommandFactory, BannerCreateCommandFactory>();
-
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserAccessor, HttpContextCurrentUserAccessor>();
 
@@ -58,6 +52,39 @@ builder.Services.AddCrmSwagger();
 builder.Services.AddCrmMiddlewares(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = new List<string>();
+        foreach (var (key, entry) in context.ModelState)
+        {
+            if (entry.Errors is not { Count: > 0 })
+                continue;
+
+            var prefix = string.IsNullOrEmpty(key) ? "Field" : key;
+            foreach (var err in entry.Errors)
+            {
+                if (string.IsNullOrEmpty(err.ErrorMessage))
+                    errors.Add(prefix + " is invalid.");
+                else
+                    errors.Add(
+                        err.ErrorMessage.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                            ? err.ErrorMessage
+                            : $"{prefix}: {err.ErrorMessage}");
+            }
+        }
+
+        if (errors.Count == 0)
+            errors.Add("The request was invalid or could not be read.");
+
+        return new ObjectResult(ApiEnvelope.ValidationFailed(errors))
+        {
+            StatusCode = StatusCodes.Status400BadRequest
+        };
+    };
+});
+
 builder.Services.AddControllers(options =>
     {
         options.Filters.Add<ApiEnvelopeResultFilter>();
@@ -77,7 +104,7 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 
 app.UseCrmMiddlewares();
-app.UseExceptionHandler();
+app.UseCrmErrorHandling();
 
 app.UseStatusCodePages(async statusCodeContext =>
 {
@@ -88,7 +115,7 @@ app.UseStatusCodePages(async statusCodeContext =>
 
     var title = ReasonPhrases.GetReasonPhrase(statusCode);
     await httpContext.Response.WriteAsJsonAsync(
-        ApiEnvelope.Bad(string.IsNullOrEmpty(title) ? "An error occurred." : title),
+        ApiEnvelope.FromHttpStatusCode(statusCode, string.IsNullOrEmpty(title) ? null : title),
         httpContext.RequestAborted);
 });
 

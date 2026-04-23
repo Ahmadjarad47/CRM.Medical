@@ -1,4 +1,4 @@
-using CRM.Medical.API.Controllers.Users.Models;
+using CRM.Medical.API.Contracts.Users.UserManagement;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.Users.Commands.ActivateUser;
 using CRM.Medical.Application.Features.Users.Commands.AssignPermissions;
@@ -35,7 +35,7 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
     [Authorize(Policy = UserPermissions.UsersView)]
     [ProducesResponseType(typeof(PagedResult<UserSummaryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> ListUsers([FromQuery] ListUsersQueryParameters request, CancellationToken ct) =>
+    public async Task<IActionResult> ListUsers([FromQuery] ListUsersRequest request, CancellationToken ct) =>
         Ok(await mediator.Send(
             new GetUsersQuery(
                 request.Page,
@@ -126,13 +126,22 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
         return NoContent();
     }
 
+    /// <summary>List effective permission claims for a user. Requires <c>users.view</c>.</summary>
+    [HttpGet("{userId}/permissions")]
+    [Authorize(Policy = UserPermissions.UsersView)]
+    [ProducesResponseType(typeof(UserPermissionsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetUserPermissions(string userId, CancellationToken ct) =>
+        Ok(await mediator.Send(new GetUserPermissionsQuery(userId), ct));
+
     /// <summary>Add roles. Requires <c>users.update</c>.</summary>
     [HttpPost("{userId}/roles")]
     [Authorize(Policy = UserPermissions.UsersUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> AssignRoles(string userId, [FromBody] AssignRolesBody request, CancellationToken ct)
+    public async Task<IActionResult> AssignRoles(string userId, [FromBody] AssignRolesRequest request, CancellationToken ct)
     {
         await mediator.Send(new AssignRolesCommand(userId, request.Roles), ct);
         return NoContent();
@@ -144,20 +153,11 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> RemoveRoles(string userId, [FromBody] RemoveRolesBody request, CancellationToken ct)
+    public async Task<IActionResult> RemoveRoles(string userId, [FromBody] RemoveRolesRequest request, CancellationToken ct)
     {
         await mediator.Send(new RemoveRolesCommand(userId, request.Roles), ct);
         return NoContent();
     }
-
-    /// <summary>List effective permission claims for a user. Requires <c>users.view</c>.</summary>
-    [HttpGet("{userId}/permissions")]
-    [Authorize(Policy = UserPermissions.UsersView)]
-    [ProducesResponseType(typeof(UserPermissionsDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetUserPermissions(string userId, CancellationToken ct) =>
-        Ok(await mediator.Send(new GetUserPermissionsQuery(userId), ct));
 
     /// <summary>Add permission claims. Requires <c>users.manage_permissions</c>.</summary>
     [HttpPost("{userId}/permissions")]
@@ -165,7 +165,7 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> AssignPermissions(string userId, [FromBody] AssignPermissionsBody request, CancellationToken ct)
+    public async Task<IActionResult> AssignPermissions(string userId, [FromBody] AssignPermissionsRequest request, CancellationToken ct)
     {
         await mediator.Send(new AssignPermissionsToUserCommand(userId, request.Permissions), ct);
         return NoContent();
@@ -177,7 +177,7 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> ReplacePermissions(string userId, [FromBody] ReplacePermissionsBody request, CancellationToken ct)
+    public async Task<IActionResult> ReplacePermissions(string userId, [FromBody] ReplacePermissionsRequest request, CancellationToken ct)
     {
         await mediator.Send(new ReplaceUserPermissionsCommand(userId, request.Permissions ?? []), ct);
         return NoContent();

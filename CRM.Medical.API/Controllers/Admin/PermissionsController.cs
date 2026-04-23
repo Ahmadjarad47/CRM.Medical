@@ -1,4 +1,4 @@
-using CRM.Medical.API.Controllers.Admin.Models;
+using CRM.Medical.API.Contracts.Admin.Permissions;
 using CRM.Medical.Application.Features.Permissions.Commands.CreatePermission;
 using CRM.Medical.Application.Features.Permissions.Commands.DeletePermission;
 using CRM.Medical.Application.Features.Permissions.Commands.UpdatePermission;

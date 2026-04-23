@@ -1,4 +1,4 @@
-using CRM.Medical.API.Models.Appointments;
+using CRM.Medical.API.Contracts.Appointments;
 using CRM.Medical.Application.Features.Appointments.Commands.AdminCreateAppointment;
 using CRM.Medical.Application.Features.Appointments.Commands.DoctorCreateAppointment;
 using CRM.Medical.Application.Features.Appointments.Commands.LabCreateAppointment;

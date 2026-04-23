@@ -1,4 +1,4 @@
-using CRM.Medical.API.Controllers.MedicalWorkflow.Models;
+using CRM.Medical.API.Contracts.MedicalWorkflow.AppointmentMedicalTest;
 using CRM.Medical.Application.Features.Appointments.Commands.UpdateAppointmentMedicalTest;
 using CRM.Medical.Application.Features.Appointments.DTOs;
 using CRM.Medical.Application.Features.Users.Constants;

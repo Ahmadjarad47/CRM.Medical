@@ -1,12 +1,15 @@
-using CRM.Medical.Application.Exceptions;
+using CRM.Medical.Application.Configuration.S3;
 using FluentValidation;
+using Microsoft.Extensions.Options;
 
 namespace CRM.Medical.Application.Features.SlideCards.Commands.CreateSlideCard;
 
 public sealed class CreateSlideCardCommandValidator : AbstractValidator<CreateSlideCardCommand>
 {
-    public CreateSlideCardCommandValidator()
+    public CreateSlideCardCommandValidator(IOptions<S3StorageSettings> s3Options)
     {
+        var maxBytes = s3Options.Value.MaxAttachmentBytes;
+
         RuleFor(x => x.Title)
             .NotEmpty()
             .MaximumLength(200);
@@ -15,18 +18,15 @@ public sealed class CreateSlideCardCommandValidator : AbstractValidator<CreateSl
             .NotEmpty()
             .MaximumLength(4000);
 
-        RuleFor(x => x.ImageBytes)
+        RuleFor(x => x.Image)
             .NotNull()
-            .Must(b => b.Length > 0)
+            .Must(f => f.Length > 0)
             .WithMessage("Image is required.");
 
-        RuleFor(x => x.ImageContentType)
-            .NotEmpty()
-            .MaximumLength(200);
-
-        RuleFor(x => x.ImageFileName)
-            .NotEmpty()
-            .MaximumLength(255);
+        RuleFor(x => x.Image)
+            .Must(f => f == null || f.Length <= maxBytes)
+            .WithMessage($"Image must not exceed {maxBytes} bytes.")
+            .When(x => x.Image is { Length: > 0 });
 
         RuleFor(x => x.Price)
             .GreaterThanOrEqualTo(0);

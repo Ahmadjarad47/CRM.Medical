@@ -1,4 +1,3 @@
-using System.IO;
 using System.Text.Json;
 using CRM.Medical.Application.Common.Storage;
 using CRM.Medical.Application.Common.Time;
@@ -10,7 +9,7 @@ namespace CRM.Medical.Application.Features.Banners.Commands.CreateBanner;
 
 public sealed class CreateBannerCommandHandler(
     IBannerRepository banners,
-    IObjectStorageService objectStorage,
+    IFileStorageService fileStorage,
     IDateTimeProvider dateTimeProvider)
     : IRequestHandler<CreateBannerCommand, BannerDto>
 {
@@ -18,12 +17,7 @@ public sealed class CreateBannerCommandHandler(
         CreateBannerCommand request,
         CancellationToken cancellationToken)
     {
-        await using var stream = new MemoryStream(request.MediaBytes);
-        var mediaUrl = await objectStorage.UploadAsync(
-            stream,
-            request.MediaContentType,
-            request.MediaFileName,
-            cancellationToken);
+        var mediaUrl = await fileStorage.UploadFileAsync(request.Media, "banners", cancellationToken);
 
         JsonDocument? visibility = null;
         if (request.VisibilityRules is { } json)

@@ -15,7 +15,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         {
             httpContext.Response.StatusCode = appEx.StatusCode;
             await httpContext.Response.WriteAsJsonAsync(
-                ApiEnvelope.Bad(appEx.Message),
+                ApiEnvelope.FromApplicationException(appEx),
                 cancellationToken);
             return true;
         }
@@ -25,7 +25,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
 
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
         await httpContext.Response.WriteAsJsonAsync(
-            ApiEnvelope.Bad("An unexpected error occurred."),
+            ApiEnvelope.InternalServerError(),
             cancellationToken);
 
         return true;

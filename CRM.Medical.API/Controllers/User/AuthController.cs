@@ -1,4 +1,4 @@
-using CRM.Medical.API.Controllers.User.Models;
+using CRM.Medical.API.Contracts.User.Auth;
 using CRM.Medical.Application.Auth;
 using CRM.Medical.Application.Features.Auth.ForgotPassword;
 using CRM.Medical.Application.Features.Auth.Login;

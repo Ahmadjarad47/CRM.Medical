@@ -1,4 +1,4 @@
-using CRM.Medical.API.Controllers.Admin.Models;
+using CRM.Medical.API.Contracts.Admin.Complaints;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.Complaints.Commands.UpdateComplaintStatus;
 using CRM.Medical.Application.Features.Complaints.DTOs;

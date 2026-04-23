@@ -1,4 +1,5 @@
 using CRM.Medical.Application.Common.Json;
+using CRM.Medical.Application.Common.Storage;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.MedicalTestResults;
@@ -10,6 +11,7 @@ namespace CRM.Medical.Application.Features.MedicalTestResults.Commands.UpdateTes
 
 public sealed class UpdateTestResultCommandHandler(
     ITestResultRepository repository,
+    IFileStorageService fileStorage,
     IDateTimeProvider dateTimeProvider)
     : IRequestHandler<UpdateTestResultCommand, TestResultDto>
 {
@@ -24,7 +26,8 @@ public sealed class UpdateTestResultCommandHandler(
         entity.ResultData = ProfileMetadataMapper.ToJsonDocument(request.ResultData);
 
         entity.ResultDate = request.ResultDate;
-        entity.PdfUrl = request.PdfUrl;
+        if (request.PdfFile is { Length: > 0 })
+            entity.PdfUrl = await fileStorage.UploadPdfAsync(request.PdfFile, cancellationToken);
         entity.Status = request.Status;
         entity.UpdatedAt = dateTimeProvider.UtcNow;
 

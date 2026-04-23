@@ -21,16 +21,8 @@ public sealed class SubmitComplaintCommandValidator : AbstractValidator<SubmitCo
             .NotEmpty()
             .MaximumLength(8000);
 
-        RuleFor(x => x.FileBytes)
-            .Must(b => b is null || b.Length <= maxBytes)
+        RuleFor(x => x.Attachment)
+            .Must(f => f == null || f.Length <= maxBytes)
             .WithMessage($"Attachment must not exceed {maxBytes} bytes.");
-
-        RuleFor(x => x.ContentType)
-            .NotEmpty()
-            .When(x => x.FileBytes is { Length: > 0 });
-
-        RuleFor(x => x.FileName)
-            .NotEmpty()
-            .When(x => x.FileBytes is { Length: > 0 });
     }
 }

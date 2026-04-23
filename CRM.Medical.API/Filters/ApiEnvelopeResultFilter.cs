@@ -1,3 +1,4 @@
+using System.Linq;
 using CRM.Medical.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -116,21 +117,30 @@ public sealed class ApiEnvelopeResultFilter : IAsyncResultFilter
 
     private static object WrapError(object? value)
     {
+        if (value is ValidationProblemDetails vp)
+        {
+            var messages = vp.Errors.Values.SelectMany(m => m).ToList();
+            if (messages.Count == 0 && !string.IsNullOrEmpty(vp.Detail))
+                messages.Add(vp.Detail);
+            if (messages.Count == 0 && !string.IsNullOrEmpty(vp.Title))
+                messages.Add(vp.Title);
+            return ApiEnvelope.ValidationFailed(messages);
+        }
+
         if (value is ProblemDetails p)
         {
             return new ApiEnvelope
             {
                 Success = false,
-                Message = "bad",
-                Detail = p.Detail ?? p.Title,
-                Errors = p is ValidationProblemDetails vp ? vp.Errors : null
+                Message = p.Title ?? "Error",
+                Detail = p.Detail
             };
         }
 
         return new ApiEnvelope
         {
             Success = false,
-            Message = "bad",
+            Message = "Error",
             Data = value
         };
     }

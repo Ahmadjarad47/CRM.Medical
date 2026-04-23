@@ -16,6 +16,7 @@ public sealed class S3ObjectStorageService(
         Stream content,
         string contentType,
         string fileName,
+        string relativeFolder,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_options.BucketName))
@@ -30,7 +31,11 @@ public sealed class S3ObjectStorageService(
             ? string.Empty
             : _options.KeyPrefix.TrimEnd('/') + "/";
 
-        var key = $"{prefix}{DateTime.UtcNow:yyyy/MM}/{Guid.NewGuid():N}-{safeName}";
+        var folder = string.IsNullOrWhiteSpace(relativeFolder)
+            ? string.Empty
+            : relativeFolder.Trim().Trim('/') + "/";
+
+        var key = $"{prefix}{folder}{DateTime.UtcNow:yyyy/MM}/{Guid.NewGuid():N}-{safeName}";
 
         var request = new PutObjectRequest
         {

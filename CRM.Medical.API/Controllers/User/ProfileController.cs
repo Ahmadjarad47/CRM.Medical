@@ -1,4 +1,4 @@
-using CRM.Medical.API.Controllers.User.Models;
+using CRM.Medical.API.Contracts.User.Profile;
 using CRM.Medical.API.Extensions;
 using CRM.Medical.Application.Features.Users.Commands.ChangeMyPassword;
 using CRM.Medical.Application.Features.Users.Commands.RequestAccountDeletion;

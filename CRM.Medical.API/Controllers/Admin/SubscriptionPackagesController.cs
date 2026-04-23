@@ -1,4 +1,4 @@
-using CRM.Medical.API.Controllers.Admin.Models;
+using CRM.Medical.API.Contracts.Admin.SubscriptionPackages;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.SubscriptionPackages.Commands.CreateSubscriptionPackage;
 using CRM.Medical.Application.Features.SubscriptionPackages.Commands.SetSubscriptionPackageActive;

@@ -1,7 +1,7 @@
-using CRM.Medical.API.Controllers.Admin.Models;
+using CRM.Medical.API.Contracts.Admin.Appointments;
+using CRM.Medical.API.Contracts.Appointments;
 using CRM.Medical.API.Extensions;
 using CRM.Medical.API.Mapping;
-using CRM.Medical.API.Models.Appointments;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.Appointments;
 using CRM.Medical.Application.Features.Appointments.Commands.CancelAppointment;

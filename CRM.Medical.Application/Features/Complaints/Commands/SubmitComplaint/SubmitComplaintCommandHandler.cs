@@ -1,4 +1,3 @@
-using System.IO;
 using CRM.Medical.Application.Common.Storage;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Application.Features.Complaints;
@@ -10,7 +9,7 @@ namespace CRM.Medical.Application.Features.Complaints.Commands.SubmitComplaint;
 
 public sealed class SubmitComplaintCommandHandler(
     IComplaintRepository complaints,
-    IObjectStorageService objectStorage,
+    IFileStorageService fileStorage,
     IDateTimeProvider dateTimeProvider)
     : IRequestHandler<SubmitComplaintCommand, ComplaintDto>
 {
@@ -18,15 +17,8 @@ public sealed class SubmitComplaintCommandHandler(
     {
         string? attachmentUrl = null;
 
-        if (request.FileBytes is { Length: > 0 })
-        {
-            await using var stream = new MemoryStream(request.FileBytes);
-            attachmentUrl = await objectStorage.UploadAsync(
-                stream,
-                request.ContentType!,
-                request.FileName!,
-                cancellationToken);
-        }
+        if (request.Attachment is { Length: > 0 })
+            attachmentUrl = await fileStorage.UploadFileAsync(request.Attachment, "complaints", cancellationToken);
 
         var now = dateTimeProvider.UtcNow;
         var entity = new Complaint

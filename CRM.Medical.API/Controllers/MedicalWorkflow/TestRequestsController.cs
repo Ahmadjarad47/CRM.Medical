@@ -1,4 +1,4 @@
-using CRM.Medical.API.Controllers.MedicalWorkflow.Models;
+using CRM.Medical.API.Contracts.MedicalWorkflow.TestRequests;
 using CRM.Medical.API.Extensions;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.TestRequests.Commands.CreateTestRequest;

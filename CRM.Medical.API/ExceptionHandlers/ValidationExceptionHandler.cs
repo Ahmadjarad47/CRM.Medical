@@ -14,22 +14,16 @@ public sealed class ValidationExceptionHandler : IExceptionHandler
         if (exception is not ValidationException validationException)
             return false;
 
-        var errors = validationException.Errors
-            .GroupBy(e => e.PropertyName)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Select(e => e.ErrorMessage).ToArray());
+        var errorMessages = validationException.Errors
+            .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? e.PropertyName : e.ErrorMessage)
+            .Where(s => s.Length > 0)
+            .Distinct()
+            .ToList();
 
         httpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
 
         await httpContext.Response.WriteAsJsonAsync(
-            new ApiEnvelope
-            {
-                Success = false,
-                Message = "bad",
-                Detail = "One or more validation errors occurred.",
-                Errors = errors
-            },
+            ApiEnvelope.ValidationFailed(errorMessages),
             cancellationToken);
 
         return true;

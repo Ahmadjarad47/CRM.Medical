@@ -1,4 +1,5 @@
 using CRM.Medical.Application.Common.Json;
+using CRM.Medical.Application.Common.Storage;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.MedicalTestResults;
@@ -12,6 +13,7 @@ namespace CRM.Medical.Application.Features.MedicalTestResults.Commands.CreateTes
 public sealed class CreateTestResultCommandHandler(
     ITestResultRepository results,
     ITestRequestRepository testRequests,
+    IFileStorageService fileStorage,
     IDateTimeProvider dateTimeProvider)
     : IRequestHandler<CreateTestResultCommand, TestResultDto>
 {
@@ -25,13 +27,17 @@ public sealed class CreateTestResultCommandHandler(
         if (await results.ExistsForTestRequestAsync(request.TestRequestId, cancellationToken))
             throw new ApplicationConflictException("A result already exists for this test request.");
 
+        string? pdfUrl = null;
+        if (request.PdfFile is { Length: > 0 })
+            pdfUrl = await fileStorage.UploadPdfAsync(request.PdfFile, cancellationToken);
+
         var now = dateTimeProvider.UtcNow;
         var entity = new TestResult
         {
             TestRequestId = request.TestRequestId,
             ResultDate = request.ResultDate,
             ResultData = ProfileMetadataMapper.ToJsonDocument(request.ResultData),
-            PdfUrl = request.PdfUrl,
+            PdfUrl = pdfUrl,
             Status = request.Status,
             CreatedByUserId = request.CreatedByUserId,
             CreatedAt = now

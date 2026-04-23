@@ -1,5 +1,6 @@
-using CRM.Medical.API.Controllers.MedicalWorkflow.Models;
+using CRM.Medical.API.Contracts.MedicalWorkflow.TestResults;
 using CRM.Medical.API.Extensions;
+using CRM.Medical.API.Mapping;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.MedicalTestResults.Commands.CreateTestResult;
 using CRM.Medical.Application.Features.MedicalTestResults.Commands.DeleteTestResult;
@@ -39,15 +40,16 @@ public sealed class TestResultsController(ISender mediator) : ControllerBase
 
     [HttpPost]
     [Authorize(Policy = UserPermissions.MedicalWorkflowManage)]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(TestResultDto), StatusCodes.Status201Created)]
-    public async Task<IActionResult> Create([FromBody] CreateTestResultRequest request, CancellationToken ct)
+    public async Task<IActionResult> Create([FromForm] CreateTestResultRequest request, CancellationToken ct)
     {
         var dto = await mediator.Send(
             new CreateTestResultCommand(
                 request.TestRequestId,
                 request.ResultDate,
-                request.ResultData,
-                request.PdfUrl,
+                JsonRequestParsing.ParseOptionalJsonElement(request.ResultDataJson),
+                request.PdfFile,
                 request.Status,
                 User.GetRequiredUserId()),
             ct);
@@ -56,14 +58,15 @@ public sealed class TestResultsController(ISender mediator) : ControllerBase
 
     [HttpPut("{id:int}")]
     [Authorize(Policy = UserPermissions.MedicalWorkflowManage)]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(TestResultDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateTestResultRequest request, CancellationToken ct) =>
+    public async Task<IActionResult> Update(int id, [FromForm] UpdateTestResultRequest request, CancellationToken ct) =>
         Ok(await mediator.Send(
             new UpdateTestResultCommand(
                 id,
                 request.ResultDate,
-                request.ResultData,
-                request.PdfUrl,
+                JsonRequestParsing.ParseOptionalJsonElement(request.ResultDataJson),
+                request.PdfFile,
                 request.Status),
             ct));
 
