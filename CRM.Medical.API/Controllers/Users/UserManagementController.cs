@@ -1,19 +1,15 @@
 using CRM.Medical.API.Contracts.Users.UserManagement;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.Users.Commands.ActivateUser;
-using CRM.Medical.Application.Features.Users.Commands.AssignPermissions;
 using CRM.Medical.Application.Features.Users.Commands.AssignRoles;
 using CRM.Medical.Application.Features.Users.Commands.CreateUser;
 using CRM.Medical.Application.Features.Users.Commands.DeactivateUser;
 using CRM.Medical.Application.Features.Users.Commands.DeleteUser;
-using CRM.Medical.Application.Features.Users.Commands.RemovePermission;
 using CRM.Medical.Application.Features.Users.Commands.RemoveRoles;
-using CRM.Medical.Application.Features.Users.Commands.ReplaceUserPermissions;
 using CRM.Medical.Application.Features.Users.Commands.UpdateUser;
 using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Application.Features.Users.DTOs;
 using CRM.Medical.Application.Features.Users.Queries.GetUserById;
-using CRM.Medical.Application.Features.Users.Queries.GetUserPermissions;
 using CRM.Medical.Application.Features.Users.Queries.GetUsers;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -126,15 +122,6 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
         return NoContent();
     }
 
-    /// <summary>List effective permission claims for a user. Requires <c>users.view</c>.</summary>
-    [HttpGet("{userId}/permissions")]
-    [Authorize(Policy = UserPermissions.UsersView)]
-    [ProducesResponseType(typeof(UserPermissionsDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetUserPermissions(string userId, CancellationToken ct) =>
-        Ok(await mediator.Send(new GetUserPermissionsQuery(userId), ct));
-
     /// <summary>Add roles. Requires <c>users.update</c>.</summary>
     [HttpPost("{userId}/roles")]
     [Authorize(Policy = UserPermissions.UsersUpdate)]
@@ -159,38 +146,4 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Add permission claims. Requires <c>users.manage_permissions</c>.</summary>
-    [HttpPost("{userId}/permissions")]
-    [Authorize(Policy = UserPermissions.UsersManagePermissions)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> AssignPermissions(string userId, [FromBody] AssignPermissionsRequest request, CancellationToken ct)
-    {
-        await mediator.Send(new AssignPermissionsToUserCommand(userId, request.Permissions), ct);
-        return NoContent();
-    }
-
-    /// <summary>Replace all permission claims. Requires <c>users.manage_permissions</c>.</summary>
-    [HttpPut("{userId}/permissions")]
-    [Authorize(Policy = UserPermissions.UsersManagePermissions)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> ReplacePermissions(string userId, [FromBody] ReplacePermissionsRequest request, CancellationToken ct)
-    {
-        await mediator.Send(new ReplaceUserPermissionsCommand(userId, request.Permissions ?? []), ct);
-        return NoContent();
-    }
-
-    /// <summary>Remove one permission claim. Requires <c>users.manage_permissions</c>.</summary>
-    [HttpDelete("{userId}/permissions/{permission}")]
-    [Authorize(Policy = UserPermissions.UsersManagePermissions)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> RemovePermission(string userId, string permission, CancellationToken ct)
-    {
-        await mediator.Send(new RemovePermissionFromUserCommand(userId, permission), ct);
-        return NoContent();
-    }
 }

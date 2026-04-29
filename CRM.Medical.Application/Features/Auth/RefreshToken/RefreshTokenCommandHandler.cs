@@ -1,6 +1,6 @@
 using CRM.Medical.Application.Auth;
 using CRM.Medical.Application.Exceptions;
-using CRM.Medical.Application.Features.Users.Constants;
+using CRM.Medical.Application.Features.Permissions.Services;
 using CRM.Medical.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -10,7 +10,8 @@ namespace CRM.Medical.Application.Features.Auth.RefreshToken;
 public sealed class RefreshTokenCommandHandler(
     IRefreshTokenService refreshTokenService,
     UserManager<User> userManager,
-    IJwtTokenGenerator jwtTokenGenerator)
+    IJwtTokenGenerator jwtTokenGenerator,
+    IUserEffectivePermissionsProvider effectivePermissions)
     : IRequestHandler<RefreshTokenCommand, LoginResponse>
 {
     public async Task<LoginResponse> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
@@ -28,12 +29,7 @@ public sealed class RefreshTokenCommandHandler(
 
         var roles = await userManager.GetRolesAsync(user);
 
-        var allClaims = await userManager.GetClaimsAsync(user);
-        var permissions = allClaims
-            .Where(c => c.Type == UserPermissions.ClaimType)
-            .Select(c => c.Value)
-            .ToList()
-            .AsReadOnly();
+        var permissions = await effectivePermissions.GetPermissionNamesForUserAsync(user.Id, cancellationToken);
 
         var authenticatedUser = new AuthenticatedUser(
             user.Id,

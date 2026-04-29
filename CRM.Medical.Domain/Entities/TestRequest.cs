@@ -1,18 +1,26 @@
 using System.Text.Json;
-using CRM.Medical.Domain.Constants;
 
 namespace CRM.Medical.Domain.Entities;
 
-public sealed class TestRequest
+public sealed class TestRequest : BaseEntity
 {
     public int Id { get; set; }
 
     public int MedicalTestId { get; set; }
+
     public MedicalTest MedicalTest { get; set; } = null!;
+
+    /// <summary>Treating or ordering doctor (nullable when created by lab/admin only).</summary>
+    public string? DoctorId { get; set; }
+
+    /// <summary>Lab partner account responsible for fulfilling the request.</summary>
+    public string? LabClientId { get; set; }
+
+    /// <summary>Patient user this test is performed for (portal visibility).</summary>
+    public string? DirectPatientId { get; set; }
 
     public DateTime RequestDate { get; set; }
 
-    /// <summary>Lifecycle state (see <see cref="TestRequestStatuses"/>).</summary>
     public string Status { get; set; } = string.Empty;
 
     public double TotalAmount { get; set; }
@@ -21,11 +29,5 @@ public sealed class TestRequest
 
     public JsonDocument? Metadata { get; set; }
 
-    public string CreatedByUserId { get; set; } = string.Empty;
-    public User CreatedByUser { get; set; } = null!;
-
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-
-    public TestResult? Result { get; set; }
+    public TestResult? TestResult { get; set; }
 }

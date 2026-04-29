@@ -3,13 +3,10 @@ using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 namespace CRM.Medical.Infrastructure.Persistence;
 
-public sealed class UserManagementAccessService(
-    UserManager<User> userManager,
-    MedicalDbContext db)
+public sealed class UserManagementAccessService(UserManager<User> userManager)
     : IUserManagementAccess
 {
     public async Task EnsureActorCanCreateUsersAsync(
@@ -51,11 +48,8 @@ public sealed class UserManagementAccessService(
             if (IsCreatedBy(actorUserId, targetUser))
                 return;
 
-            if (await HasDoctorPatientAppointmentAsync(actorUserId, targetUser.Id, cancellationToken))
-                return;
-
             throw new ApplicationForbiddenException(
-                "You can only manage users you created or patients who have appointments with you.");
+                "You can only manage users you created.");
         }
 
         if (await userManager.IsInRoleAsync(actor, UserRoles.LabPartner))
@@ -63,11 +57,8 @@ public sealed class UserManagementAccessService(
             if (IsCreatedBy(actorUserId, targetUser))
                 return;
 
-            if (await HasLabPatientAppointmentAsync(actorUserId, targetUser.Id, cancellationToken))
-                return;
-
             throw new ApplicationForbiddenException(
-                "You can only manage users you created or patients who have appointments with your lab.");
+                "You can only manage users you created.");
         }
 
         throw new ApplicationForbiddenException("You are not allowed to manage this user.");
@@ -85,40 +76,14 @@ public sealed class UserManagementAccessService(
             return users;
 
         if (await userManager.IsInRoleAsync(actor, UserRoles.Doctor))
-        {
-            return users.Where(u =>
-                u.CreatedByUserId == actorUserId ||
-                db.Appointments.Any(a => a.DoctorId == actorUserId && a.PatientId == u.Id));
-        }
+            return users.Where(u => u.CreatedByUserId == actorUserId);
 
         if (await userManager.IsInRoleAsync(actor, UserRoles.LabPartner))
-        {
-            return users.Where(u =>
-                u.CreatedByUserId == actorUserId ||
-                db.Appointments.Any(a => a.LabPartnerId == actorUserId && a.PatientId == u.Id));
-        }
+            return users.Where(u => u.CreatedByUserId == actorUserId);
 
         throw new ApplicationForbiddenException("You are not allowed to list users.");
     }
 
     private static bool IsCreatedBy(string actorUserId, User targetUser) =>
         string.Equals(targetUser.CreatedByUserId, actorUserId, StringComparison.Ordinal);
-
-    private Task<bool> HasDoctorPatientAppointmentAsync(
-        string doctorId,
-        string patientId,
-        CancellationToken cancellationToken) =>
-        db.Appointments.AsNoTracking()
-            .AnyAsync(
-                a => a.DoctorId == doctorId && a.PatientId == patientId,
-                cancellationToken);
-
-    private Task<bool> HasLabPatientAppointmentAsync(
-        string labPartnerId,
-        string patientId,
-        CancellationToken cancellationToken) =>
-        db.Appointments.AsNoTracking()
-            .AnyAsync(
-                a => a.LabPartnerId == labPartnerId && a.PatientId == patientId,
-                cancellationToken);
 }

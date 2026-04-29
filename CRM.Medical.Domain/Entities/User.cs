@@ -28,17 +28,11 @@ public class User : IdentityUser
 
     public ICollection<Complaint> Complaints { get; set; } = new List<Complaint>();
 
-    public ICollection<Appointment> AppointmentsAsPatient { get; set; } = new List<Appointment>();
+    public ICollection<UserPermission> UserPermissions { get; set; } = new List<UserPermission>();
 
-    public ICollection<Appointment> AppointmentsAsDoctor { get; set; } = new List<Appointment>();
+    public bool HasPermission(string permissionName) =>
+        UserPermissions.Any(p => p.Permission.Name == permissionName);
 
-    public ICollection<Appointment> AppointmentsAsLabPartner { get; set; } = new List<Appointment>();
-
-    public ICollection<Appointment> AppointmentsCreated { get; set; } = new List<Appointment>();
-
-    public ICollection<MedicalTest> MedicalTestsCreated { get; set; } = new List<MedicalTest>();
-
-    public ICollection<TestRequest> TestRequestsCreated { get; set; } = new List<TestRequest>();
-
-    public ICollection<TestResult> TestResultsCreated { get; set; } = new List<TestResult>();
+    public List<string> GetPermissions() =>
+        UserPermissions.Select(p => p.Permission.Name).ToList();
 }

@@ -1,8 +1,9 @@
-using System.Security.Claims;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Domain.Entities;
+using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -26,28 +27,36 @@ public sealed class DevelopmentUserSeedHostedService(
 
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
         var dateTimeProvider = scope.ServiceProvider.GetRequiredService<IDateTimeProvider>();
+        var db = scope.ServiceProvider.GetRequiredService<MedicalDbContext>();
 
         // Seed the primary admin
         await SeedUserAsync(
-            userManager, dateTimeProvider,
+            userManager, db, dateTimeProvider,
             seedOptions.Email, seedOptions.Password, seedOptions.DisplayName,
-            UserRoles.Admin, allPermissions: true);
+            UserRoles.Admin,
+            allPermissions: true,
+            cancellationToken);
 
         // Seed any additional configured users
         foreach (var entry in seedOptions.AdditionalUsers)
         {
             await SeedUserAsync(
-                userManager, dateTimeProvider,
+                userManager, db, dateTimeProvider,
                 entry.Email, entry.Password, entry.DisplayName,
-                entry.Role, entry.AllPermissions);
+                entry.Role,
+                entry.AllPermissions,
+                cancellationToken);
         }
     }
 
     private async Task SeedUserAsync(
         UserManager<User> userManager,
+        MedicalDbContext db,
         IDateTimeProvider dateTimeProvider,
         string email, string password, string displayName,
-        string role, bool allPermissions)
+        string role,
+        bool allPermissions,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(email))
             return;
@@ -80,19 +89,30 @@ public sealed class DevelopmentUserSeedHostedService(
 
         if (allPermissions)
         {
-            var permissionClaims = UserPermissions.All
-                .Select(p => new Claim(UserPermissions.ClaimType, p))
-                .ToList();
+            await EnsurePermissionCatalogAsync(db, dateTimeProvider, cancellationToken);
 
-            var claimsResult = await userManager.AddClaimsAsync(user, permissionClaims);
-            if (!claimsResult.Succeeded)
+            var names = UserPermissions.All.ToList();
+            var permissionIds = await db.Permissions
+                .Where(p => names.Contains(p.Name))
+                .Select(p => p.Id)
+                .ToListAsync(cancellationToken);
+
+            foreach (var permissionId in permissionIds)
             {
-                logger.LogWarning(
-                    "Seeded user '{Email}' but failed to assign permission claims: {Errors}",
-                    email,
-                    string.Join(", ", claimsResult.Errors.Select(e => e.Description)));
-                return;
+                var exists = await db.UserPermissions.AnyAsync(
+                    up => up.UserId == user.Id && up.PermissionId == permissionId,
+                    cancellationToken);
+                if (exists)
+                    continue;
+
+                db.UserPermissions.Add(new UserPermission
+                {
+                    UserId = user.Id,
+                    PermissionId = permissionId
+                });
             }
+
+            await db.SaveChangesAsync(cancellationToken);
         }
 
         logger.LogInformation(
@@ -102,4 +122,32 @@ public sealed class DevelopmentUserSeedHostedService(
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    private async Task EnsurePermissionCatalogAsync(
+        MedicalDbContext db,
+        IDateTimeProvider dateTimeProvider,
+        CancellationToken cancellationToken)
+    {
+        var existing = await db.Permissions
+            .Select(p => p.Name)
+            .ToListAsync(cancellationToken);
+        var set = existing.ToHashSet(StringComparer.Ordinal);
+
+        foreach (var name in UserPermissions.All)
+        {
+            if (set.Contains(name))
+                continue;
+
+            db.Permissions.Add(new Permission
+            {
+                Id = Guid.NewGuid(),
+                Name = name,
+                Description = null,
+                CreatedAt = dateTimeProvider.UtcNow
+            });
+            set.Add(name);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
 }

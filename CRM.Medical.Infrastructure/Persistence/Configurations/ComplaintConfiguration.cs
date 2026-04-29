@@ -33,8 +33,7 @@ public sealed class ComplaintConfiguration : IEntityTypeConfiguration<Complaint>
             .IsRequired()
             .HasMaxLength(64);
 
-        builder.Property(c => c.CreatedAt)
-            .IsRequired();
+        builder.ConfigureAuditColumns();
 
         builder.HasIndex(c => c.UserId);
         builder.HasIndex(c => c.Status);

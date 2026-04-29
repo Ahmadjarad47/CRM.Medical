@@ -25,8 +25,7 @@ public sealed class TemplateConfiguration : IEntityTypeConfiguration<Template>
         builder.Property(t => t.Role)
             .IsRequired();
 
-        builder.Property(t => t.CreatedAt)
-            .IsRequired();
+        builder.ConfigureAuditColumns();
 
         builder.HasIndex(t => t.Role);
         builder.HasIndex(t => t.CreatedAt);

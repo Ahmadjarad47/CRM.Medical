@@ -19,6 +19,8 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
         builder.Property(t => t.UserId)
             .IsRequired();
 
+        builder.ConfigureAuditColumns();
+
         builder.HasIndex(t => t.Token).IsUnique();
         builder.HasIndex(t => new { t.UserId, t.IsRevoked });
         builder.HasIndex(t => t.ExpiresAt);

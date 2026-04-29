@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace CRM.Medical.Domain.Entities;
 
-public sealed class Banner
+public sealed class Banner : BaseEntity
 {
     public int Id { get; set; }
 
@@ -33,7 +33,5 @@ public sealed class Banner
     public int ViewsCount { get; set; }
 
     public int ClicksCount { get; set; }
-
-    public DateTime CreatedAt { get; set; }
 }
 

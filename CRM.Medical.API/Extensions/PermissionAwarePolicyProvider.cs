@@ -19,9 +19,13 @@ public sealed class PermissionAwarePolicyProvider(IOptions<AuthorizationOptions>
         if (policy is not null)
             return policy;
 
+        // Dynamic permission policies: JWT must carry the permission claim, unless the user is Admin
+        // (full API access; row-level rules are still enforced in application services).
         return new AuthorizationPolicyBuilder()
             .RequireAuthenticatedUser()
-            .RequireClaim(UserPermissions.ClaimType, policyName)
+            .RequireAssertion(ctx =>
+                ctx.User.IsInRole(UserRoles.Admin)
+                || ctx.User.HasClaim(UserPermissions.ClaimType, policyName))
             .Build();
     }
 

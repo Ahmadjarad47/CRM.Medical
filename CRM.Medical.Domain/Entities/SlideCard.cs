@@ -1,6 +1,6 @@
 namespace CRM.Medical.Domain.Entities;
 
-public sealed class SlideCard
+public sealed class SlideCard : BaseEntity
 {
     public int Id { get; set; }
 
@@ -18,7 +18,5 @@ public sealed class SlideCard
 
     public int DisplayOrder { get; set; }
     public bool IsActive { get; set; }
-
-    public DateTime CreatedAt { get; set; }
 }
 

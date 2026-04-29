@@ -10,48 +10,46 @@ public sealed class TestRequestConfiguration : IEntityTypeConfiguration<TestRequ
     {
         builder.ToTable("test_requests");
 
-        builder.HasKey(r => r.Id);
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).UseIdentityByDefaultColumn();
 
-        builder.Property(r => r.Id)
-            .UseIdentityByDefaultColumn();
+        builder.Property(e => e.RequestDate).IsRequired();
+        builder.Property(e => e.Status).IsRequired().HasMaxLength(64);
+        builder.Property(e => e.TotalAmount).IsRequired();
+        builder.Property(e => e.Notes).HasMaxLength(4000);
+        builder.Property(e => e.Metadata).HasColumnType("jsonb");
 
-        builder.Property(r => r.RequestDate)
-            .IsRequired();
+        builder.Property(e => e.DoctorId).HasMaxLength(450);
+        builder.Property(e => e.LabClientId).HasMaxLength(450);
+        builder.Property(e => e.DirectPatientId).HasMaxLength(450);
 
-        builder.Property(r => r.Status)
-            .IsRequired()
-            .HasMaxLength(64);
+        builder.ConfigureAuditColumns();
 
-        builder.Property(r => r.TotalAmount)
-            .IsRequired();
+        builder.HasIndex(e => e.MedicalTestId);
+        builder.HasIndex(e => e.DoctorId);
+        builder.HasIndex(e => e.LabClientId);
+        builder.HasIndex(e => e.DirectPatientId);
+        builder.HasIndex(e => e.Status);
+        builder.HasIndex(e => e.CreatedByUserId);
 
-        builder.Property(r => r.Notes)
-            .HasMaxLength(4000);
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(e => e.DoctorId)
+            .OnDelete(DeleteBehavior.SetNull);
 
-        builder.Property(r => r.Metadata)
-            .HasColumnType("jsonb");
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(e => e.LabClientId)
+            .OnDelete(DeleteBehavior.SetNull);
 
-        builder.Property(r => r.CreatedByUserId)
-            .IsRequired();
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(e => e.DirectPatientId)
+            .OnDelete(DeleteBehavior.SetNull);
 
-        builder.Property(r => r.CreatedAt)
-            .IsRequired();
-
-        builder.HasIndex(r => r.MedicalTestId)
-            .IsUnique();
-
-        builder.HasIndex(r => r.Status);
-        builder.HasIndex(r => r.RequestDate);
-        builder.HasIndex(r => r.CreatedByUserId);
-
-        builder.HasOne(r => r.MedicalTest)
-            .WithOne(t => t.TestRequest)
-            .HasForeignKey<TestRequest>(r => r.MedicalTestId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(r => r.CreatedByUser)
-            .WithMany(u => u.TestRequestsCreated)
-            .HasForeignKey(r => r.CreatedByUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(e => e.TestResult)
+            .WithOne(r => r.TestRequest)
+            .HasForeignKey<TestResult>(r => r.TestRequestId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

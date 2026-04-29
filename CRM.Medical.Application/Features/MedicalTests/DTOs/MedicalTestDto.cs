@@ -11,6 +11,5 @@ public sealed record MedicalTestDto(
     string SampleType,
     JsonElement? ParameterSchema,
     string Status,
-    string CreatedByUserId,
     DateTime CreatedAt,
     DateTime? UpdatedAt);

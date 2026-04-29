@@ -64,8 +64,7 @@ public sealed class BannerConfiguration : IEntityTypeConfiguration<Banner>
         builder.Property(b => b.ClicksCount)
             .IsRequired();
 
-        builder.Property(b => b.CreatedAt)
-            .IsRequired();
+        builder.ConfigureAuditColumns();
 
         builder.HasIndex(b => b.IsActive);
         builder.HasIndex(b => b.Location);

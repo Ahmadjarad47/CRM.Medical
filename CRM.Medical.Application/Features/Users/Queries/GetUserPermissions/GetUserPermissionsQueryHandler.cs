@@ -1,6 +1,6 @@
 using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Exceptions;
-using CRM.Medical.Application.Features.Users.Constants;
+using CRM.Medical.Application.Features.Permissions.Services;
 using CRM.Medical.Application.Features.Users.DTOs;
 using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Domain.Entities;
@@ -12,7 +12,8 @@ namespace CRM.Medical.Application.Features.Users.Queries.GetUserPermissions;
 public sealed class GetUserPermissionsQueryHandler(
     UserManager<User> userManager,
     IUserManagementAccess userManagementAccess,
-    ICurrentUserAccessor currentUser)
+    ICurrentUserAccessor currentUser,
+    IUserPermissionService userPermissionService)
     : IRequestHandler<GetUserPermissionsQuery, UserPermissionsDto>
 {
     public async Task<UserPermissionsDto> Handle(
@@ -26,15 +27,9 @@ public sealed class GetUserPermissionsQueryHandler(
 
         await userManagementAccess.EnsureActorCanManageUserAsync(actorId, user, cancellationToken);
 
-        var claims = await userManager.GetClaimsAsync(user);
+        var assigned = await userPermissionService.GetUserPermissionsAsync(user.Id, cancellationToken);
+        var names = assigned.Select(p => p.Name).ToList().AsReadOnly();
 
-        var permissions = claims
-            .Where(c => c.Type == UserPermissions.ClaimType)
-            .Select(c => c.Value)
-            .OrderBy(p => p)
-            .ToList()
-            .AsReadOnly();
-
-        return new UserPermissionsDto(user.Id, permissions);
+        return new UserPermissionsDto(user.Id, names);
     }
 }

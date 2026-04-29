@@ -53,8 +53,7 @@ public sealed class SlideCardConfiguration : IEntityTypeConfiguration<SlideCard>
             .IsRequired()
             .HasDefaultValue(true);
 
-        builder.Property(s => s.CreatedAt)
-            .IsRequired();
+        builder.ConfigureAuditColumns();
 
         builder.HasIndex(s => s.IsActive);
         builder.HasIndex(s => s.ExpiryDate);

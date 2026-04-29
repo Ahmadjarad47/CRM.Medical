@@ -1,9 +1,9 @@
 namespace CRM.Medical.Application.Features.Users.Constants;
 
 /// <summary>
-/// User-level permission constants stored as ASP.NET Core Identity claims.
-/// ClaimType = "permission", ClaimValue = one of the constants below.
-/// Authorization is claim-based (not role-based): each endpoint requires a specific permission claim.
+/// Permission names used for authorization policies and JWT claims.
+/// Assignments are stored in <c>user_permissions</c>; at login, names are loaded into the access token
+/// as claims with <see cref="ClaimType"/> for dynamic permission policies on the API.
 /// </summary>
 public static class UserPermissions
 {
@@ -15,24 +15,28 @@ public static class UserPermissions
     public const string UsersDelete = "users.delete";
     public const string UsersManagePermissions = "users.manage_permissions";
 
-    public const string PermissionsManage = "permissions.manage";
     public const string RolesManage = "roles.manage";
 
     public const string ComplaintsView = "complaints.view";
     public const string ComplaintsUpdateStatus = "complaints.update_status";
 
-    public const string AppointmentsView = "appointments.view";
-    public const string AppointmentsManage = "appointments.manage";
-
     public const string SubscriptionsView = "subscriptions.view";
     public const string SubscriptionsManage = "subscriptions.manage";
 
-    public const string MedicalWorkflowView = "medical_workflow.view";
+    public const string MedicalTestRead = "MedicalTest.Read";
+    public const string MedicalTestCreate = "MedicalTest.Create";
+    public const string MedicalTestUpdate = "MedicalTest.Update";
+    public const string MedicalTestDelete = "MedicalTest.Delete";
 
-    /// <summary>
-    /// Create/update/delete medical tests, test requests, results, and appointment test links (assign to doctor, lab partner, and admin as needed).
-    /// </summary>
-    public const string MedicalWorkflowManage = "medical_workflow.manage";
+    public const string TestRequestRead = "TestRequest.Read";
+    public const string TestRequestCreate = "TestRequest.Create";
+    public const string TestRequestUpdate = "TestRequest.Update";
+    public const string TestRequestDelete = "TestRequest.Delete";
+
+    public const string TestResultRead = "TestResult.Read";
+    public const string TestResultCreate = "TestResult.Create";
+    public const string TestResultUpdate = "TestResult.Update";
+    public const string TestResultDelete = "TestResult.Delete";
 
     public static readonly IReadOnlyList<string> All =
     [
@@ -41,15 +45,22 @@ public static class UserPermissions
         UsersUpdate,
         UsersDelete,
         UsersManagePermissions,
-        PermissionsManage,
         RolesManage,
         ComplaintsView,
         ComplaintsUpdateStatus,
-        AppointmentsView,
-        AppointmentsManage,
         SubscriptionsView,
         SubscriptionsManage,
-        MedicalWorkflowView,
-        MedicalWorkflowManage
+        MedicalTestRead,
+        MedicalTestCreate,
+        MedicalTestUpdate,
+        MedicalTestDelete,
+        TestRequestRead,
+        TestRequestCreate,
+        TestRequestUpdate,
+        TestRequestDelete,
+        TestResultRead,
+        TestResultCreate,
+        TestResultUpdate,
+        TestResultDelete
     ];
 }

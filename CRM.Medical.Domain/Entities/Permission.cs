@@ -1,9 +1,6 @@
 namespace CRM.Medical.Domain.Entities;
 
-/// <summary>
-/// Catalog of assignable permission names. Grants on users are stored as Identity user claims (claim type "permission").
-/// </summary>
-public sealed class Permission
+public sealed class Permission : BaseEntity
 {
     public Guid Id { get; set; }
 
@@ -11,7 +8,5 @@ public sealed class Permission
 
     public string? Description { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public ICollection<UserPermission> UserPermissions { get; set; } = new List<UserPermission>();
 }
-
-

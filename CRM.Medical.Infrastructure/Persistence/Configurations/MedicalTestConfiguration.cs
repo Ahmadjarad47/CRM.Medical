@@ -10,50 +10,23 @@ public sealed class MedicalTestConfiguration : IEntityTypeConfiguration<MedicalT
     {
         builder.ToTable("medical_tests");
 
-        builder.HasKey(t => t.Id);
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Id).UseIdentityByDefaultColumn();
 
-        builder.Property(t => t.Id)
-            .UseIdentityByDefaultColumn();
+        builder.Property(e => e.NameAr).IsRequired().HasMaxLength(500);
+        builder.Property(e => e.NameEn).IsRequired().HasMaxLength(500);
+        builder.Property(e => e.Price).IsRequired();
+        builder.Property(e => e.Category).IsRequired().HasMaxLength(200);
+        builder.Property(e => e.SampleType).IsRequired().HasMaxLength(200);
+        builder.Property(e => e.Status).IsRequired().HasMaxLength(64);
+        builder.Property(e => e.ParameterSchema).HasColumnType("jsonb");
 
-        builder.Property(t => t.NameAr)
-            .IsRequired()
-            .HasMaxLength(500);
+        builder.ConfigureAuditColumns();
 
-        builder.Property(t => t.NameEn)
-            .IsRequired()
-            .HasMaxLength(500);
-
-        builder.Property(t => t.Price)
-            .IsRequired();
-
-        builder.Property(t => t.Category)
-            .IsRequired()
-            .HasMaxLength(200);
-
-        builder.Property(t => t.SampleType)
-            .IsRequired()
-            .HasMaxLength(200);
-
-        builder.Property(t => t.ParameterSchema)
-            .HasColumnType("jsonb");
-
-        builder.Property(t => t.Status)
-            .IsRequired()
-            .HasMaxLength(64);
-
-        builder.Property(t => t.CreatedByUserId)
-            .IsRequired();
-
-        builder.Property(t => t.CreatedAt)
-            .IsRequired();
-
-        builder.HasIndex(t => t.Status);
-        builder.HasIndex(t => t.Category);
-        builder.HasIndex(t => t.CreatedByUserId);
-
-        builder.HasOne(t => t.CreatedByUser)
-            .WithMany(u => u.MedicalTestsCreated)
-            .HasForeignKey(t => t.CreatedByUserId)
+        builder.HasIndex(e => e.Status);
+        builder.HasMany(e => e.TestRequests)
+            .WithOne(r => r.MedicalTest)
+            .HasForeignKey(r => r.MedicalTestId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

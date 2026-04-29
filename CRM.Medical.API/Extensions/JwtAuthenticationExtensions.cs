@@ -57,7 +57,7 @@ public static class JwtAuthenticationExtensions
 
         // Permission policies are resolved dynamically via PermissionAwarePolicyProvider.
         // Endpoints use [Authorize(Policy = UserPermissions.UsersView)] etc.
-        // Roles are NOT used for authorization — only for classification/filtering.
+        // The Admin role is used for permission-catalog and user-permission management controllers only.
         services.AddAuthorization();
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionAwarePolicyProvider>();
 

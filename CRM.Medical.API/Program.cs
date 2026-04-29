@@ -96,7 +96,7 @@ builder.Services.AddControllers(options =>
 
 var app = builder.Build();
 
-// Apply migrations before IHostedService seeding (e.g. permission catalog) touches the database.
+// Apply migrations before IHostedService seeding touches the database.
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MedicalDbContext>();

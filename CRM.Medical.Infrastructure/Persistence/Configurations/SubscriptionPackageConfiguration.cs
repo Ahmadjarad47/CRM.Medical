@@ -37,8 +37,7 @@ public sealed class SubscriptionPackageConfiguration : IEntityTypeConfiguration<
             .IsRequired()
             .HasDefaultValue(true);
 
-        builder.Property(p => p.CreatedAt)
-            .IsRequired();
+        builder.ConfigureAuditColumns();
 
         builder.HasIndex(p => p.TargetAudience);
         builder.HasIndex(p => p.IsActive);

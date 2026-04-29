@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace CRM.Medical.Domain.Entities;
 
-public sealed class SubscriptionPackage
+public sealed class SubscriptionPackage : BaseEntity
 {
     public int Id { get; set; }
 
@@ -18,8 +18,4 @@ public sealed class SubscriptionPackage
     public SubscriptionPackageTargetAudience TargetAudience { get; set; }
 
     public bool IsActive { get; set; }
-
-    public DateTime CreatedAt { get; set; }
-
-    public DateTime? UpdatedAt { get; set; }
 }

@@ -1,9 +1,8 @@
 using System.Text.Json;
-using CRM.Medical.Domain.Constants;
 
 namespace CRM.Medical.Domain.Entities;
 
-public sealed class MedicalTest
+public sealed class MedicalTest : BaseEntity
 {
     public int Id { get; set; }
 
@@ -19,17 +18,7 @@ public sealed class MedicalTest
 
     public JsonDocument? ParameterSchema { get; set; }
 
-    /// <summary>Lifecycle state of this test record (see <see cref="MedicalTestStatuses"/>).</summary>
     public string Status { get; set; } = string.Empty;
 
-    public string CreatedByUserId { get; set; } = string.Empty;
-    public User CreatedByUser { get; set; } = null!;
-
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-
-    /// <summary>Optional 1:1 — at most one appointment may reference this test instance.</summary>
-    public Appointment? Appointment { get; set; }
-
-    public TestRequest? TestRequest { get; set; }
+    public ICollection<TestRequest> TestRequests { get; set; } = new List<TestRequest>();
 }

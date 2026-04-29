@@ -22,7 +22,6 @@ public sealed class PermissionConfiguration : IEntityTypeConfiguration<Permissio
         builder.Property(p => p.Description)
             .HasMaxLength(500);
 
-        builder.Property(p => p.CreatedAt)
-            .IsRequired();
+        builder.ConfigureAuditColumns();
     }
 }

@@ -25,7 +25,7 @@ public sealed class JwtTokenGenerator(IOptions<JwtSettings> options) : IJwtToken
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
-        // Role claims — for classification only, not used for authorization decisions
+        // Role claims — used for role-based data scope in services; Admin also satisfies permission-named policies at the edge.
         claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
 
         // Permission claims — the actual authorization mechanism
