@@ -34,6 +34,16 @@ public sealed class MedicalDbContext(
 
     public DbSet<TestResult> TestResults => Set<TestResult>();
 
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+
+    public DbSet<ConversationParticipant> ConversationParticipants => Set<ConversationParticipant>();
+
+    public DbSet<Message> Messages => Set<Message>();
+
+    public DbSet<MessageRead> MessageReads => Set<MessageRead>();
+
+    public DbSet<MessageAttachment> MessageAttachments => Set<MessageAttachment>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

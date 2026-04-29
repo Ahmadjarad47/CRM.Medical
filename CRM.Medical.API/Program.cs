@@ -10,6 +10,7 @@ using CRM.Medical.Application;
 using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Infrastructure;
 using CRM.Medical.Infrastructure.Persistence;
+using CRM.Medical.RealTime;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http.Features;
@@ -51,6 +52,7 @@ builder.Services.AddApplication();
 builder.Services.AddCrmSwagger();
 builder.Services.AddCrmMiddlewares(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddCrmRealTimeChat();
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.Configure<ApiBehaviorOptions>(options =>
 {
@@ -135,5 +137,6 @@ app.UseSwaggerUI(options =>
 });
 
 app.MapControllers();
+app.MapCrmChatHubs();
 
 app.Run();

@@ -16,6 +16,8 @@ using CRM.Medical.Application.Features.Permissions.Services;
 using CRM.Medical.Application.Features.TestRequests.Services;
 using CRM.Medical.Application.Features.TestResults.Services;
 using CRM.Medical.Application.Features.Users.Services;
+using CRM.Medical.Application.Features.Chat.Persistence;
+using CRM.Medical.Application.Features.Chat.Services;
 using CRM.Medical.Infrastructure.MedicalWorkflow;
 using CRM.Medical.Application.Health;
 using CRM.Medical.Domain.Entities;
@@ -26,12 +28,14 @@ using CRM.Medical.Infrastructure.Diagnostics;
 using CRM.Medical.Infrastructure.Email;
 using CRM.Medical.Infrastructure.Persistence;
 using CRM.Medical.Infrastructure.Seeding;
+using CRM.Medical.Infrastructure.Chat;
 using CRM.Medical.Infrastructure.Storage;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using StackExchange.Redis;
 
 namespace CRM.Medical.Infrastructure;
 
@@ -82,6 +86,9 @@ public static class DependencyInjection
         services.AddScoped<ITestRequestService, TestRequestService>();
         services.AddScoped<ITestResultService, TestResultService>();
 
+        services.AddScoped<IChatPersistence, ChatPersistence>();
+        services.AddScoped<IChatAuthorizationService, ChatAuthorizationService>();
+
         services.AddDbContext<MedicalDbContext>((sp, options) =>
         {
             var settings = sp.GetRequiredService<IOptions<DatabaseSettings>>().Value;
@@ -125,6 +132,8 @@ public static class DependencyInjection
         if (!string.IsNullOrWhiteSpace(redisConnection))
         {
             services.AddStackExchangeRedisCache(opts => opts.Configuration = redisConnection);
+            services.AddSingleton<IConnectionMultiplexer>(_ =>
+                ConnectionMultiplexer.Connect(redisConnection));
         }
         else
         {
