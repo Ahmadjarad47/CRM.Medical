@@ -1,18 +1,18 @@
 using System.Security.Claims;
-using CRM.Medical.Application.Abstractions.Chat;
 using CRM.Medical.Application.Features.Chat.Commands.LeaveConversation;
 using CRM.Medical.Application.Features.Chat.Commands.MarkMessageAsRead;
 using CRM.Medical.Application.Features.Chat.Commands.SendMessage;
 using CRM.Medical.Application.Features.Chat.Models;
-using CRM.Medical.Application.Features.Chat;
 using CRM.Medical.Application.Features.Chat.Services;
 using CRM.Medical.RealTime.Dtos;
+using CRM.Medical.RealTime.Groups;
+using CRM.Medical.RealTime.Presence;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
-namespace CRM.Medical.RealTime;
+namespace CRM.Medical.RealTime.Hubs;
 
 /// <summary>
 /// Real-time chat hub — JWT authenticated via Bearer token on HTTP negotiate / WebSockets.
@@ -21,17 +21,17 @@ namespace CRM.Medical.RealTime;
 public sealed class ChatHub(
     IMediator mediator,
     IChatAuthorizationService chatAuthorization,
-    IConnectionManager connectionManager,
+    PresenceLifecycleCoordinator presenceLifecycle,
     ILogger<ChatHub> logger)
-    : Hub
+    : Hub<IChatClient>
 {
     public override async Task OnConnectedAsync()
     {
         var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!string.IsNullOrEmpty(userId))
         {
-            await connectionManager.AddConnectionAsync(userId, Context.ConnectionId, Context.ConnectionAborted);
-            await connectionManager.SetUserOnlineAsync(userId, Context.ConnectionAborted);
+            var roles = Context.User!.FindAll(ClaimTypes.Role).Select(c => c.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            await presenceLifecycle.OnHubConnectedAsync(userId, Context.ConnectionId, roles, Context.ConnectionAborted);
             await Groups.AddToGroupAsync(Context.ConnectionId, ChatGroups.User(userId));
         }
         else
@@ -44,7 +44,7 @@ public sealed class ChatHub(
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        await connectionManager.RemoveConnectionAsync(Context.ConnectionId, Context.ConnectionAborted);
+        await presenceLifecycle.OnHubDisconnectedAsync(Context.ConnectionId, Context.ConnectionAborted);
         await base.OnDisconnectedAsync(exception);
     }
 
@@ -84,7 +84,7 @@ public sealed class ChatHub(
         var userId = RequireUserId();
         await chatAuthorization.EnsureActiveParticipantAsync(userId, conversationId, Context.ConnectionAborted);
         await Clients.OthersInGroup(ChatGroups.Conversation(conversationId))
-            .SendAsync(ChatHubClientMethods.TypingIndicator, new ChatTypingPayload(userId, IsTyping: true), Context.ConnectionAborted);
+            .Typing(new ChatTypingPayload(userId, IsTyping: true));
     }
 
     public async Task StopTyping(Guid conversationId)
@@ -92,7 +92,7 @@ public sealed class ChatHub(
         var userId = RequireUserId();
         await chatAuthorization.EnsureActiveParticipantAsync(userId, conversationId, Context.ConnectionAborted);
         await Clients.OthersInGroup(ChatGroups.Conversation(conversationId))
-            .SendAsync(ChatHubClientMethods.StopTypingIndicator, new ChatTypingPayload(userId, IsTyping: false), Context.ConnectionAborted);
+            .StopTyping(new ChatTypingPayload(userId, IsTyping: false));
     }
 
     private string RequireUserId()

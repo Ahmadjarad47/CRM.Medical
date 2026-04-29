@@ -1,15 +1,16 @@
-using CRM.Medical.Application.Features.Chat;
 using CRM.Medical.Application.Features.Chat.Models;
 using CRM.Medical.Application.Features.Chat.Services;
+using CRM.Medical.RealTime.Groups;
+using CRM.Medical.RealTime.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
-namespace CRM.Medical.RealTime;
+namespace CRM.Medical.RealTime.Notifications;
 
-public sealed class ChatRealtimeNotifier(IHubContext<ChatHub> hubContext, ILogger<ChatRealtimeNotifier> logger)
+public sealed class ChatRealtimeNotifier(IHubContext<ChatHub, IChatClient> hubContext, ILogger<ChatRealtimeNotifier> logger)
     : IChatRealtimeNotifier
 {
-    private readonly IHubContext<ChatHub> _hubContext = hubContext;
+    private readonly IHubContext<ChatHub, IChatClient> _hubContext = hubContext;
     private readonly ILogger<ChatRealtimeNotifier> _logger = logger;
 
     public async Task BroadcastNewMessageAsync(
@@ -21,7 +22,7 @@ public sealed class ChatRealtimeNotifier(IHubContext<ChatHub> hubContext, ILogge
         {
             await _hubContext.Clients
                 .Group(ChatGroups.Conversation(conversationId))
-                .SendAsync(ChatHubClientMethods.ReceiveMessage, payload, cancellationToken);
+                .ReceiveMessage(payload);
         }
         catch (Exception ex)
         {
@@ -38,7 +39,7 @@ public sealed class ChatRealtimeNotifier(IHubContext<ChatHub> hubContext, ILogge
         {
             await _hubContext.Clients
                 .Group(ChatGroups.Conversation(conversationId))
-                .SendAsync(ChatHubClientMethods.TypingIndicator, payload, cancellationToken);
+                .Typing(payload);
         }
         catch (Exception ex)
         {
@@ -55,7 +56,7 @@ public sealed class ChatRealtimeNotifier(IHubContext<ChatHub> hubContext, ILogge
         {
             await _hubContext.Clients
                 .Group(ChatGroups.Conversation(conversationId))
-                .SendAsync(ChatHubClientMethods.ReadReceipt, payload, cancellationToken);
+                .ReadReceipt(payload);
         }
         catch (Exception ex)
         {
@@ -63,21 +64,20 @@ public sealed class ChatRealtimeNotifier(IHubContext<ChatHub> hubContext, ILogge
         }
     }
 
-    public async Task NotifyUserAsync(
+    public async Task NotifyConversationUpdatedAsync(
         string userId,
-        string methodName,
-        object payload,
+        ConversationUpdatedPayload payload,
         CancellationToken cancellationToken = default)
     {
         try
         {
             await _hubContext.Clients
                 .Group(ChatGroups.User(userId))
-                .SendAsync(methodName, payload, cancellationToken);
+                .ConversationUpdated(payload);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "SignalR user notify failed for {UserId}", userId);
+            _logger.LogWarning(ex, "SignalR ConversationUpdated failed for {UserId}", userId);
         }
     }
 }

@@ -1,4 +1,4 @@
-namespace CRM.Medical.RealTime;
+namespace CRM.Medical.RealTime.Groups;
 
 public static class ChatGroups
 {

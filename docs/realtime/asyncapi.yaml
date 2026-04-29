@@ -1,0 +1,360 @@
+asyncapi: '2.6.0'
+id: urn:crm-medical:realtime
+info:
+  title: CRM Medical — SignalR Real-Time API
+  version: '1.0.0'
+  description: |
+    Machine-readable contract for ASP.NET Core SignalR hubs served by `CRM.Medical.RealTime`.
+    This document is the canonical contract for WebSocket-style real-time behavior; it is **not**
+    duplicated from Swagger/OpenAPI (HTTP APIs remain documented there).
+
+    **Transport:** SignalR negotiate (HTTP) + WebSockets (or long polling fallback).
+    **Auth:** JWT bearer. Browsers/WebSocket clients must pass the token in the `access_token`
+    query string on the hub URL (see `servers` and `securitySchemes`).
+  license:
+    name: Proprietary
+
+defaultContentType: application/json
+
+servers:
+  production:
+    url: '{scheme}://{host}'
+    protocol: https
+    variables:
+      scheme:
+        default: https
+      host:
+        default: api.example.com
+    description: |
+      Replace `{host}` with your deployment host. SignalR hubs are mapped at paths `/hubs/chat`
+      and `/hubs/online-users`. Typical negotiate URL:
+      `POST https://{host}/hubs/chat/negotiate?negotiateVersion=1`.
+      Include `access_token=<JWT>` on negotiate and WebSocket connections when the client cannot
+      send `Authorization` headers (browser WebSockets).
+
+channels:
+  hubs.chat.publish:
+    description: |
+      Client → server invocations on **`ChatHub`** (`GET`/`POST` negotiate path `/hubs/chat`).
+      Method names match server hub methods (`JoinConversation`, `SendMessage`, …).
+    publish:
+      operationId: ChatHubInbound
+      summary: Invoke ChatHub methods from the client
+      message:
+        oneOf:
+          - $ref: '#/components/messages/JoinConversation'
+          - $ref: '#/components/messages/LeaveConversation'
+          - $ref: '#/components/messages/SendMessage'
+          - $ref: '#/components/messages/MarkAsRead'
+          - $ref: '#/components/messages/TypingServer'
+          - $ref: '#/components/messages/StopTypingServer'
+
+  hubs.chat.subscribe:
+    description: |
+      Server → client callbacks implemented by **`IChatClient`** for `/hubs/chat`.
+      JSON property casing follows ASP.NET Core SignalR defaults (**camelCase**).
+    subscribe:
+      operationId: ChatHubOutbound
+      summary: Receive ChatHub broadcasts (typed client interface `IChatClient`)
+      message:
+        oneOf:
+          - $ref: '#/components/messages/ReceiveMessage'
+          - $ref: '#/components/messages/TypingClient'
+          - $ref: '#/components/messages/StopTypingClient'
+          - $ref: '#/components/messages/ReadReceipt'
+          - $ref: '#/components/messages/ConversationUpdated'
+
+  hubs.onlineUsers.publish:
+    description: |
+      Client → server on **`OnlineUsersHub`** (`/hubs/online-users`).
+      Includes optional RPC methods (e.g. initial roster load) plus connection lifecycle
+      (`OnConnectedAsync` / `OnDisconnectedAsync`).
+    publish:
+      operationId: OnlineUsersHubInbound
+      summary: Hub methods from client (`GetOnlineUsers`, …) and connect/disconnect
+      message:
+        oneOf:
+          - $ref: '#/components/messages/GetOnlineUsers'
+
+  hubs.onlineUsers.subscribe:
+    description: |
+      Server → client callbacks on **`IOnlineUsersClient`** when presence transitions globally,
+      and responses to roster requests (`OnlineUsersList`).
+    subscribe:
+      operationId: OnlineUsersHubOutbound
+      summary: Presence notifications (`UserOnline`, `UserOffline`) and roster payloads (`OnlineUsersList`)
+      message:
+        oneOf:
+          - $ref: '#/components/messages/UserOnline'
+          - $ref: '#/components/messages/UserOffline'
+          - $ref: '#/components/messages/OnlineUsersList'
+
+components:
+  securitySchemes:
+    jwtQuery:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Prefer standard `Authorization: Bearer <token>` where supported.
+        For SignalR browser/WebSocket builds that cannot attach headers, pass the same JWT as:
+        `?access_token=<token>` on negotiate and hub URLs. Implementations validate paths starting
+        with `/hubs` per JWT bearer `OnMessageReceived`.
+
+  messages:
+    JoinConversation:
+      name: JoinConversation
+      title: JoinConversation
+      summary: Add connection to SignalR group `conversation:{conversationId}` after authorization.
+      payload:
+        type: object
+        required: [conversationId]
+        properties:
+          conversationId:
+            type: string
+            format: uuid
+
+    LeaveConversation:
+      name: LeaveConversation
+      title: LeaveConversation
+      summary: Leave conversation group and persist leave via domain command.
+      payload:
+        type: object
+        required: [conversationId]
+        properties:
+          conversationId:
+            type: string
+            format: uuid
+
+    SendMessage:
+      name: SendMessage
+      title: SendMessage
+      summary: Hub method wrapping MediatR send — persists message and broadcasts `ReceiveMessage`.
+      payload:
+        $ref: '#/components/schemas/SendMessageRequest'
+
+    MarkAsRead:
+      name: MarkAsRead
+      title: MarkAsRead
+      summary: Mark a single message read (hub mirrors REST semantics).
+      payload:
+        type: object
+        required: [messageId]
+        properties:
+          messageId:
+            type: string
+            format: uuid
+
+    TypingServer:
+      name: Typing
+      title: Typing (server method)
+      summary: Notify others in the conversation group that this user is typing.
+      payload:
+        type: object
+        required: [conversationId]
+        properties:
+          conversationId:
+            type: string
+            format: uuid
+
+    StopTypingServer:
+      name: StopTyping
+      title: StopTyping (server method)
+      summary: Notify others typing stopped for this conversation.
+      payload:
+        type: object
+        required: [conversationId]
+        properties:
+          conversationId:
+            type: string
+            format: uuid
+
+    ReceiveMessage:
+      name: ReceiveMessage
+      title: ReceiveMessage
+      summary: New message broadcast to group `conversation:{conversationId}`.
+      payload:
+        $ref: '#/components/schemas/ChatMessageRealtimePayload'
+
+    TypingClient:
+      name: Typing
+      title: Typing (client callback)
+      summary: Typing indicator from another participant (`OthersInGroup`).
+      payload:
+        $ref: '#/components/schemas/ChatTypingPayload'
+
+    StopTypingClient:
+      name: StopTyping
+      title: StopTyping (client callback)
+      summary: Peer stopped typing.
+      payload:
+        $ref: '#/components/schemas/ChatTypingPayload'
+
+    ReadReceipt:
+      name: ReadReceipt
+      title: ReadReceipt
+      summary: Read receipt broadcast after mark-read command.
+      payload:
+        $ref: '#/components/schemas/ChatReadReceiptPayload'
+
+    ConversationUpdated:
+      name: ConversationUpdated
+      title: ConversationUpdated
+      summary: Lightweight badge/list refresh pushed to group `user:{userId}` for non-senders.
+      payload:
+        $ref: '#/components/schemas/ConversationUpdatedPayload'
+
+    UserOnline:
+      name: UserOnline
+      title: UserOnline
+      summary: Broadcast when a user gains their first active SignalR connection (any hub path participating in presence).
+      payload:
+        $ref: '#/components/schemas/UserOnlinePayload'
+
+    UserOffline:
+      name: UserOffline
+      title: UserOffline
+      summary: Broadcast when a user's last relevant connection disconnects.
+      payload:
+        $ref: '#/components/schemas/UserOfflinePayload'
+
+    GetOnlineUsers:
+      name: GetOnlineUsers
+      title: GetOnlineUsers
+      summary: Request full list of currently online users (used by admin on initial load).
+      payload:
+        type: object
+        properties: {}
+
+    OnlineUsersList:
+      name: OnlineUsersList
+      title: OnlineUsersList
+      summary: Full list of currently online users returned to requester.
+      payload:
+        type: object
+        required: [users]
+        properties:
+          users:
+            type: array
+            items:
+              $ref: '#/components/schemas/UserOnlinePayload'
+
+  schemas:
+    SendMessageRequest:
+      type: object
+      required: [conversationId, messageType]
+      properties:
+        conversationId:
+          type: string
+          format: uuid
+        text:
+          type: string
+          nullable: true
+        messageType:
+          $ref: '#/components/schemas/ChatMessageType'
+        fileUrl:
+          type: string
+          nullable: true
+        replyToId:
+          type: string
+          format: uuid
+          nullable: true
+
+    ChatMessageType:
+      type: integer
+      enum: [1, 2, 3]
+      description: Text = 1, File = 2, Image = 3 (`CRM.Medical.Domain.Chat.ChatMessageType`).
+
+    ChatMessageRealtimePayload:
+      type: object
+      required:
+        - messageId
+        - conversationId
+        - senderId
+        - messageType
+        - createdAtUtc
+      properties:
+        messageId:
+          type: string
+          format: uuid
+        conversationId:
+          type: string
+          format: uuid
+        senderId:
+          type: string
+        senderDisplayName:
+          type: string
+          nullable: true
+        text:
+          type: string
+          nullable: true
+        messageType:
+          $ref: '#/components/schemas/ChatMessageType'
+        fileUrl:
+          type: string
+          nullable: true
+        replyToId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAtUtc:
+          type: string
+          format: date-time
+
+    ChatTypingPayload:
+      type: object
+      required: [userId, isTyping]
+      properties:
+        userId:
+          type: string
+        isTyping:
+          type: boolean
+
+    ChatReadReceiptPayload:
+      type: object
+      required: [messageId, readerUserId, readAtUtc]
+      properties:
+        messageId:
+          type: string
+          format: uuid
+        readerUserId:
+          type: string
+        readAtUtc:
+          type: string
+          format: date-time
+
+    ConversationUpdatedPayload:
+      type: object
+      required: [conversationId, messageId]
+      properties:
+        conversationId:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+
+    UserOnlinePayload:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+          nullable: true
+
+    UserOfflinePayload:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: string
+
+tags:
+  - name: ChatHub
+    description: Messaging hub — `/hubs/chat`
+  - name: OnlineUsersHub
+    description: Presence notifications — `/hubs/online-users`

@@ -79,10 +79,9 @@ public sealed class SendMessageCommandHandler(
         var participants = await chatPersistence.GetActiveParticipantsAsync(request.ConversationId, cancellationToken);
         foreach (var peer in participants.Where(p => p.UserId != request.SenderUserId))
         {
-            await realtimeNotifier.NotifyUserAsync(
+            await realtimeNotifier.NotifyConversationUpdatedAsync(
                 peer.UserId,
-                ChatHubClientMethods.ConversationUpdated,
-                new { conversationId = request.ConversationId, messageId = dto.Id },
+                new ConversationUpdatedPayload(request.ConversationId, dto.Id),
                 cancellationToken);
         }
 

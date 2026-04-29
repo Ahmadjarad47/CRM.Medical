@@ -22,9 +22,8 @@ public interface IChatRealtimeNotifier
         ChatReadReceiptPayload payload,
         CancellationToken cancellationToken = default);
 
-    Task NotifyUserAsync(
+    Task NotifyConversationUpdatedAsync(
         string userId,
-        string methodName,
-        object payload,
+        ConversationUpdatedPayload payload,
         CancellationToken cancellationToken = default);
 }
