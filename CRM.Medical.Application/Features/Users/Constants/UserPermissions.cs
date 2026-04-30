@@ -2,8 +2,8 @@ namespace CRM.Medical.Application.Features.Users.Constants;
 
 /// <summary>
 /// Permission names used for authorization policies and JWT claims.
-/// Assignments are stored in <c>user_permissions</c>; at login, names are loaded into the access token
-/// as claims with <see cref="ClaimType"/> for dynamic permission policies on the API.
+/// Assignments are stored in <c>role_permissions</c> (per ASP.NET Identity role); at login, names are aggregated
+/// from the user’s roles into the access token as claims with <see cref="ClaimType"/> for dynamic permission policies on the API.
 /// </summary>
 public static class UserPermissions
 {

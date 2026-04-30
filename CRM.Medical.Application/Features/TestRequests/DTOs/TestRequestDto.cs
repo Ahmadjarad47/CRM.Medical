@@ -9,6 +9,8 @@ public sealed record TestRequestDto(
     string? DoctorId,
     string? LabClientId,
     string? DirectPatientId,
+    int? ExternalPatientId,
+    string? ExternalPatientFullName,
     DateTime RequestDate,
     string Status,
     double TotalAmount,

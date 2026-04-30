@@ -19,6 +19,11 @@ public sealed class TestRequest : BaseEntity
     /// <summary>Patient user this test is performed for (portal visibility).</summary>
     public string? DirectPatientId { get; set; }
 
+    /// <summary>Optional walk-in or partner-system patient identity (exclusive with <see cref="DirectPatientId"/> when assigning a subject).</summary>
+    public int? ExternalPatientId { get; set; }
+
+    public ExternalPatient? ExternalPatient { get; set; }
+
     public DateTime RequestDate { get; set; }
 
     public string Status { get; set; } = string.Empty;

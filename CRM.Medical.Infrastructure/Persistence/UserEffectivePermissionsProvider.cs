@@ -9,10 +9,16 @@ public sealed class UserEffectivePermissionsProvider(MedicalDbContext db) : IUse
         string userId,
         CancellationToken cancellationToken)
     {
-        return await db.UserPermissions
+        var roleIds = db.UserRoles
             .AsNoTracking()
-            .Where(up => up.UserId == userId)
-            .Select(up => up.Permission.Name)
+            .Where(ur => ur.UserId == userId)
+            .Select(ur => ur.RoleId);
+
+        return await db.RolePermissions
+            .AsNoTracking()
+            .Where(rp => roleIds.Contains(rp.RoleId))
+            .Select(rp => rp.Permission.Name)
+            .Distinct()
             .OrderBy(n => n)
             .ToListAsync(cancellationToken);
     }

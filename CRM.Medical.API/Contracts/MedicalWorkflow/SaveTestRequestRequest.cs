@@ -23,4 +23,7 @@ public sealed class SaveTestRequestRequest
     public string? LabClientId { get; set; }
 
     public string? DirectPatientId { get; set; }
+
+    /// <summary>Optional walk-in identity. Mutually exclusive with <see cref="DirectPatientId"/> when assigning a patient subject.</summary>
+    public int? ExternalPatientId { get; set; }
 }

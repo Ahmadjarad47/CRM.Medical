@@ -27,6 +27,7 @@ public sealed class TestRequestService(
         var query = _access.FilterAccessible(db.TestRequests.AsNoTracking());
         var rows = await query
             .Include(r => r.MedicalTest)
+            .Include(r => r.ExternalPatient)
             .OrderByDescending(r => r.RequestDate)
             .ToListAsync(cancellationToken);
 
@@ -41,6 +42,7 @@ public sealed class TestRequestService(
         var entity = await db.TestRequests
             .AsNoTracking()
             .Include(r => r.MedicalTest)
+            .Include(r => r.ExternalPatient)
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"Test request '{id}' was not found.");
 
@@ -58,6 +60,7 @@ public sealed class TestRequestService(
         string? doctorId,
         string? labClientId,
         string? directPatientId,
+        int? externalPatientId,
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
@@ -68,7 +71,7 @@ public sealed class TestRequestService(
         if (!testExists)
             throw new ApplicationBadRequestException($"Medical test '{medicalTestId}' was not found.");
 
-        await ValidateDirectPatientAsync(directPatientId, cancellationToken);
+        await ValidatePatientSubjectAsync(directPatientId, externalPatientId, cancellationToken);
 
         var userId = currentUser.GetRequiredUserId();
         var isAdmin = currentUser.IsInRole(UserRoles.Admin);
@@ -108,6 +111,7 @@ public sealed class TestRequestService(
             DoctorId = resolvedDoctorId,
             LabClientId = resolvedLabId,
             DirectPatientId = string.IsNullOrWhiteSpace(directPatientId) ? null : directPatientId.Trim(),
+            ExternalPatientId = externalPatientId,
             CreatedByUserId = userId
         };
 
@@ -115,6 +119,7 @@ public sealed class TestRequestService(
         await db.SaveChangesAsync(cancellationToken);
 
         await db.Entry(entity).Reference(r => r.MedicalTest).LoadAsync(cancellationToken);
+        await db.Entry(entity).Reference(r => r.ExternalPatient).LoadAsync(cancellationToken);
         return Map(entity);
     }
 
@@ -128,6 +133,7 @@ public sealed class TestRequestService(
         string? doctorId,
         string? labClientId,
         string? directPatientId,
+        int? externalPatientId,
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
@@ -141,8 +147,9 @@ public sealed class TestRequestService(
 
         await _access.EnsureCanAccessAsync(entity, cancellationToken);
 
-        await ValidateDirectPatientAsync(
+        await ValidatePatientSubjectAsync(
             string.IsNullOrWhiteSpace(directPatientId) ? null : directPatientId.Trim(),
+            externalPatientId,
             cancellationToken);
 
         var userId = currentUser.GetRequiredUserId();
@@ -167,6 +174,7 @@ public sealed class TestRequestService(
         }
 
         entity.DirectPatientId = string.IsNullOrWhiteSpace(directPatientId) ? null : directPatientId.Trim();
+        entity.ExternalPatientId = externalPatientId;
         entity.RequestDate = requestDate;
         entity.Status = status.Trim();
         entity.TotalAmount = totalAmount;
@@ -189,6 +197,18 @@ public sealed class TestRequestService(
 
         db.TestRequests.Remove(entity);
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task ValidatePatientSubjectAsync(string? directPatientId, int? externalPatientId, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(directPatientId) && externalPatientId.HasValue)
+            throw new ApplicationBadRequestException("Specify either DirectPatientId or ExternalPatientId, not both.");
+
+        await ValidateDirectPatientAsync(
+            directPatientId is null ? null : directPatientId.Trim(),
+            cancellationToken);
+
+        await ValidateExternalPatientAsync(externalPatientId, cancellationToken);
     }
 
     private async Task ValidateDirectPatientAsync(string? directPatientId, CancellationToken cancellationToken)
@@ -214,6 +234,16 @@ public sealed class TestRequestService(
         }
     }
 
+    private async Task ValidateExternalPatientAsync(int? externalPatientId, CancellationToken cancellationToken)
+    {
+        if (!externalPatientId.HasValue)
+            return;
+
+        var exists = await db.ExternalPatients.AnyAsync(e => e.Id == externalPatientId.Value, cancellationToken);
+        if (!exists)
+            throw new ApplicationBadRequestException($"External patient '{externalPatientId.Value}' was not found.");
+    }
+
     private static TestRequestDto Map(TestRequest r) =>
         new(
             r.Id,
@@ -222,6 +252,8 @@ public sealed class TestRequestService(
             r.DoctorId,
             r.LabClientId,
             r.DirectPatientId,
+            r.ExternalPatientId,
+            r.ExternalPatient?.FullName,
             r.RequestDate,
             r.Status,
             r.TotalAmount,

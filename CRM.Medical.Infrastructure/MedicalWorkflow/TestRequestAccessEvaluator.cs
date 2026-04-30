@@ -22,9 +22,16 @@ internal sealed class TestRequestAccessEvaluator(MedicalDbContext db, ICurrentUs
 
         if (user.IsInRole(UserRoles.Patient))
         {
-            if (request.DirectPatientId != userId)
-                throw new ApplicationForbiddenException("You cannot access this test request.");
-            return;
+            if (request.DirectPatientId == userId)
+                return;
+
+            if (request.ExternalPatientId is not null
+                && await db.ExternalPatients.AsNoTracking().AnyAsync(
+                    e => e.Id == request.ExternalPatientId && e.LinkedDirectPatientId == userId,
+                    cancellationToken))
+                return;
+
+            throw new ApplicationForbiddenException("You cannot access this test request.");
         }
 
         if (user.IsInRole(UserRoles.LabPartner))
@@ -48,6 +55,18 @@ internal sealed class TestRequestAccessEvaluator(MedicalDbContext db, ICurrentUs
                     return;
             }
 
+            if (request.ExternalPatientId is not null)
+            {
+                var linkedExternalPatient = await (
+                    from e in db.ExternalPatients.AsNoTracking()
+                    join u in db.Users.AsNoTracking() on e.LinkedDirectPatientId equals u.Id
+                    where e.Id == request.ExternalPatientId && u.CreatedByUserId == userId
+                    select e.Id
+                ).AnyAsync(cancellationToken);
+                if (linkedExternalPatient)
+                    return;
+            }
+
             throw new ApplicationForbiddenException("You cannot access this test request.");
         }
 
@@ -67,7 +86,16 @@ internal sealed class TestRequestAccessEvaluator(MedicalDbContext db, ICurrentUs
             return query;
 
         if (user.IsInRole(UserRoles.Patient))
-            return query.Where(r => r.DirectPatientId == userId);
+        {
+            return query.Where(r =>
+                r.DirectPatientId == userId
+                || (
+                    r.ExternalPatientId != null
+                    && db.ExternalPatients.Any(
+                        e =>
+                            e.Id == r.ExternalPatientId
+                            && e.LinkedDirectPatientId == userId)));
+        }
 
         if (user.IsInRole(UserRoles.LabPartner))
             return query.Where(r => r.LabClientId == userId || r.CreatedByUserId == userId);
@@ -81,7 +109,14 @@ internal sealed class TestRequestAccessEvaluator(MedicalDbContext db, ICurrentUs
             return query.Where(r =>
                 r.DoctorId == userId
                 || r.CreatedByUserId == userId
-                || (r.DirectPatientId != null && patientIds.Contains(r.DirectPatientId)));
+                || (r.DirectPatientId != null && patientIds.Contains(r.DirectPatientId))
+                || (
+                    r.ExternalPatientId != null
+                    && db.ExternalPatients.Any(
+                        e =>
+                            e.Id == r.ExternalPatientId
+                            && e.LinkedDirectPatientId != null
+                            && patientIds.Contains(e.LinkedDirectPatientId))));
         }
 
         return query.Where(r => r.CreatedByUserId == userId);

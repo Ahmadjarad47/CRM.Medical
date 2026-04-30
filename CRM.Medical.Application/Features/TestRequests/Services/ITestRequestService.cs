@@ -19,6 +19,7 @@ public interface ITestRequestService
         string? doctorId,
         string? labClientId,
         string? directPatientId,
+        int? externalPatientId,
         CancellationToken cancellationToken);
 
     Task UpdateAsync(
@@ -31,6 +32,7 @@ public interface ITestRequestService
         string? doctorId,
         string? labClientId,
         string? directPatientId,
+        int? externalPatientId,
         CancellationToken cancellationToken);
 
     Task DeleteAsync(int id, CancellationToken cancellationToken);

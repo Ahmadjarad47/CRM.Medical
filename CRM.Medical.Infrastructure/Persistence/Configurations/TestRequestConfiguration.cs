@@ -29,6 +29,7 @@ public sealed class TestRequestConfiguration : IEntityTypeConfiguration<TestRequ
         builder.HasIndex(e => e.DoctorId);
         builder.HasIndex(e => e.LabClientId);
         builder.HasIndex(e => e.DirectPatientId);
+        builder.HasIndex(e => e.ExternalPatientId);
         builder.HasIndex(e => e.Status);
         builder.HasIndex(e => e.CreatedByUserId);
 
@@ -45,6 +46,11 @@ public sealed class TestRequestConfiguration : IEntityTypeConfiguration<TestRequ
         builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(e => e.DirectPatientId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(e => e.ExternalPatient)
+            .WithMany(p => p.TestRequests)
+            .HasForeignKey(e => e.ExternalPatientId)
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(e => e.TestResult)

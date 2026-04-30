@@ -8,5 +8,5 @@ public sealed class Permission : BaseEntity
 
     public string? Description { get; set; }
 
-    public ICollection<UserPermission> UserPermissions { get; set; } = new List<UserPermission>();
+    public ICollection<RolePermission> RolePermissions { get; set; } = new List<RolePermission>();
 }

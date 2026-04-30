@@ -26,12 +26,13 @@ public sealed class DevelopmentUserSeedHostedService(
             return;
 
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var dateTimeProvider = scope.ServiceProvider.GetRequiredService<IDateTimeProvider>();
         var db = scope.ServiceProvider.GetRequiredService<MedicalDbContext>();
 
         // Seed the primary admin
         await SeedUserAsync(
-            userManager, db, dateTimeProvider,
+            userManager, roleManager, db, dateTimeProvider,
             seedOptions.Email, seedOptions.Password, seedOptions.DisplayName,
             UserRoles.Admin,
             allPermissions: true,
@@ -41,7 +42,7 @@ public sealed class DevelopmentUserSeedHostedService(
         foreach (var entry in seedOptions.AdditionalUsers)
         {
             await SeedUserAsync(
-                userManager, db, dateTimeProvider,
+                userManager, roleManager, db, dateTimeProvider,
                 entry.Email, entry.Password, entry.DisplayName,
                 entry.Role,
                 entry.AllPermissions,
@@ -51,6 +52,7 @@ public sealed class DevelopmentUserSeedHostedService(
 
     private async Task SeedUserAsync(
         UserManager<User> userManager,
+        RoleManager<IdentityRole> roleManager,
         MedicalDbContext db,
         IDateTimeProvider dateTimeProvider,
         string email, string password, string displayName,
@@ -91,28 +93,36 @@ public sealed class DevelopmentUserSeedHostedService(
         {
             await EnsurePermissionCatalogAsync(db, dateTimeProvider, cancellationToken);
 
-            var names = UserPermissions.All.ToList();
-            var permissionIds = await db.Permissions
-                .Where(p => names.Contains(p.Name))
-                .Select(p => p.Id)
-                .ToListAsync(cancellationToken);
-
-            foreach (var permissionId in permissionIds)
+            var identityRole = await roleManager.FindByNameAsync(role);
+            if (identityRole is null)
             {
-                var exists = await db.UserPermissions.AnyAsync(
-                    up => up.UserId == user.Id && up.PermissionId == permissionId,
-                    cancellationToken);
-                if (exists)
-                    continue;
-
-                db.UserPermissions.Add(new UserPermission
-                {
-                    UserId = user.Id,
-                    PermissionId = permissionId
-                });
+                logger.LogWarning("Role '{Role}' not found — skipped assigning catalog permissions.", role);
             }
+            else
+            {
+                var names = UserPermissions.All.ToList();
+                var permissionIds = await db.Permissions
+                    .Where(p => names.Contains(p.Name))
+                    .Select(p => p.Id)
+                    .ToListAsync(cancellationToken);
 
-            await db.SaveChangesAsync(cancellationToken);
+                foreach (var permissionId in permissionIds)
+                {
+                    var exists = await db.RolePermissions.AnyAsync(
+                        rp => rp.RoleId == identityRole.Id && rp.PermissionId == permissionId,
+                        cancellationToken);
+                    if (exists)
+                        continue;
+
+                    db.RolePermissions.Add(new RolePermission
+                    {
+                        RoleId = identityRole.Id,
+                        PermissionId = permissionId
+                    });
+                }
+
+                await db.SaveChangesAsync(cancellationToken);
+            }
         }
 
         logger.LogInformation(

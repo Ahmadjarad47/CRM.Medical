@@ -40,6 +40,7 @@ public sealed class TestRequestsController(ITestRequestService testRequests) : C
             request.DoctorId,
             request.LabClientId,
             request.DirectPatientId,
+            request.ExternalPatientId,
             cancellationToken);
 
     [HttpPut("{id:int}")]
@@ -60,6 +61,7 @@ public sealed class TestRequestsController(ITestRequestService testRequests) : C
             request.DoctorId,
             request.LabClientId,
             request.DirectPatientId,
+            request.ExternalPatientId,
             cancellationToken);
         return NoContent();
     }

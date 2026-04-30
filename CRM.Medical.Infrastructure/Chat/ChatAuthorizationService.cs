@@ -136,10 +136,21 @@ public sealed class ChatAuthorizationService(
         if (string.Equals(patient.CreatedByUserId, doctorId, StringComparison.Ordinal))
             return true;
 
-        return await _db.TestRequests.AsNoTracking().AnyAsync(
-            r => r.DirectPatientId == patientId
+        var linkedDirectly = await _db.TestRequests.AsNoTracking().AnyAsync(
+            r =>
+                r.DirectPatientId == patientId
                 && (r.DoctorId == doctorId || r.CreatedByUserId == doctorId),
             cancellationToken);
+        if (linkedDirectly)
+            return true;
+
+        return await (
+            from r in _db.TestRequests.AsNoTracking()
+            join e in _db.ExternalPatients.AsNoTracking() on r.ExternalPatientId equals e.Id
+            where e.LinkedDirectPatientId == patientId
+                && (r.DoctorId == doctorId || r.CreatedByUserId == doctorId)
+            select r.Id
+        ).AnyAsync(cancellationToken);
     }
 
     private async Task<bool> PairDoctorLabAsync(
@@ -188,8 +199,20 @@ public sealed class ChatAuthorizationService(
         if (string.Equals(patient.CreatedByUserId, labId, StringComparison.Ordinal))
             return true;
 
-        return await _db.TestRequests.AsNoTracking().AnyAsync(
-            r => r.DirectPatientId == patientId && r.LabClientId == labId,
+        var linkedDirectly = await _db.TestRequests.AsNoTracking().AnyAsync(
+            r =>
+                r.DirectPatientId == patientId
+                && r.LabClientId == labId,
             cancellationToken);
+        if (linkedDirectly)
+            return true;
+
+        return await (
+            from r in _db.TestRequests.AsNoTracking()
+            join e in _db.ExternalPatients.AsNoTracking() on r.ExternalPatientId equals e.Id
+            where e.LinkedDirectPatientId == patientId
+                && r.LabClientId == labId
+            select r.Id
+        ).AnyAsync(cancellationToken);
     }
 }

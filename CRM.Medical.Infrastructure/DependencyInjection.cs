@@ -12,8 +12,9 @@ using CRM.Medical.Application.Features.SlideCards;
 using CRM.Medical.Application.Features.SubscriptionPackages;
 using CRM.Medical.Application.Features.Templates;
 using CRM.Medical.Application.Features.MedicalTests.Services;
-using CRM.Medical.Application.Features.Permissions.Services;
+using CRM.Medical.Application.Features.ExternalPatients.Services;
 using CRM.Medical.Application.Features.TestRequests.Services;
+using CRM.Medical.Application.Features.Permissions.Services;
 using CRM.Medical.Application.Features.TestResults.Services;
 using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Application.Features.Chat.Persistence;
@@ -80,10 +81,11 @@ public static class DependencyInjection
         services.AddScoped<ITemplateRepository, TemplateRepository>();
         services.AddScoped<IUserManagementAccess, UserManagementAccessService>();
         services.AddScoped<IPermissionService, PermissionService>();
-        services.AddScoped<IUserPermissionService, UserPermissionService>();
+        services.AddScoped<IRolePermissionService, RolePermissionService>();
         services.AddScoped<IUserEffectivePermissionsProvider, UserEffectivePermissionsProvider>();
         services.AddScoped<IMedicalTestService, MedicalTestService>();
         services.AddScoped<ITestRequestService, TestRequestService>();
+        services.AddScoped<IExternalPatientService, ExternalPatientService>();
         services.AddScoped<ITestResultService, TestResultService>();
 
         services.AddScoped<IChatPersistence, ChatPersistence>();

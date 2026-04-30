@@ -27,12 +27,4 @@ public class User : IdentityUser
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 
     public ICollection<Complaint> Complaints { get; set; } = new List<Complaint>();
-
-    public ICollection<UserPermission> UserPermissions { get; set; } = new List<UserPermission>();
-
-    public bool HasPermission(string permissionName) =>
-        UserPermissions.Any(p => p.Permission.Name == permissionName);
-
-    public List<string> GetPermissions() =>
-        UserPermissions.Select(p => p.Permission.Name).ToList();
 }

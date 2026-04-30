@@ -26,11 +26,13 @@ public sealed class MedicalDbContext(
 
     public DbSet<Permission> Permissions => Set<Permission>();
 
-    public DbSet<UserPermission> UserPermissions => Set<UserPermission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
     public DbSet<MedicalTest> MedicalTests => Set<MedicalTest>();
 
     public DbSet<TestRequest> TestRequests => Set<TestRequest>();
+
+    public DbSet<ExternalPatient> ExternalPatients => Set<ExternalPatient>();
 
     public DbSet<TestResult> TestResults => Set<TestResult>();
 
