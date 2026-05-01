@@ -1,31 +1,45 @@
 using CRM.Medical.Application.Abstractions.Chat;
+using CRM.Medical.Application.Features.Chat.DTOs;
+using CRM.Medical.Application.Features.Chat.Services;
 using CRM.Medical.RealTime.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace CRM.Medical.RealTime.Presence;
 
 public sealed class OnlineUsersPresenceNotifier(
     IHubContext<OnlineUsersHub, IOnlineUsersClient> hubContext,
-    ILogger<OnlineUsersPresenceNotifier> logger)
+    ILogger<OnlineUsersPresenceNotifier> logger,
+    IServiceScopeFactory scopeFactory)
     : IPresenceEventNotifier
 {
-    private readonly IHubContext<OnlineUsersHub, IOnlineUsersClient> _hubContext = hubContext;
-    private readonly ILogger<OnlineUsersPresenceNotifier> _logger = logger;
-
     public async Task NotifyUserBecameOnlineAsync(
         string userId,
         IReadOnlyCollection<string> roles,
         CancellationToken cancellationToken = default)
     {
+        ChatUserSummaryDto? summary = null;
         try
         {
-            await _hubContext.Clients.All
-                .UserOnline(new UserOnlinePayload(userId, roles.ToList()));
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var lookup = scope.ServiceProvider.GetRequiredService<IChatUserSummaryLookup>();
+            var map = await lookup.GetSummariesAsync([userId], cancellationToken).ConfigureAwait(false);
+            map.TryGetValue(userId, out summary);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to broadcast UserOnline for {UserId}", userId);
+            logger.LogWarning(ex, "Failed to load user summary for UserOnline {UserId}", userId);
+        }
+
+        try
+        {
+            await hubContext.Clients.All
+                .UserOnline(new UserOnlinePayload(userId, roles.ToList(), summary));
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to broadcast UserOnline for {UserId}", userId);
         }
     }
 
@@ -33,12 +47,12 @@ public sealed class OnlineUsersPresenceNotifier(
     {
         try
         {
-            await _hubContext.Clients.All
+            await hubContext.Clients.All
                 .UserOffline(new UserOfflinePayload(userId));
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to broadcast UserOffline for {UserId}", userId);
+            logger.LogWarning(ex, "Failed to broadcast UserOffline for {UserId}", userId);
         }
     }
 }

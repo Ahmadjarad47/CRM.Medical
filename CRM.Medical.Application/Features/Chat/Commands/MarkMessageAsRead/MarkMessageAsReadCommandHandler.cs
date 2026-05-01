@@ -12,6 +12,7 @@ public sealed class MarkMessageAsReadCommandHandler(
     IChatPersistence chatPersistence,
     IChatAuthorizationService chatAuthorization,
     IChatRealtimeNotifier realtimeNotifier,
+    IChatUserSummaryLookup summaryLookup,
     IDateTimeProvider dateTimeProvider)
     : IRequestHandler<MarkMessageAsReadCommand, Unit>
 {
@@ -45,9 +46,12 @@ public sealed class MarkMessageAsReadCommandHandler(
 
         await chatPersistence.SaveChangesAsync(cancellationToken);
 
+        var summaries = await summaryLookup.GetSummariesAsync([request.ReaderUserId], cancellationToken);
+        var reader = summaries[request.ReaderUserId];
+
         await realtimeNotifier.BroadcastReadReceiptAsync(
             message.ConversationId,
-            new ChatReadReceiptPayload(message.Id, request.ReaderUserId, now),
+            new ChatReadReceiptPayload(message.Id, request.ReaderUserId, now, reader),
             cancellationToken);
 
         return Unit.Value;

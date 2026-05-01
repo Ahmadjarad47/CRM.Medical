@@ -133,30 +133,21 @@ public sealed class ChatPersistence(MedicalDbContext db) : IChatPersistence
         if (conversationIds.Count == 0)
             return new Dictionary<Guid, Message?>();
 
-        // Per-conversation latest message — subquery for efficiency on large datasets
-        var latest = await (
-            from m in _db.Messages.AsNoTracking()
-            where conversationIds.Contains(m.ConversationId)
-            group m by m.ConversationId into g
-            select new
-            {
-                ConversationId = g.Key,
-                MaxCreated = g.Max(x => x.CreatedAt)
-            }).ToListAsync(cancellationToken);
+        var ids = conversationIds.ToArray();
 
-        var ids = latest
-            .Select(x => x.ConversationId)
-            .ToList();
-
-        var maxMap = latest.ToDictionary(x => x.ConversationId, x => x.MaxCreated);
-
-        var messages = await _db.Messages.AsNoTracking()
+        // Avoid GroupBy + ordered FirstOrDefault inside Select — EF Core can throw KeyNotFoundException
+        // ("EmptyProjectionMember") when compiling that shape. A NOT EXISTS matches the same ordering rule.
+        var lastMessages = await _db.Messages
+            .AsNoTracking()
             .Where(m => ids.Contains(m.ConversationId))
-            .Where(m => maxMap[m.ConversationId] == m.CreatedAt)
+            .Where(m => !_db.Messages.Any(m2 =>
+                m2.ConversationId == m.ConversationId
+                && (m2.CreatedAt > m.CreatedAt
+                    || (m2.CreatedAt == m.CreatedAt && m2.Id > m.Id))))
             .ToListAsync(cancellationToken);
 
         var dict = conversationIds.ToDictionary(id => id, _ => (Message?)null);
-        foreach (var m in messages)
+        foreach (var m in lastMessages)
             dict[m.ConversationId] = m;
 
         return dict;

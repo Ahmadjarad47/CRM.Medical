@@ -7,7 +7,14 @@ public sealed record ConversationSummaryDto(
     ConversationType Type,
     string? Title,
     DateTime CreatedAtUtc,
+    string? CreatedByUserId,
+    ChatUserSummaryDto? CreatedByUser,
     MessagePreviewDto? LastMessage,
     int UnreadCount);
 
-public sealed record MessagePreviewDto(string? Text, ChatMessageType MessageType, DateTime CreatedAtUtc);
+public sealed record MessagePreviewDto(
+    string? Text,
+    ChatMessageType MessageType,
+    DateTime CreatedAtUtc,
+    string? SenderUserId,
+    ChatUserSummaryDto? Sender);

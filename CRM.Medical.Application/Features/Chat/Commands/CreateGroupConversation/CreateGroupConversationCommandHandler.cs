@@ -12,6 +12,7 @@ namespace CRM.Medical.Application.Features.Chat.Commands.CreateGroupConversation
 public sealed class CreateGroupConversationCommandHandler(
     IChatPersistence chatPersistence,
     IChatAuthorizationService chatAuthorization,
+    IChatUserSummaryLookup summaryLookup,
     IDateTimeProvider dateTimeProvider)
     : IRequestHandler<CreateGroupConversationCommand, ConversationSummaryDto>
 {
@@ -71,11 +72,16 @@ public sealed class CreateGroupConversationCommandHandler(
 
         var unread = await chatPersistence.CountUnreadForUserAsync(request.ActorUserId, conversationId, cancellationToken);
 
+        var summaries = await summaryLookup.GetSummariesAsync([request.ActorUserId], cancellationToken);
+        summaries.TryGetValue(request.ActorUserId, out var createdByUser);
+
         return new ConversationSummaryDto(
             conversation.Id,
             conversation.Type,
             conversation.Title,
             conversation.CreatedAt,
+            conversation.CreatedByUserId,
+            createdByUser,
             null,
             unread);
     }

@@ -13,6 +13,7 @@ namespace CRM.Medical.Application.Features.Chat.Commands.UploadMessageAttachment
 public sealed class UploadMessageAttachmentCommandHandler(
     IChatPersistence chatPersistence,
     IChatAuthorizationService chatAuthorization,
+    IChatUserSummaryLookup summaryLookup,
     IFileStorageService fileStorage,
     IDateTimeProvider dateTimeProvider)
     : IRequestHandler<UploadMessageAttachmentCommand, MessageAttachmentDto>
@@ -52,12 +53,17 @@ public sealed class UploadMessageAttachmentCommandHandler(
 
         await chatPersistence.SaveChangesAsync(cancellationToken);
 
+        var summaries = await summaryLookup.GetSummariesAsync([request.ActorUserId], cancellationToken);
+        var uploader = summaries[request.ActorUserId];
+
         return new MessageAttachmentDto(
             attachment.Id,
             attachment.FileName,
             attachment.FileUrl,
             attachment.FileType,
             attachment.FileSize,
-            attachment.UploadedAt);
+            attachment.UploadedAt,
+            request.ActorUserId,
+            uploader);
     }
 }

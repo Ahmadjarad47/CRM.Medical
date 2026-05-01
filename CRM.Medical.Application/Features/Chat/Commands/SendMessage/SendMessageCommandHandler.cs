@@ -8,7 +8,6 @@ using CRM.Medical.Application.Features.Chat.Services;
 using CRM.Medical.Domain.Chat;
 using CRM.Medical.Domain.Entities;
 using MediatR;
-using Microsoft.AspNetCore.Identity;
 
 namespace CRM.Medical.Application.Features.Chat.Commands.SendMessage;
 
@@ -16,8 +15,8 @@ public sealed class SendMessageCommandHandler(
     IChatPersistence chatPersistence,
     IChatAuthorizationService chatAuthorization,
     IChatRealtimeNotifier realtimeNotifier,
-    IDateTimeProvider dateTimeProvider,
-    UserManager<User> userManager)
+    IChatUserSummaryLookup summaryLookup,
+    IDateTimeProvider dateTimeProvider)
     : IRequestHandler<SendMessageCommand, MessageDto>
 {
     public async Task<MessageDto> Handle(SendMessageCommand request, CancellationToken cancellationToken)
@@ -59,15 +58,16 @@ public sealed class SendMessageCommandHandler(
         await chatPersistence.AddMessageAsync(entity, cancellationToken);
         await chatPersistence.SaveChangesAsync(cancellationToken);
 
-        var sender = await userManager.FindByIdAsync(request.SenderUserId);
-
-        var dto = entity.ToDto(sender);
+        var summaries = await summaryLookup.GetSummariesAsync([request.SenderUserId], cancellationToken);
+        var senderSummary = summaries[request.SenderUserId];
+        var dto = entity.ToDto(senderSummary);
 
         var payload = new ChatMessageRealtimePayload(
             dto.Id,
             dto.ConversationId,
             dto.SenderId,
             dto.SenderFullName,
+            senderSummary,
             dto.Text,
             dto.MessageType,
             dto.FileUrl,

@@ -7,6 +7,7 @@ public sealed record MessageDto(
     Guid ConversationId,
     string SenderId,
     string? SenderFullName,
+    ChatUserSummaryDto? Sender,
     string? Text,
     ChatMessageType MessageType,
     string? FileUrl,
@@ -22,4 +23,6 @@ public sealed record MessageAttachmentDto(
     string FileUrl,
     string? FileType,
     long FileSize,
-    DateTime UploadedAtUtc);
+    DateTime UploadedAtUtc,
+    string UploadedByUserId,
+    ChatUserSummaryDto? UploadedByUser);

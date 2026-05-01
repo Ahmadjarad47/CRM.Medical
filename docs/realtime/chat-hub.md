@@ -36,12 +36,12 @@ Invoked by name on **`ChatHub`** (same names as C# methods):
 |--------|-----------|----------|
 | `JoinConversation` | `conversationId` (uuid) | Ensures participant; adds connection to `conversation:{id}` |
 | `LeaveConversation` | `conversationId` | Domain leave + removes group |
-| `SendMessage` | [`SendMessageRequest`](./asyncapi.yaml#/components/schemas/SendMessageRequest) | Persist message; server broadcasts `ReceiveMessage` etc. |
+| `SendMessage` | [`SendMessageRequest`](./asyncapi.yaml#/components/schemas/SendMessageRequest) | Persist message; server broadcasts `ReceiveMessage` etc. Inline files: send **`fileContent`** (base64) + **`fileName`** with **`messageType`** `File` or `Image`; hub uploads via storage and uses the returned URL (multipart **`IFormFile`** is not available on the hub — use REST upload + **`fileUrl`**, or base64 in JSON). |
 | `MarkAsRead` | `messageId` (uuid) | Marks read; may broadcast `ReadReceipt` |
-| `Typing` | `conversationId` | Others in conversation receive **`Typing`** (`IChatClient`) |
-| `StopTyping` | `conversationId` | Others receive **`StopTyping`** |
+| `Typing` | `conversationId` | Others in conversation receive **`Typing`** (`IChatClient`) with `userId` and optional `displayName` from JWT claims |
+| `StopTyping` | `conversationId` | Others receive **`StopTyping`** (same payload shape) |
 
-Missing authenticated user id raises **`HubException("AUTH_REQUIRED")`**.
+Missing authenticated user id raises **`HubException("AUTH_REQUIRED")`**. Invalid inline file payloads may raise **`HubException("FILE_NAME_REQUIRED")`** or **`HubException("FILE_MESSAGE_TYPE_REQUIRED")`**.
 
 ## Client callbacks (`IChatClient`)
 
@@ -61,6 +61,7 @@ Payload shapes are defined under **`components/schemas`** in [`asyncapi.yaml`](.
 
 - **`SendMessageRequest`** — hub-only request for `SendMessage` (`conversationId`, optional `text`, `messageType`, `fileUrl`, `replyToId`).
 - **`ChatMessageRealtimePayload`**, **`ChatTypingPayload`**, **`ChatReadReceiptPayload`**, **`ConversationUpdatedPayload`** — application-layer records (`CRM.Medical.Application.Features.Chat.Models`), serialized with default SignalR JSON (**camelCase** names on the wire unless configured otherwise).
+- For **`ChatTypingPayload`**, UI should prefer **`displayName ?? userId`** so typing lines stay readable when the token carries a name claim; `userId` remains required for identity.
 
 ## Related code
 

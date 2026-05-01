@@ -1,14 +1,17 @@
 using System.Security.Claims;
 using CRM.Medical.Application.Features.Chat.Commands.LeaveConversation;
 using CRM.Medical.Application.Features.Chat.Commands.MarkMessageAsRead;
+using CRM.Medical.Application.Common.Storage;
 using CRM.Medical.Application.Features.Chat.Commands.SendMessage;
 using CRM.Medical.Application.Features.Chat.Models;
 using CRM.Medical.Application.Features.Chat.Services;
+using CRM.Medical.Domain.Chat;
 using CRM.Medical.RealTime.Dtos;
 using CRM.Medical.RealTime.Groups;
 using CRM.Medical.RealTime.Presence;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
@@ -21,7 +24,9 @@ namespace CRM.Medical.RealTime.Hubs;
 public sealed class ChatHub(
     IMediator mediator,
     IChatAuthorizationService chatAuthorization,
+    IChatUserSummaryLookup chatUserSummaryLookup,
     PresenceLifecycleCoordinator presenceLifecycle,
+    IFileStorageService fileStorage,
     ILogger<ChatHub> logger)
     : Hub<IChatClient>
 {
@@ -83,13 +88,36 @@ public sealed class ChatHub(
     public async Task SendMessage(SendMessageRequest request)
     {
         var userId = RequireUserId();
+        var fileUrl = request.FileUrl;
+        if (request.FileContent is { Length: > 0 })
+        {
+            if (string.IsNullOrWhiteSpace(request.FileName))
+                throw new HubException("FILE_NAME_REQUIRED");
+
+            if (request.MessageType is not (ChatMessageType.File or ChatMessageType.Image))
+                throw new HubException("FILE_MESSAGE_TYPE_REQUIRED");
+
+            await using var stream = new MemoryStream(request.FileContent, writable: false);
+            var formFile = new FormFile(stream, 0, request.FileContent.Length, "file", Path.GetFileName(request.FileName))
+            {
+                Headers = new HeaderDictionary(),
+                ContentType = string.IsNullOrWhiteSpace(request.ContentType)
+                    ? "application/octet-stream"
+                    : request.ContentType!
+            };
+
+            fileUrl = request.MessageType == ChatMessageType.Image
+                ? await fileStorage.UploadImageAsync(formFile, Context.ConnectionAborted)
+                : await fileStorage.UploadFileAsync(formFile, "chat/messages", Context.ConnectionAborted);
+        }
+
         await mediator.Send(
             new SendMessageCommand(
                 userId,
                 request.ConversationId,
                 request.Text,
                 request.MessageType,
-                request.FileUrl,
+                fileUrl,
                 request.ReplyToId),
             Context.ConnectionAborted);
     }
@@ -100,17 +128,33 @@ public sealed class ChatHub(
     public async Task Typing(Guid conversationId)
     {
         var userId = RequireUserId();
+        var displayName = ResolveDisplayName();
         await chatAuthorization.EnsureActiveParticipantAsync(userId, conversationId, Context.ConnectionAborted);
+        //var summaries = await chatUserSummaryLookup.GetSummariesAsync([userId], Context.ConnectionAborted);
+        //var user = summaries[userId];
+        //var user
         await Clients.OthersInGroup(ChatGroups.Conversation(conversationId))
-            .Typing(new ChatTypingPayload(userId, IsTyping: true));
+            .Typing(new ChatTypingPayload(userId, displayName, true, null));
     }
 
     public async Task StopTyping(Guid conversationId)
     {
         var userId = RequireUserId();
+        var displayName = ResolveDisplayName();
         await chatAuthorization.EnsureActiveParticipantAsync(userId, conversationId, Context.ConnectionAborted);
+        var summaries = await chatUserSummaryLookup.GetSummariesAsync([userId], Context.ConnectionAborted);
+        var user = summaries[userId];
         await Clients.OthersInGroup(ChatGroups.Conversation(conversationId))
-            .StopTyping(new ChatTypingPayload(userId, IsTyping: false));
+            .StopTyping(new ChatTypingPayload(userId, displayName, false, user));
+    }
+
+    private string ResolveDisplayName()
+    {
+        return Context.User?.FindFirstValue(ClaimTypes.Name)
+            ?? Context.User?.FindFirstValue("name")
+            ?? Context.User?.FindFirstValue("fullName")
+            ?? Context.User?.Identity?.Name
+            ?? RequireUserId();
     }
 
     private string RequireUserId()

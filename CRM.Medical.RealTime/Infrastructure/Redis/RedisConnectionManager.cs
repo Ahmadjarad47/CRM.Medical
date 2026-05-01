@@ -95,6 +95,68 @@ public sealed class RedisConnectionManager(IConnectionMultiplexer mux, ILogger<R
     public Task<bool> IsOnlineAsync(string userId, CancellationToken cancellationToken = default) =>
         _db.SetContainsAsync(PresenceRedisKeys.OnlineUsersSet, userId);
 
+    public async Task<IReadOnlySet<string>> GetOnlineSubsetAsync(
+        IReadOnlyCollection<string> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        var distinct = userIds
+            .Where(static id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        if (distinct.Length == 0)
+            return new HashSet<string>(StringComparer.Ordinal);
+
+        var batch = _db.CreateBatch();
+        var tasks = distinct.Select(id => batch.SetContainsAsync(PresenceRedisKeys.OnlineUsersSet, id)).ToArray();
+        batch.Execute();
+        var flags = await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        var set = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < distinct.Length; i++)
+        {
+            if (flags[i])
+                set.Add(distinct[i]);
+        }
+
+        return set;
+    }
+
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<string>?>> GetPersistedRolesForUsersAsync(
+        IReadOnlyCollection<string> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        var distinct = userIds
+            .Where(static id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        if (distinct.Length == 0)
+            return new Dictionary<string, IReadOnlyList<string>?>(StringComparer.Ordinal);
+
+        var batch = _db.CreateBatch();
+        var tasks = distinct.Select(id => batch.StringGetAsync(PresenceRedisKeys.UserRolesMarker(id))).ToArray();
+        batch.Execute();
+        var values = await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        var dict = new Dictionary<string, IReadOnlyList<string>?>(StringComparer.Ordinal);
+        for (var i = 0; i < distinct.Length; i++)
+        {
+            var redisVal = values[i];
+            if (redisVal.IsNullOrEmpty)
+            {
+                dict[distinct[i]] = null;
+                continue;
+            }
+
+            var parts = redisVal.ToString()
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            dict[distinct[i]] = parts.Length == 0 ? null : parts;
+        }
+
+        return dict;
+    }
+
     public async Task<IReadOnlyCollection<string>> GetAllOnlineUserIdsAsync(CancellationToken cancellationToken = default)
     {
         var members = await _db.SetMembersAsync(PresenceRedisKeys.OnlineUsersSet).ConfigureAwait(false);

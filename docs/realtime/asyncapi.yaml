@@ -179,14 +179,14 @@ components:
     TypingClient:
       name: Typing
       title: Typing (client callback)
-      summary: Typing indicator from another participant (`OthersInGroup`).
+      summary: Typing indicator from another participant (`OthersInGroup`). Payload includes optional `displayName` from the peer JWT (prefer `displayName ?? userId` in UI).
       payload:
         $ref: '#/components/schemas/ChatTypingPayload'
 
     StopTypingClient:
       name: StopTyping
       title: StopTyping (client callback)
-      summary: Peer stopped typing.
+      summary: Peer stopped typing (same payload shape as Typing; `isTyping` is false).
       payload:
         $ref: '#/components/schemas/ChatTypingPayload'
 
@@ -255,6 +255,19 @@ components:
         fileUrl:
           type: string
           nullable: true
+          description: Use when the file was uploaded via HTTP first. Ignored if fileContent is set.
+        fileContent:
+          type: string
+          format: byte
+          nullable: true
+          description: Raw file bytes as base64 (SignalR JSON). Requires fileName; hub uploads and passes URL to the command.
+        fileName:
+          type: string
+          nullable: true
+        contentType:
+          type: string
+          nullable: true
+          description: MIME type (e.g. image/png).
         replyToId:
           type: string
           format: uuid
@@ -264,6 +277,27 @@ components:
       type: integer
       enum: [1, 2, 3]
       description: Text = 1, File = 2, Image = 3 (`CRM.Medical.Domain.Chat.ChatMessageType`).
+
+    ChatUserSummaryDto:
+      type: object
+      description: User profile + presence merged for chat REST and SignalR payloads (`CRM.Medical.Application.Features.Chat.DTOs.ChatUserSummaryDto`).
+      required: [userId, fullName, isOnline]
+      properties:
+        userId:
+          type: string
+        fullName:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phoneNumber:
+          type: string
+          nullable: true
+        role:
+          type: string
+          nullable: true
+        isOnline:
+          type: boolean
 
     ChatMessageRealtimePayload:
       type: object
@@ -285,6 +319,10 @@ components:
         senderDisplayName:
           type: string
           nullable: true
+        sender:
+          $ref: '#/components/schemas/ChatUserSummaryDto'
+          nullable: true
+          description: Same user as senderId; includes email, role, and Redis-backed isOnline.
         text:
           type: string
           nullable: true
@@ -307,8 +345,15 @@ components:
       properties:
         userId:
           type: string
+        displayName:
+          type: string
+          nullable: true
         isTyping:
           type: boolean
+        user:
+          $ref: '#/components/schemas/ChatUserSummaryDto'
+          nullable: true
+          description: Enriched profile for the typing user (same as userId).
 
     ChatReadReceiptPayload:
       type: object
@@ -322,6 +367,10 @@ components:
         readAtUtc:
           type: string
           format: date-time
+        reader:
+          $ref: '#/components/schemas/ChatUserSummaryDto'
+          nullable: true
+          description: Enriched profile for readerUserId.
 
     ConversationUpdatedPayload:
       type: object
@@ -345,6 +394,10 @@ components:
           items:
             type: string
           nullable: true
+        user:
+          $ref: '#/components/schemas/ChatUserSummaryDto'
+          nullable: true
+          description: Profile from EF + presence; roles may still list multiple claims from Redis.
 
     UserOfflinePayload:
       type: object

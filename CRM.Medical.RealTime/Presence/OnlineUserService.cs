@@ -1,5 +1,7 @@
 using CRM.Medical.Application.Abstractions.Chat;
+using CRM.Medical.Application.Features.Chat.Services;
 using CRM.Medical.RealTime.Hubs;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CRM.Medical.RealTime.Presence;
 
@@ -7,7 +9,8 @@ namespace CRM.Medical.RealTime.Presence;
 /// Builds <see cref="UserOnlinePayload"/> lists from Redis SET <c>presence:online-users</c>
 /// and role markers / role indexes (SET per role).
 /// </summary>
-public sealed class OnlineUserService(IConnectionManager connections) : IOnlineUserService
+public sealed class OnlineUserService(IConnectionManager connections, IServiceScopeFactory scopeFactory)
+    : IOnlineUserService
 {
     public async Task<IReadOnlyCollection<UserOnlinePayload>> GetOnlineUsersAsync(CancellationToken cancellationToken = default)
     {
@@ -31,12 +34,23 @@ public sealed class OnlineUserService(IConnectionManager connections) : IOnlineU
         if (userIds.Count == 0)
             return Array.Empty<UserOnlinePayload>();
 
-        var list = new List<UserOnlinePayload>(userIds.Count);
-        foreach (var userId in userIds)
+        var distinctList = userIds
+            .Where(static u => !string.IsNullOrWhiteSpace(u))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var lookup = scope.ServiceProvider.GetRequiredService<IChatUserSummaryLookup>();
+        var rolesMap = await connections.GetPersistedRolesForUsersAsync(distinctList, cancellationToken).ConfigureAwait(false);
+        var summaries = await lookup.GetSummariesAsync(distinctList, cancellationToken).ConfigureAwait(false);
+
+        var list = new List<UserOnlinePayload>(distinctList.Count);
+        foreach (var userId in distinctList)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var roles = await connections.GetPersistedRolesAsync(userId, cancellationToken).ConfigureAwait(false);
-            list.Add(new UserOnlinePayload(userId, roles));
+            rolesMap.TryGetValue(userId, out var roles);
+            summaries.TryGetValue(userId, out var user);
+            list.Add(new UserOnlinePayload(userId, roles?.ToList(), user));
         }
 
         return list;

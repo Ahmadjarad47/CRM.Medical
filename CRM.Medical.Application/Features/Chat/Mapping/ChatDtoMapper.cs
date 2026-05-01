@@ -1,14 +1,14 @@
 using CRM.Medical.Application.Features.Chat.DTOs;
 using CRM.Medical.Domain.Chat;
 using CRM.Medical.Domain.Entities;
-using Microsoft.AspNetCore.Identity;
 
 namespace CRM.Medical.Application.Features.Chat.Mapping;
 
 public static class ChatDtoMapper
 {
-    public static MessageDto ToDto(this Message message, User? sender)
+    public static MessageDto ToDto(this Message message, ChatUserSummaryDto? sender)
     {
+        var senderFullName = string.IsNullOrWhiteSpace(sender?.FullName) ? null : sender!.FullName;
         var attachments = (message.Attachments ?? [])
             .OrderBy(a => a.UploadedAt)
             .Select(a => new MessageAttachmentDto(
@@ -17,7 +17,9 @@ public static class ChatDtoMapper
                 a.FileUrl,
                 a.FileType,
                 a.FileSize,
-                a.UploadedAt))
+                a.UploadedAt,
+                message.SenderId,
+                sender))
             .ToList()
             .AsReadOnly();
 
@@ -25,7 +27,8 @@ public static class ChatDtoMapper
             message.Id,
             message.ConversationId,
             message.SenderId,
-            sender?.FullName,
+            senderFullName,
+            sender,
             message.Text,
             message.MessageType,
             message.FileUrl,
@@ -34,11 +37,5 @@ public static class ChatDtoMapper
             message.CreatedAt,
             message.UpdatedAt,
             attachments);
-    }
-
-    public static async Task<MessageDto> ToDtoAsync(this Message message, UserManager<User> userManager)
-    {
-        var sender = await userManager.FindByIdAsync(message.SenderId);
-        return message.ToDto(sender);
     }
 }

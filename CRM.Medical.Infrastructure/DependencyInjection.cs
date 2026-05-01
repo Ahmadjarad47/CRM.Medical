@@ -90,6 +90,8 @@ public static class DependencyInjection
 
         services.AddScoped<IChatPersistence, ChatPersistence>();
         services.AddScoped<IChatAuthorizationService, ChatAuthorizationService>();
+        services.AddScoped<IChatUserProfileReader, EfChatUserProfileReader>();
+        services.AddScoped<IChatUserSummaryLookup, ChatUserSummaryLookup>();
 
         services.AddDbContext<MedicalDbContext>((sp, options) =>
         {

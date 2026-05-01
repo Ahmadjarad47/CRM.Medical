@@ -1,3 +1,5 @@
+using CRM.Medical.Application.Features.Chat.DTOs;
+
 namespace CRM.Medical.RealTime.Hubs;
 
 /// <summary>Strongly typed SignalR client callbacks for <see cref="OnlineUsersHub"/>.</summary>
@@ -11,7 +13,7 @@ public interface IOnlineUsersClient
 }
 
 /// <summary>Payload for <see cref="IOnlineUsersClient.UserOnline"/>.</summary>
-public sealed record UserOnlinePayload(string UserId, IReadOnlyList<string>? Roles);
+public sealed record UserOnlinePayload(string UserId, IReadOnlyList<string>? Roles, ChatUserSummaryDto? User);
 
 /// <summary>Payload for <see cref="IOnlineUsersClient.UserOffline"/>.</summary>
 public sealed record UserOfflinePayload(string UserId);

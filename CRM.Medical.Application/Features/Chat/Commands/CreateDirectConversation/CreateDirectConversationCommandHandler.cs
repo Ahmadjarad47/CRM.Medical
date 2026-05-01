@@ -12,6 +12,7 @@ namespace CRM.Medical.Application.Features.Chat.Commands.CreateDirectConversatio
 public sealed class CreateDirectConversationCommandHandler(
     IChatPersistence chatPersistence,
     IChatAuthorizationService chatAuthorization,
+    IChatUserSummaryLookup summaryLookup,
     IDateTimeProvider dateTimeProvider)
     : IRequestHandler<CreateDirectConversationCommand, ConversationSummaryDto>
 {
@@ -87,9 +88,23 @@ public sealed class CreateDirectConversationCommandHandler(
             [conversation.Id],
             cancellationToken);
 
+        var userIds = new HashSet<string>(StringComparer.Ordinal);
+        if (!string.IsNullOrEmpty(conversation.CreatedByUserId))
+            userIds.Add(conversation.CreatedByUserId);
+
+        if (lastDict.TryGetValue(conversation.Id, out var lastProbe) && lastProbe is not null && !string.IsNullOrEmpty(lastProbe.SenderId))
+            userIds.Add(lastProbe.SenderId);
+
+        var summaries = await summaryLookup.GetSummariesAsync(userIds.ToList(), cancellationToken);
+
+        ChatUserSummaryDto? createdByUser = null;
+        if (!string.IsNullOrEmpty(conversation.CreatedByUserId))
+            summaries.TryGetValue(conversation.CreatedByUserId, out createdByUser);
+
         if (lastDict.TryGetValue(conversation.Id, out var last) && last is not null)
         {
-            preview = new MessagePreviewDto(last.Text, last.MessageType, last.CreatedAt);
+            summaries.TryGetValue(last.SenderId, out var lastSender);
+            preview = new MessagePreviewDto(last.Text, last.MessageType, last.CreatedAt, last.SenderId, lastSender);
         }
 
         return new ConversationSummaryDto(
@@ -97,6 +112,8 @@ public sealed class CreateDirectConversationCommandHandler(
             conversation.Type,
             conversation.Title,
             conversation.CreatedAt,
+            conversation.CreatedByUserId,
+            createdByUser,
             preview,
             unread);
     }

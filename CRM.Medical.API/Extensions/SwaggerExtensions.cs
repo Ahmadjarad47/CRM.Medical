@@ -15,7 +15,8 @@ public static class SwaggerExtensions
                 Description =
                     "Production-grade CRM Medical REST API — Clean Architecture · CQRS · JWT · Redis. " +
                     "JSON responses use a common envelope: `{ \"success\": true|false, \"message\": \"ok|bad\", \"data\": ... }`. " +
-                    "Endpoints that previously returned 204 No Content now return **200** with `data: null` and `message: \"ok\"`."
+                    "Endpoints that previously returned 204 No Content now return **200** with `data: null` and `message: \"ok\"`. " +
+                    "**Chat (`/api/chat`)** nested user objects use `ChatUserSummaryDto` (`userId`, `fullName`, `email`, `phoneNumber`, `role`, `isOnline`) on `sender`, `user`, `createdByUser`, `lastMessage.sender`, `uploadedByUser`, etc., while scalar ids remain for backward compatibility."
             });
 
             // JWT Bearer security definition

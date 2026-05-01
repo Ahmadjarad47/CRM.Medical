@@ -6,6 +6,7 @@ public sealed record ConversationParticipantDto(
     Guid Id,
     string UserId,
     string? FullName,
+    ChatUserSummaryDto? User,
     ConversationParticipantRole Role,
     DateTime JoinedAtUtc,
     DateTime? LeftAtUtc);

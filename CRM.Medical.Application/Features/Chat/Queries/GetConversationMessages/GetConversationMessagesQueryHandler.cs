@@ -2,17 +2,14 @@ using CRM.Medical.Application.Features.Chat.DTOs;
 using CRM.Medical.Application.Features.Chat.Mapping;
 using CRM.Medical.Application.Features.Chat.Persistence;
 using CRM.Medical.Application.Features.Chat.Services;
-using CRM.Medical.Domain.Entities;
 using MediatR;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 namespace CRM.Medical.Application.Features.Chat.Queries.GetConversationMessages;
 
 public sealed class GetConversationMessagesQueryHandler(
     IChatPersistence chatPersistence,
     IChatAuthorizationService chatAuthorization,
-    UserManager<User> userManager)
+    IChatUserSummaryLookup summaryLookup)
     : IRequestHandler<GetConversationMessagesQuery, IReadOnlyList<MessageDto>>
 {
     public async Task<IReadOnlyList<MessageDto>> Handle(GetConversationMessagesQuery request, CancellationToken cancellationToken)
@@ -25,15 +22,11 @@ public sealed class GetConversationMessagesQueryHandler(
         var chronological = messages.OrderBy(m => m.CreatedAt).ToList();
 
         var senderIds = chronological.Select(m => m.SenderId).Distinct().ToList();
-        var users = await userManager.Users.Where(u => senderIds.Contains(u.Id)).ToListAsync(cancellationToken);
-        var map = users.ToDictionary(u => u.Id);
+        var map = await summaryLookup.GetSummariesAsync(senderIds, cancellationToken);
 
         var dtos = new List<MessageDto>();
         foreach (var m in chronological)
-        {
-            map.TryGetValue(m.SenderId, out var sender);
-            dtos.Add(m.ToDto(sender));
-        }
+            dtos.Add(m.ToDto(map[m.SenderId]));
 
         return dtos;
     }

@@ -17,7 +17,17 @@ public static class DependencyInjection
             .Concat(additionalMappingAssemblies)
             .Distinct()
             .ToArray();
-
+        services.AddCors(options =>
+        {
+            options.AddPolicy("DevCors", policy =>
+            {
+                policy
+                    .WithOrigins("http://localhost:5173")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
+            });
+        });
         var typeAdapterConfig = TypeAdapterConfig.GlobalSettings;
         typeAdapterConfig.Scan(mappingAssemblies);
         services.AddSingleton(typeAdapterConfig);

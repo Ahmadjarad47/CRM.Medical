@@ -125,6 +125,7 @@ app.Logger.LogInformation(
     "Environment: {EnvironmentName}. URLs follow ASPNETCORE_URLS / launch profile (not hardcoded here).",
     app.Environment.EnvironmentName
 );
+app.UseCors("DevCors");
 
 app.UseHttpsRedirection();
 app.UseAuthentication();

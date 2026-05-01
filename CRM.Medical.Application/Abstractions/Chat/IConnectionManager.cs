@@ -19,7 +19,17 @@ public interface IConnectionManager
 
     Task<bool> IsOnlineAsync(string userId, CancellationToken cancellationToken = default);
 
+    /// <summary>Redis SISMEMBER against <c>presence:online-users</c> for each id (single batched network round-trip).</summary>
+    Task<IReadOnlySet<string>> GetOnlineSubsetAsync(
+        IReadOnlyCollection<string> userIds,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyCollection<string>> GetAllOnlineUserIdsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Reads role markers <c>presence:user:{id}:role</c> for many users in one batch.</summary>
+    Task<IReadOnlyDictionary<string, IReadOnlyList<string>?>> GetPersistedRolesForUsersAsync(
+        IReadOnlyCollection<string> userIds,
+        CancellationToken cancellationToken = default);
 
     /// <summary>Comma-split roles from Redis marker <c>presence:user:{userId}:role</c>.</summary>
     Task<IReadOnlyList<string>?> GetPersistedRolesAsync(string userId, CancellationToken cancellationToken = default);
