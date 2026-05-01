@@ -98,6 +98,7 @@ public sealed class ApiEnvelopeResultFilter : IAsyncResultFilter
                 if (statusCode is >= 200 and < 300)
                 {
                     obj.Value = ApiEnvelope.Ok(obj.Value);
+                    obj.DeclaredType = typeof(ApiEnvelope);
                     obj.StatusCode = statusCode;
                     return;
                 }

@@ -3,4 +3,5 @@
   <Project Path="CRM.Medical.Application/CRM.Medical.Application.csproj" />
   <Project Path="CRM.Medical.Domain/CRM.Medical.Domain.csproj" />
   <Project Path="CRM.Medical.Infrastructure/CRM.Medical.Infrastructure.csproj" />
+  <Project Path="CRM.Medical.RealTime/CRM.Medical.RealTime.csproj" />
 </Solution>

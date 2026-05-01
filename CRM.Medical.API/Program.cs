@@ -102,7 +102,7 @@ var app = builder.Build();
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MedicalDbContext>();
-        await db.Database.MigrateAsync();
+         await db.Database.MigrateAsync();
 }
 
 app.UseCrmMiddlewares();

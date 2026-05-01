@@ -16,6 +16,32 @@ public sealed class ExternalPatientService(
     ICurrentUserAccessor currentUser,
     UserManager<User> userManager) : IExternalPatientService
 {
+    private readonly TestRequestAccessEvaluator _access = new(db, currentUser);
+
+    public async Task<IReadOnlyList<ExternalPatientDto>> ListAsync(CancellationToken cancellationToken)
+    {
+        MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
+        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestRequestRead);
+
+        var rows = await FilterAccessible(db.ExternalPatients.AsNoTracking())
+            .OrderByDescending(e => e.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(Map).ToList();
+    }
+
+    public async Task<ExternalPatientDto> GetByIdAsync(int id, CancellationToken cancellationToken)
+    {
+        MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
+        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestRequestRead);
+
+        var entity = await FilterAccessible(db.ExternalPatients.AsNoTracking())
+            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken)
+            ?? throw new ApplicationNotFoundException($"External patient '{id}' was not found.");
+
+        return Map(entity);
+    }
+
     public async Task<ExternalPatientDto> CreateAsync(
         string fullName,
         int? age,
@@ -80,6 +106,51 @@ public sealed class ExternalPatientService(
 
         entity.LinkToDirectPatient(directPatientUserId);
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private IQueryable<ExternalPatient> FilterAccessible(IQueryable<ExternalPatient> query)
+    {
+        var userId = currentUser.UserId;
+        if (string.IsNullOrEmpty(userId))
+            return query.Where(_ => false);
+
+        if (currentUser.IsInRole(UserRoles.Admin))
+            return query;
+
+        var fromRequests = _access
+            .FilterAccessible(db.TestRequests.AsNoTracking())
+            .Where(r => r.ExternalPatientId != null)
+            .Select(r => r.ExternalPatientId!.Value);
+
+        if (currentUser.IsInRole(UserRoles.Patient))
+        {
+            return query.Where(e =>
+                e.LinkedDirectPatientId == userId
+                || fromRequests.Contains(e.Id));
+        }
+
+        if (currentUser.IsInRole(UserRoles.LabPartner))
+        {
+            return query.Where(e =>
+                e.CreatedByUserId == userId
+                || fromRequests.Contains(e.Id));
+        }
+
+        if (currentUser.IsInRole(UserRoles.Doctor))
+        {
+            var patientIds = db.Users.AsNoTracking()
+                .Where(u => u.CreatedByUserId == userId)
+                .Select(u => u.Id);
+
+            return query.Where(e =>
+                e.CreatedByUserId == userId
+                || fromRequests.Contains(e.Id)
+                || (e.LinkedDirectPatientId != null && patientIds.Contains(e.LinkedDirectPatientId)));
+        }
+
+        return query.Where(e =>
+            e.CreatedByUserId == userId
+            || fromRequests.Contains(e.Id));
     }
 
     private static ExternalPatientDto Map(ExternalPatient e) =>

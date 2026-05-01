@@ -20,18 +20,35 @@ public sealed class OnlineUsersHub(
     public override async Task OnConnectedAsync()
     {
         var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+
         if (!string.IsNullOrEmpty(userId))
         {
-            var roles = Context.User!.FindAll(ClaimTypes.Role).Select(c => c.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            await presenceLifecycle.OnHubConnectedAsync(userId, Context.ConnectionId, roles, Context.ConnectionAborted)
-                .ConfigureAwait(false);
+            var roles = Context.User!
+                .FindAll(ClaimTypes.Role)
+                .Select(c => c.Value)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            logger.LogInformation(
+                "OnlineUsersHub CONNECTED | UserId: {UserId} | ConnectionId: {ConnectionId} | Roles: {Roles}",
+                userId,
+                Context.ConnectionId,
+                string.Join(",", roles));
+
+            await presenceLifecycle.OnHubConnectedAsync(
+                userId,
+                Context.ConnectionId,
+                roles,
+                Context.ConnectionAborted);
         }
         else
         {
-            logger.LogWarning("OnlineUsersHub connection without NameIdentifier claim.");
+            logger.LogWarning(
+                "OnlineUsersHub CONNECTED without NameIdentifier | ConnectionId: {ConnectionId}",
+                Context.ConnectionId);
         }
 
-        await base.OnConnectedAsync().ConfigureAwait(false);
+        await base.OnConnectedAsync();
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

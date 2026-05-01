@@ -28,15 +28,33 @@ public sealed class ChatHub(
     public override async Task OnConnectedAsync()
     {
         var userId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+
         if (!string.IsNullOrEmpty(userId))
         {
-            var roles = Context.User!.FindAll(ClaimTypes.Role).Select(c => c.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            await presenceLifecycle.OnHubConnectedAsync(userId, Context.ConnectionId, roles, Context.ConnectionAborted);
+            var roles = Context.User!.FindAll(ClaimTypes.Role)
+                .Select(c => c.Value)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            logger.LogInformation(
+                "SignalR CONNECTED | UserId: {UserId} | ConnectionId: {ConnectionId} | Roles: {Roles}",
+                userId,
+                Context.ConnectionId,
+                string.Join(",", roles));
+
+            await presenceLifecycle.OnHubConnectedAsync(
+                userId,
+                Context.ConnectionId,
+                roles,
+                Context.ConnectionAborted);
+
             await Groups.AddToGroupAsync(Context.ConnectionId, ChatGroups.User(userId));
         }
         else
         {
-            logger.LogWarning("SignalR connection without NameIdentifier claim.");
+            logger.LogWarning(
+                "SignalR CONNECTED without NameIdentifier | ConnectionId: {ConnectionId}",
+                Context.ConnectionId);
         }
 
         await base.OnConnectedAsync();

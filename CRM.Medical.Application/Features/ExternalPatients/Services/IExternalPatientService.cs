@@ -4,6 +4,10 @@ namespace CRM.Medical.Application.Features.ExternalPatients.Services;
 
 public interface IExternalPatientService
 {
+    Task<IReadOnlyList<ExternalPatientDto>> ListAsync(CancellationToken cancellationToken);
+
+    Task<ExternalPatientDto> GetByIdAsync(int id, CancellationToken cancellationToken);
+
     Task<ExternalPatientDto> CreateAsync(
         string fullName,
         int? age,

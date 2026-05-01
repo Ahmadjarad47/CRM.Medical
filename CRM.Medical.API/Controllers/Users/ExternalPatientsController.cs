@@ -12,6 +12,18 @@ namespace CRM.Medical.API.Controllers.Users;
 [Route("api/external-patients")]
 public sealed class ExternalPatientsController(IExternalPatientService externalPatients) : ControllerBase
 {
+    [HttpGet]
+    [Authorize(Policy = UserPermissions.TestRequestRead)]
+    [ProducesResponseType(typeof(IReadOnlyList<ExternalPatientDto>), StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<ExternalPatientDto>> List(CancellationToken cancellationToken) =>
+        externalPatients.ListAsync(cancellationToken);
+
+    [HttpGet("{id:int}")]
+    [Authorize(Policy = UserPermissions.TestRequestRead)]
+    [ProducesResponseType(typeof(ExternalPatientDto), StatusCodes.Status200OK)]
+    public Task<ExternalPatientDto> Get(int id, CancellationToken cancellationToken) =>
+        externalPatients.GetByIdAsync(id, cancellationToken);
+
     [HttpPost]
     [Authorize(Policy = UserPermissions.TestRequestCreate)]
     [ProducesResponseType(typeof(ExternalPatientDto), StatusCodes.Status200OK)]

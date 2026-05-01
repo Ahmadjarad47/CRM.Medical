@@ -14,4 +14,12 @@ internal static class JsonBodyExtensions
 
         return JsonDocument.Parse(element.Value.GetRawText());
     }
+
+    public static JsonDocument? ParseOptionalJsonDocument(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        return JsonDocument.Parse(json.Trim());
+    }
 }
