@@ -155,6 +155,7 @@ public static class DependencyInjection
         services.Configure<DevelopmentSeedOptions>(
             configuration.GetSection(DevelopmentSeedOptions.SectionName));
         services.AddHostedService<IdentityRoleSeedHostedService>();
+        services.AddHostedService<ClinicalRoleDefaultPermissionsHostedService>();
         services.AddHostedService<DevelopmentUserSeedHostedService>();
 
         return services;

@@ -13,19 +13,19 @@ namespace CRM.Medical.API.Controllers.Users;
 public sealed class ExternalPatientsController(IExternalPatientService externalPatients) : ControllerBase
 {
     [HttpGet]
-    [Authorize(Policy = UserPermissions.TestRequestRead)]
+    [Authorize(Policy = UserPermissions.ExternalPatientsManage)]
     [ProducesResponseType(typeof(IReadOnlyList<ExternalPatientDto>), StatusCodes.Status200OK)]
     public Task<IReadOnlyList<ExternalPatientDto>> List(CancellationToken cancellationToken) =>
         externalPatients.ListAsync(cancellationToken);
 
     [HttpGet("{id:int}")]
-    [Authorize(Policy = UserPermissions.TestRequestRead)]
+    [Authorize(Policy = UserPermissions.ExternalPatientsManage)]
     [ProducesResponseType(typeof(ExternalPatientDto), StatusCodes.Status200OK)]
     public Task<ExternalPatientDto> Get(int id, CancellationToken cancellationToken) =>
         externalPatients.GetByIdAsync(id, cancellationToken);
 
     [HttpPost]
-    [Authorize(Policy = UserPermissions.TestRequestCreate)]
+    [Authorize(Policy = UserPermissions.ExternalPatientsManage)]
     [ProducesResponseType(typeof(ExternalPatientDto), StatusCodes.Status200OK)]
     public Task<ExternalPatientDto> Create(
         [FromBody] SaveExternalPatientRequest request,
@@ -39,7 +39,7 @@ public sealed class ExternalPatientsController(IExternalPatientService externalP
             cancellationToken);
 
     [HttpPost("{id:int}/link-direct-patient")]
-    [Authorize(Policy = UserPermissions.TestRequestUpdate)]
+    [Authorize(Policy = UserPermissions.ExternalPatientsManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> LinkDirectPatient(
         int id,

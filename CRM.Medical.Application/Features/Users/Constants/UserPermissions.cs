@@ -38,6 +38,9 @@ public static class UserPermissions
     public const string TestResultUpdate = "TestResult.Update";
     public const string TestResultDelete = "TestResult.Delete";
 
+    /// <summary>Full access to external patient records (<c>/api/external-patients</c>).</summary>
+    public const string ExternalPatientsManage = "ExternalPatients.Manage";
+
     public static readonly IReadOnlyList<string> All =
     [
         UsersView,
@@ -61,6 +64,7 @@ public static class UserPermissions
         TestResultRead,
         TestResultCreate,
         TestResultUpdate,
-        TestResultDelete
+        TestResultDelete,
+        ExternalPatientsManage
     ];
 }

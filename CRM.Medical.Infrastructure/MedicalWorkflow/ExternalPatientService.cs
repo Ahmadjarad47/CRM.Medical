@@ -21,7 +21,7 @@ public sealed class ExternalPatientService(
     public async Task<IReadOnlyList<ExternalPatientDto>> ListAsync(CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestRequestRead);
+        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.ExternalPatientsManage);
 
         var rows = await FilterAccessible(db.ExternalPatients.AsNoTracking())
             .OrderByDescending(e => e.CreatedAt)
@@ -33,7 +33,7 @@ public sealed class ExternalPatientService(
     public async Task<ExternalPatientDto> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestRequestRead);
+        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.ExternalPatientsManage);
 
         var entity = await FilterAccessible(db.ExternalPatients.AsNoTracking())
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken)
@@ -51,7 +51,7 @@ public sealed class ExternalPatientService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestRequestCreate);
+        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.ExternalPatientsManage);
         MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         if (string.IsNullOrWhiteSpace(fullName))
@@ -80,7 +80,7 @@ public sealed class ExternalPatientService(
     public async Task LinkToDirectPatientAsync(int externalPatientId, string directPatientUserId, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestRequestUpdate);
+        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.ExternalPatientsManage);
         MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         if (string.IsNullOrWhiteSpace(directPatientUserId))
