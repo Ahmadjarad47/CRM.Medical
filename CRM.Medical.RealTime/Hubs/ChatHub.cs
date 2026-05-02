@@ -88,7 +88,7 @@ public sealed class ChatHub(
     public async Task SendMessage(SendMessageRequest request)
     {
         var userId = RequireUserId();
-        var fileUrl = request.FileUrl;
+        string? fileUrl = request.FileUrl;
         if (request.FileContent is { Length: > 0 })
         {
             if (string.IsNullOrWhiteSpace(request.FileName))
@@ -98,7 +98,7 @@ public sealed class ChatHub(
                 throw new HubException("FILE_MESSAGE_TYPE_REQUIRED");
 
             await using var stream = new MemoryStream(request.FileContent, writable: false);
-            var formFile = new FormFile(stream, 0, request.FileContent.Length, "file", Path.GetFileName(request.FileName))
+            IFormFile formFile = new FormFile(stream, 0, request.FileContent.Length, "file", Path.GetFileName(request.FileName))
             {
                 Headers = new HeaderDictionary(),
                 ContentType = string.IsNullOrWhiteSpace(request.ContentType)
