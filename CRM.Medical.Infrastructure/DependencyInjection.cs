@@ -2,6 +2,7 @@ using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using CRM.Medical.Application.Auth;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Common.Storage;
 using CRM.Medical.Application.Configuration.Database;
@@ -23,6 +24,7 @@ using CRM.Medical.Infrastructure.MedicalWorkflow;
 using CRM.Medical.Application.Health;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Auth;
+using CRM.Medical.Infrastructure.Authorization;
 using CRM.Medical.Infrastructure.Caching;
 using CRM.Medical.Infrastructure.Configuration;
 using CRM.Medical.Infrastructure.Diagnostics;
@@ -80,7 +82,13 @@ public static class DependencyInjection
         services.AddScoped<IBannerRepository, BannerRepository>();
         services.AddScoped<ITemplateRepository, TemplateRepository>();
         services.AddScoped<IUserManagementAccess, UserManagementAccessService>();
-        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddMemoryCache();
+        services.AddScoped<IPolicyProvider, DbPolicyProvider>();
+        services.AddSingleton<IConditionParser, JsonConditionParser>();
+        services.AddScoped<PolicyEngine>();
+        services.AddScoped<IPolicyEngine>(sp => sp.GetRequiredService<PolicyEngine>());
+        services.AddScoped<IPermissionEvaluator>(sp => sp.GetRequiredService<PolicyEngine>());
+        services.AddScoped<IAccessPolicyService, AccessPolicyService>();
         services.AddScoped<IRolePermissionService, RolePermissionService>();
         services.AddScoped<IUserEffectivePermissionsProvider, UserEffectivePermissionsProvider>();
         services.AddScoped<IMedicalTestService, MedicalTestService>();
@@ -157,6 +165,7 @@ public static class DependencyInjection
         services.AddHostedService<IdentityRoleSeedHostedService>();
         services.AddHostedService<ClinicalRoleDefaultPermissionsHostedService>();
         services.AddHostedService<DevelopmentUserSeedHostedService>();
+        services.AddHostedService<AbacPolicySeedHostedService>();
 
         return services;
     }

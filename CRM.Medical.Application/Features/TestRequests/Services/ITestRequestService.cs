@@ -1,3 +1,4 @@
+using CRM.Medical.Application.Common.Responses;
 using System.Text.Json;
 using CRM.Medical.Application.Features.TestRequests.DTOs;
 
@@ -5,7 +6,11 @@ namespace CRM.Medical.Application.Features.TestRequests.Services;
 
 public interface ITestRequestService
 {
-    Task<IReadOnlyList<TestRequestDto>> ListAsync(CancellationToken cancellationToken);
+    Task<PagedResult<TestRequestDto>> ListAsync(
+        int page,
+        int pageSize,
+        string? search,
+        CancellationToken cancellationToken);
 
     Task<TestRequestDto> GetByIdAsync(int id, CancellationToken cancellationToken);
 

@@ -1,5 +1,7 @@
 using System.Text.Json;
 using CRM.Medical.Application.Abstractions;
+using CRM.Medical.Application.Common.Queries;
+using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.MedicalTests.DTOs;
 using CRM.Medical.Application.Features.MedicalTests.Services;
@@ -8,23 +10,50 @@ using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace CRM.Medical.Infrastructure.MedicalWorkflow;
 
 public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor user)
     : IMedicalTestService
 {
-    public async Task<IReadOnlyList<MedicalTestDto>> ListAsync(CancellationToken cancellationToken)
+    private static readonly IReadOnlyDictionary<string, Expression<Func<MedicalTest, string?>>> SearchFields =
+        new Dictionary<string, Expression<Func<MedicalTest, string?>>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["namear"] = t => t.NameAr,
+            ["nameen"] = t => t.NameEn,
+            ["category"] = t => t.Category,
+            ["sample"] = t => t.SampleType,
+            ["status"] = t => t.Status
+        };
+
+    public async Task<PagedResult<MedicalTestDto>> ListAsync(
+        int page,
+        int pageSize,
+        string? search,
+        CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
         MedicalWorkflowAuthorization.RequirePermissionOrAdmin(user, UserPermissions.MedicalTestRead);
 
-        var items = await db.MedicalTests
-            .AsNoTracking()
+        var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
+        var query = db.MedicalTests.AsNoTracking();
+
+        query = query.ApplyAdvancedSearch(search, SearchFields, t => t.NameAr, t => t.NameEn, t => t.Category, t => t.SampleType, t => t.Status);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var items = await query
             .OrderBy(t => t.Id)
+            .ApplyPagination(normalizedPage, normalizedPageSize)
             .ToListAsync(cancellationToken);
 
-        return items.Select(Map).ToList();
+        return new PagedResult<MedicalTestDto>
+        {
+            Items = items.Select(Map).ToList(),
+            Page = normalizedPage,
+            PageSize = normalizedPageSize,
+            TotalCount = totalCount
+        };
     }
 
     public async Task<MedicalTestDto> GetByIdAsync(int id, CancellationToken cancellationToken)

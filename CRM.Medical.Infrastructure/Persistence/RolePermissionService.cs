@@ -1,8 +1,10 @@
+using System.Text.Json;
 using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.Permissions.DTOs;
 using CRM.Medical.Application.Features.Permissions.Services;
 using CRM.Medical.Domain.Entities;
+using CRM.Medical.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,60 +17,111 @@ public sealed class RolePermissionService(
     ICacheService cache)
     : IRolePermissionService
 {
-    public async Task AssignPermissionToRoleAsync(string roleId, Guid permissionId, CancellationToken cancellationToken)
+    public async Task AssignPermissionToRoleAsync(
+        string roleId,
+        string name,
+        string resource,
+        string action,
+        PolicyEffect effect,
+        int priority,
+        JsonDocument? conditionJson,
+        string? description,
+        bool isEnabled,
+        CancellationToken cancellationToken)
     {
-        _ = await roleManager.FindByIdAsync(roleId)
+        var role = await roleManager.FindByIdAsync(roleId)
             ?? throw new ApplicationNotFoundException($"Role '{roleId}' was not found.");
 
-        _ = await db.Permissions.AsNoTracking().FirstOrDefaultAsync(p => p.Id == permissionId, cancellationToken)
-            ?? throw new ApplicationNotFoundException($"Permission '{permissionId}' was not found.");
+        var roleName = role.Name ?? throw new ApplicationBadRequestException("Role name is required.");
+        var normalizedName = string.IsNullOrWhiteSpace(name) ? $"{roleName}:{resource}:{action}" : name.Trim();
+        var normalizedResource = resource?.Trim() ?? string.Empty;
+        var normalizedAction = action?.Trim() ?? string.Empty;
 
-        var exists = await db.RolePermissions.AnyAsync(
-            rp => rp.RoleId == roleId && rp.PermissionId == permissionId,
+        if (string.IsNullOrWhiteSpace(normalizedResource))
+            throw new ApplicationBadRequestException("Resource is required.");
+        if (string.IsNullOrWhiteSpace(normalizedAction))
+            throw new ApplicationBadRequestException("Action is required.");
+        if (!Enum.IsDefined(effect))
+            throw new ApplicationBadRequestException("Effect is invalid.");
+        if (priority < 0)
+            throw new ApplicationBadRequestException("Priority must be greater than or equal to 0.");
+
+        var normalizedCondition = conditionJson is null ? null : JsonSerializer.Serialize(conditionJson.RootElement);
+        var exists = await db.AccessPolicies.AnyAsync(
+            x => x.Resource == normalizedResource
+                 && x.Action == normalizedAction
+                 && x.SubjectType == SubjectType.Role
+                 && x.SubjectId == roleName
+                 && x.Effect == effect
+                 && (x.Condition ?? string.Empty) == (normalizedCondition ?? string.Empty)
+                 && x.IsEnabled == isEnabled,
             cancellationToken);
         if (exists)
             return;
 
-        db.RolePermissions.Add(new RolePermission
+        db.AccessPolicies.Add(new AccessPolicy
         {
-            RoleId = roleId,
-            PermissionId = permissionId
+            Id = Guid.NewGuid(),
+            Name = normalizedName,
+            Resource = normalizedResource,
+            Action = normalizedAction,
+            SubjectType = SubjectType.Role,
+            SubjectId = roleName,
+            Effect = effect,
+            Priority = priority,
+            Condition = normalizedCondition,
+            Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
+            IsEnabled = isEnabled
         });
 
         await db.SaveChangesAsync(cancellationToken);
         await InvalidateUsersForRoleCachesAsync(roleId, cancellationToken);
     }
 
-    public async Task RemovePermissionFromRoleAsync(string roleId, Guid permissionId, CancellationToken cancellationToken)
+    public async Task RemovePermissionFromRoleAsync(string roleId, Guid policyId, CancellationToken cancellationToken)
     {
-        _ = await roleManager.FindByIdAsync(roleId)
+        var role = await roleManager.FindByIdAsync(roleId)
             ?? throw new ApplicationNotFoundException($"Role '{roleId}' was not found.");
 
-        var link = await db.RolePermissions.FirstOrDefaultAsync(
-            rp => rp.RoleId == roleId && rp.PermissionId == permissionId,
+        var roleName = role.Name ?? throw new ApplicationBadRequestException("Role name is required.");
+        var link = await db.AccessPolicies.FirstOrDefaultAsync(
+            x => x.Id == policyId && x.SubjectType == SubjectType.Role && x.SubjectId == roleName,
             cancellationToken);
         if (link is null)
             return;
 
-        db.RolePermissions.Remove(link);
+        db.AccessPolicies.Remove(link);
         await db.SaveChangesAsync(cancellationToken);
         await InvalidateUsersForRoleCachesAsync(roleId, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<PermissionDto>> GetRolePermissionsAsync(
+    public async Task<IReadOnlyList<AccessPolicyDto>> GetRolePermissionsAsync(
         string roleId,
         CancellationToken cancellationToken)
     {
-        _ = await roleManager.FindByIdAsync(roleId)
+        var role = await roleManager.FindByIdAsync(roleId)
             ?? throw new ApplicationNotFoundException($"Role '{roleId}' was not found.");
+        var roleName = role.Name ?? throw new ApplicationBadRequestException("Role name is required.");
 
-        return await (
-            from rp in db.RolePermissions.AsNoTracking()
-            join p in db.Permissions.AsNoTracking() on rp.PermissionId equals p.Id
-            where rp.RoleId == roleId
-            orderby p.Name
-            select new PermissionDto(p.Id, p.Name, p.Description, p.CreatedAt)
-        ).ToListAsync(cancellationToken);
+        return await db.AccessPolicies.AsNoTracking()
+            .Where(x => x.SubjectType == SubjectType.Role && x.SubjectId == roleName)
+            .OrderByDescending(x => x.Priority)
+            .ThenBy(x => x.Name)
+            .Select(x => new AccessPolicyDto(
+                x.Id,
+                x.Name,
+                x.Resource,
+                x.Action,
+                x.SubjectType,
+                x.SubjectId,
+                x.Effect,
+                x.Priority,
+                x.Condition,
+                x.Description,
+                x.IsEnabled,
+                x.CreatedAt,
+                x.UpdatedAt))
+            .ToListAsync(cancellationToken);
     }
 
     private async Task InvalidateUsersForRoleCachesAsync(string roleId, CancellationToken cancellationToken)

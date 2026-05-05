@@ -1,5 +1,7 @@
 using System.Text.Json;
 using CRM.Medical.Application.Abstractions;
+using CRM.Medical.Application.Common.Queries;
+using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.MedicalWorkflow;
 using CRM.Medical.Application.Features.TestResults.DTOs;
@@ -8,6 +10,7 @@ using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace CRM.Medical.Infrastructure.MedicalWorkflow;
 
@@ -15,14 +18,24 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
     : ITestResultService
 {
     private readonly TestRequestAccessEvaluator _access = new(db, currentUser);
+    private static readonly IReadOnlyDictionary<string, Expression<Func<TestResult, string?>>> SearchFields =
+        new Dictionary<string, Expression<Func<TestResult, string?>>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["status"] = r => r.Status,
+            ["pdf"] = r => r.PdfUrl
+        };
 
-    public async Task<IReadOnlyList<TestResultDto>> ListAsync(
+    public async Task<PagedResult<TestResultDto>> ListAsync(
+        int page,
+        int pageSize,
+        string? search,
         int? testRequestId,
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
         MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestResultRead);
 
+        var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
         var scopedRequests = _access.FilterAccessible(db.TestRequests.AsNoTracking());
         var query =
             from result in db.TestResults.AsNoTracking()
@@ -32,8 +45,21 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
         if (testRequestId is { } tid)
             query = query.Where(r => r.TestRequestId == tid);
 
-        var rows = await query.OrderByDescending(r => r.ResultDate).ToListAsync(cancellationToken);
-        return rows.Select(Map).ToList();
+        query = query.ApplyAdvancedSearch(search, SearchFields, r => r.Status, r => r.PdfUrl);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var rows = await query
+            .OrderByDescending(r => r.ResultDate)
+            .ApplyPagination(normalizedPage, normalizedPageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedResult<TestResultDto>
+        {
+            Items = rows.Select(Map).ToList(),
+            Page = normalizedPage,
+            PageSize = normalizedPageSize,
+            TotalCount = totalCount
+        };
     }
 
     public async Task<TestResultDto> GetByIdAsync(int id, CancellationToken cancellationToken)

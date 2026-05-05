@@ -52,7 +52,7 @@ public sealed class CreateUserCommandHandler(
             City = request.City,
             PhoneNumber = request.PhoneNumber,
             IsActive = true,
-            EmailConfirmed = true, // admin-created users bypass email verification
+            EmailConfirmed = true, 
             CreatedAt = now,
             CreatedByUserId = isAdmin ? null : actorId,
             ProfileMetadata = ProfileMetadataMapper.ToJsonDocument(request.ProfileMetadata)

@@ -1,9 +1,11 @@
 using CRM.Medical.API.Contracts.MedicalWorkflow;
+using CRM.Medical.API.Authorization;
 using CRM.Medical.Application.Common.Storage;
+using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
+using CRM.Medical.Application.Features.TestResults.CQRS;
 using CRM.Medical.Application.Features.TestResults.DTOs;
-using CRM.Medical.Application.Features.TestResults.Services;
-using CRM.Medical.Application.Features.Users.Constants;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -13,30 +15,36 @@ namespace CRM.Medical.API.Controllers;
 [Authorize]
 [ApiController]
 [Route("api/test-results")]
-public sealed class TestResultsController(ITestResultService testResults) : ControllerBase
+public sealed class TestResultsController(ISender mediator) : ControllerBase
 {
     [HttpGet]
-    [Authorize(Policy = UserPermissions.TestResultRead)]
-    [ProducesResponseType(typeof(IReadOnlyList<TestResultDto>), StatusCodes.Status200OK)]
-    public Task<IReadOnlyList<TestResultDto>> List(
-        [FromQuery] int? testRequestId,
+    [DynamicAuthorize("TestResult", "Read")]
+    [ProducesResponseType(typeof(PagedResult<TestResultDto>), StatusCodes.Status200OK)]
+    public Task<PagedResult<TestResultDto>> List(
+        [FromQuery] ListTestResultsRequest request,
         CancellationToken cancellationToken) =>
-        testResults.ListAsync(testRequestId, cancellationToken);
+        mediator.Send(
+            new ListTestResultsQuery(
+                request.Page,
+                request.PageSize,
+                request.Search,
+                request.TestRequestId),
+            cancellationToken);
 
     [HttpGet("{id:int}")]
-    [Authorize(Policy = UserPermissions.TestResultRead)]
+    [DynamicAuthorize("TestResult", "Read")]
     [ProducesResponseType(typeof(TestResultDto), StatusCodes.Status200OK)]
     public Task<TestResultDto> Get(int id, CancellationToken cancellationToken) =>
-        testResults.GetByIdAsync(id, cancellationToken);
+        mediator.Send(new GetTestResultByIdQuery(id), cancellationToken);
 
     [HttpGet("by-test-request/{testRequestId:int}")]
-    [Authorize(Policy = UserPermissions.TestResultRead)]
+    [DynamicAuthorize("TestResult", "Read")]
     [ProducesResponseType(typeof(TestResultDto), StatusCodes.Status200OK)]
     public Task<TestResultDto> GetByTestRequest(int testRequestId, CancellationToken cancellationToken) =>
-        testResults.GetByTestRequestIdAsync(testRequestId, cancellationToken);
+        mediator.Send(new GetTestResultByTestRequestIdQuery(testRequestId), cancellationToken);
 
     [HttpPost("for-test-request/{testRequestId:int}")]
-    [Authorize(Policy = UserPermissions.TestResultCreate)]
+    [DynamicAuthorize("TestResult", "Create")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(TestResultDto), StatusCodes.Status200OK)]
     public async Task<TestResultDto> Create(
@@ -57,17 +65,18 @@ public sealed class TestResultsController(ITestResultService testResults) : Cont
             throw new ApplicationBadRequestException("ResultData must be valid JSON when provided.");
         }
 
-        return await testResults.CreateAsync(
-            testRequestId,
-            form.ResultDate,
-            resultDataDoc,
-            pdfUrl,
-            form.Status,
+        return await mediator.Send(
+            new CreateTestResultCommand(
+                testRequestId,
+                form.ResultDate,
+                resultDataDoc,
+                pdfUrl,
+                form.Status),
             cancellationToken);
     }
 
     [HttpPut("{id:int}")]
-    [Authorize(Policy = UserPermissions.TestResultUpdate)]
+    [DynamicAuthorize("TestResult", "Update")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Update(
@@ -88,22 +97,23 @@ public sealed class TestResultsController(ITestResultService testResults) : Cont
             throw new ApplicationBadRequestException("ResultData must be valid JSON when provided.");
         }
 
-        await testResults.UpdateAsync(
-            id,
-            form.ResultDate,
-            resultDataDoc,
-            pdfUrl,
-            form.Status,
+        await mediator.Send(
+            new UpdateTestResultCommand(
+                id,
+                form.ResultDate,
+                resultDataDoc,
+                pdfUrl,
+                form.Status),
             cancellationToken);
         return NoContent();
     }
 
     [HttpDelete("{id:int}")]
-    [Authorize(Policy = UserPermissions.TestResultDelete)]
+    [DynamicAuthorize("TestResult", "Delete")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
-        await testResults.DeleteAsync(id, cancellationToken);
+        await mediator.Send(new DeleteTestResultCommand(id), cancellationToken);
         return NoContent();
     }
 

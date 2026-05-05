@@ -1,4 +1,6 @@
 using CRM.Medical.Application.Abstractions;
+using CRM.Medical.Application.Common.Queries;
+using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.ExternalPatients.DTOs;
 using CRM.Medical.Application.Features.ExternalPatients.Services;
@@ -8,6 +10,7 @@ using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace CRM.Medical.Infrastructure.MedicalWorkflow;
 
@@ -16,18 +19,44 @@ public sealed class ExternalPatientService(
     ICurrentUserAccessor currentUser,
     UserManager<User> userManager) : IExternalPatientService
 {
+    private static readonly IReadOnlyDictionary<string, Expression<Func<ExternalPatient, string?>>> SearchFields =
+        new Dictionary<string, Expression<Func<ExternalPatient, string?>>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["name"] = e => e.FullName,
+            ["phone"] = e => e.PhoneNumber,
+            ["externalid"] = e => e.ExternalId,
+            ["gender"] = e => e.Gender
+        };
+
     private readonly TestRequestAccessEvaluator _access = new(db, currentUser);
 
-    public async Task<IReadOnlyList<ExternalPatientDto>> ListAsync(CancellationToken cancellationToken)
+    public async Task<PagedResult<ExternalPatientDto>> ListAsync(
+        int page,
+        int pageSize,
+        string? search,
+        CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
         MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.ExternalPatientsManage);
 
-        var rows = await FilterAccessible(db.ExternalPatients.AsNoTracking())
+        var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
+        var query = FilterAccessible(db.ExternalPatients.AsNoTracking());
+
+        query = query.ApplyAdvancedSearch(search, SearchFields, e => e.FullName, e => e.PhoneNumber, e => e.ExternalId);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var rows = await query
             .OrderByDescending(e => e.CreatedAt)
+            .ApplyPagination(normalizedPage, normalizedPageSize)
             .ToListAsync(cancellationToken);
 
-        return rows.Select(Map).ToList();
+        return new PagedResult<ExternalPatientDto>
+        {
+            Items = rows.Select(Map).ToList(),
+            Page = normalizedPage,
+            PageSize = normalizedPageSize,
+            TotalCount = totalCount
+        };
     }
 
     public async Task<ExternalPatientDto> GetByIdAsync(int id, CancellationToken cancellationToken)

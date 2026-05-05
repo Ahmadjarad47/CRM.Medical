@@ -1,35 +1,37 @@
 using CRM.Medical.API.Contracts.Admin.Roles;
+using CRM.Medical.API.Contracts.Common;
 using CRM.Medical.API.Contracts.Permissions;
+using CRM.Medical.API.Authorization;
+using CRM.Medical.Application.Common.Responses;
+using CRM.Medical.Application.Features.Permissions.CQRS;
 using CRM.Medical.Application.Features.Permissions.DTOs;
-using CRM.Medical.Application.Features.Permissions.Services;
 using CRM.Medical.Application.Features.Roles.Commands.CreateRole;
 using CRM.Medical.Application.Features.Roles.Commands.DeleteRole;
 using CRM.Medical.Application.Features.Roles.Commands.UpdateRole;
+using CRM.Medical.Application.Features.Roles.DTOs;
 using CRM.Medical.Application.Features.Roles.Queries.GetRoleById;
 using CRM.Medical.Application.Features.Roles.Queries.GetRoles;
-using CRM.Medical.Application.Features.Users.Constants;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.Controllers.Admin;
 
 [Route("api/admin/roles")]
-public sealed class RolesController(ISender mediator, IRolePermissionService rolePermissions) : AdminBaseController
+public sealed class RolesController(ISender mediator) : AdminBaseController
 {
     [HttpGet]
-    [Authorize(Policy = UserPermissions.RolesManage)]
-    public async Task<IActionResult> List(CancellationToken ct) =>
-        Ok(await mediator.Send(new GetRolesQuery(), ct));
+    [DynamicAuthorize("Role", "Manage")]
+    [ProducesResponseType(typeof(PagedResult<RoleDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> List([FromQuery] PagedSearchRequest request, CancellationToken ct) =>
+        Ok(await mediator.Send(new GetRolesQuery(request.Page, request.PageSize, request.Search), ct));
 
     [HttpGet("{id}")]
-    [Authorize(Policy = UserPermissions.RolesManage)]
+    [DynamicAuthorize("Role", "Manage")]
     public async Task<IActionResult> GetById(string id, CancellationToken ct) =>
         Ok(await mediator.Send(new GetRoleByIdQuery(id), ct));
 
     [HttpPost]
-    [Authorize(Policy = UserPermissions.RolesManage)]
+    [DynamicAuthorize("Role", "Manage")]
     public async Task<IActionResult> Create([FromBody] CreateRoleRequest request, CancellationToken ct)
     {
         var created = await mediator.Send(new CreateRoleCommand(request.Name), ct);
@@ -37,7 +39,7 @@ public sealed class RolesController(ISender mediator, IRolePermissionService rol
     }
 
     [HttpPut("{id}")]
-    [Authorize(Policy = UserPermissions.RolesManage)]
+    [DynamicAuthorize("Role", "Manage")]
     public async Task<IActionResult> Update(string id, [FromBody] UpdateRoleRequest request, CancellationToken ct)
     {
         await mediator.Send(new UpdateRoleCommand(id, request.Name), ct);
@@ -45,7 +47,7 @@ public sealed class RolesController(ISender mediator, IRolePermissionService rol
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Policy = UserPermissions.RolesManage)]
+    [DynamicAuthorize("Role", "Manage")]
     public async Task<IActionResult> Delete(string id, CancellationToken ct)
     {
         await mediator.Send(new DeleteRoleCommand(id), ct);
@@ -53,29 +55,40 @@ public sealed class RolesController(ISender mediator, IRolePermissionService rol
     }
 
     [HttpGet("{id}/permissions")]
-    [Authorize(Policy = UserPermissions.RolesManage)]
-    [ProducesResponseType(typeof(IReadOnlyList<PermissionDto>), StatusCodes.Status200OK)]
-    public Task<IReadOnlyList<PermissionDto>> GetPermissions(string id, CancellationToken ct) =>
-        rolePermissions.GetRolePermissionsAsync(id, ct);
+    [DynamicAuthorize("Role", "Manage")]
+    [ProducesResponseType(typeof(IReadOnlyList<AccessPolicyDto>), StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<AccessPolicyDto>> GetPermissions(string id, CancellationToken ct) =>
+        mediator.Send(new GetRolePermissionsQuery(id), ct);
 
     [HttpPost("{id}/permissions")]
-    [Authorize(Policy = UserPermissions.RolesManage)]
+    [DynamicAuthorize("Role", "Manage")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> AssignPermission(
         string id,
         [FromBody] AssignRolePermissionRequest request,
         CancellationToken ct)
     {
-        await rolePermissions.AssignPermissionToRoleAsync(id, request.PermissionId, ct);
+        await mediator.Send(
+            new AssignRolePermissionCommand(
+                id,
+                request.Name,
+                request.Resource,
+                request.Action,
+                request.Effect,
+                request.Priority,
+                request.ConditionJson,
+                request.Description,
+                request.IsEnabled),
+            ct);
         return NoContent();
     }
 
-    [HttpDelete("{id}/permissions/{permissionId:guid}")]
-    [Authorize(Policy = UserPermissions.RolesManage)]
+    [HttpDelete("{id}/permissions/{policyId:guid}")]
+    [DynamicAuthorize("Role", "Manage")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> RemovePermission(string id, Guid permissionId, CancellationToken ct)
+    public async Task<IActionResult> RemovePermission(string id, Guid policyId, CancellationToken ct)
     {
-        await rolePermissions.RemovePermissionFromRoleAsync(id, permissionId, ct);
+        await mediator.Send(new RemoveRolePermissionCommand(id, policyId), ct);
         return NoContent();
     }
 }
