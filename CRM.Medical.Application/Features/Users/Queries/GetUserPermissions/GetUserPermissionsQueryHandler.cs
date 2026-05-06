@@ -13,7 +13,7 @@ public sealed class GetUserPermissionsQueryHandler(
     UserManager<User> userManager,
     IUserManagementAccess userManagementAccess,
     ICurrentUserAccessor currentUser,
-    IUserEffectivePermissionsProvider effectivePermissions)
+    IUserEffectiveAccessPoliciesProvider effectiveAccessPolicies)
     : IRequestHandler<GetUserPermissionsQuery, UserPermissionsDto>
 {
     public async Task<UserPermissionsDto> Handle(
@@ -27,8 +27,8 @@ public sealed class GetUserPermissionsQueryHandler(
 
         await userManagementAccess.EnsureActorCanManageUserAsync(actorId, user, cancellationToken);
 
-        var names = await effectivePermissions.GetPermissionNamesForUserAsync(user.Id, cancellationToken);
+        var policies = await effectiveAccessPolicies.GetEffectiveAllowPoliciesForUserAsync(user.Id, cancellationToken);
 
-        return new UserPermissionsDto(user.Id, names);
+        return new UserPermissionsDto(user.Id, policies);
     }
 }

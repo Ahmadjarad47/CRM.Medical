@@ -7,13 +7,8 @@ namespace CRM.Medical.Infrastructure.Authorization;
 public sealed class PolicyEngine(
     IPolicyProvider policyProvider,
     IConditionParser conditionParser,
-    ILogger<PolicyEngine> logger) : IPolicyEngine, IPermissionEvaluator
+    ILogger<PolicyEngine> logger) : IPolicyEngine
 {
-    public Task<AuthorizationDecision> EvaluateAsync(
-        PolicyEvaluationContext context,
-        CancellationToken cancellationToken) =>
-        AuthorizeAsync(context, cancellationToken);
-
     public async Task<AuthorizationDecision> AuthorizeAsync(
         PolicyEvaluationContext context,
         CancellationToken cancellationToken)

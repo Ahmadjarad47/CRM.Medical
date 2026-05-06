@@ -2,6 +2,7 @@ using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Common.Queries;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Features.ExternalPatients.DTOs;
 using CRM.Medical.Application.Features.ExternalPatients.Services;
 using CRM.Medical.Application.Features.MedicalWorkflow;
@@ -17,7 +18,8 @@ namespace CRM.Medical.Infrastructure.MedicalWorkflow;
 public sealed class ExternalPatientService(
     MedicalDbContext db,
     ICurrentUserAccessor currentUser,
-    UserManager<User> userManager) : IExternalPatientService
+    UserManager<User> userManager,
+    IPolicyEngine policyEngine) : IExternalPatientService
 {
     private static readonly IReadOnlyDictionary<string, Expression<Func<ExternalPatient, string?>>> SearchFields =
         new Dictionary<string, Expression<Func<ExternalPatient, string?>>>(StringComparer.OrdinalIgnoreCase)
@@ -37,7 +39,7 @@ public sealed class ExternalPatientService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.ExternalPatientsManage);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "ExternalPatient", "Manage", cancellationToken);
 
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
         var query = FilterAccessible(db.ExternalPatients.AsNoTracking());
@@ -62,7 +64,7 @@ public sealed class ExternalPatientService(
     public async Task<ExternalPatientDto> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.ExternalPatientsManage);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "ExternalPatient", "Manage", cancellationToken);
 
         var entity = await FilterAccessible(db.ExternalPatients.AsNoTracking())
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken)
@@ -80,7 +82,7 @@ public sealed class ExternalPatientService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.ExternalPatientsManage);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "ExternalPatient", "Manage", cancellationToken);
         MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         if (string.IsNullOrWhiteSpace(fullName))
@@ -109,7 +111,7 @@ public sealed class ExternalPatientService(
     public async Task LinkToDirectPatientAsync(int externalPatientId, string directPatientUserId, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.ExternalPatientsManage);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "ExternalPatient", "Manage", cancellationToken);
         MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         if (string.IsNullOrWhiteSpace(directPatientUserId))

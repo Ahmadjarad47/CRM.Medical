@@ -1,4 +1,4 @@
-using CRM.Medical.Application.Features.Users.Constants;
+using CRM.Medical.API.Authorization;
 using CRM.Medical.Application.Features.Users.Queries.GetUserPermissions;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -12,7 +12,7 @@ namespace CRM.Medical.API.Controllers.Users;
 public sealed class UserPermissionController(ISender mediator) : ControllerBase
 {
     [HttpGet("{userId}/permissions")]
-    [Authorize(Policy = UserPermissions.UsersView)]
+    [DynamicAuthorize("User", "View")]
     public async Task<IActionResult> GetUserPermissions(string userId, CancellationToken ct) =>
         Ok(await mediator.Send(new GetUserPermissionsQuery(userId), ct));
 }

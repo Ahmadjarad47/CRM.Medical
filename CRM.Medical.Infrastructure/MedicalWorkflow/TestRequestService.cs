@@ -3,6 +3,7 @@ using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Common.Queries;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Features.MedicalWorkflow;
 using CRM.Medical.Application.Features.TestRequests.DTOs;
 using CRM.Medical.Application.Features.TestRequests.Services;
@@ -18,7 +19,8 @@ namespace CRM.Medical.Infrastructure.MedicalWorkflow;
 public sealed class TestRequestService(
     MedicalDbContext db,
     ICurrentUserAccessor currentUser,
-    UserManager<User> userManager) : ITestRequestService
+    UserManager<User> userManager,
+    IPolicyEngine policyEngine) : ITestRequestService
 {
     private readonly TestRequestAccessEvaluator _access = new(db, currentUser);
     private static readonly IReadOnlyDictionary<string, Expression<Func<TestRequest, string?>>> SearchFields =
@@ -38,7 +40,7 @@ public sealed class TestRequestService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestRequestRead);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "TestRequest", "Read", cancellationToken);
 
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
         var query = _access.FilterAccessible(db.TestRequests.AsNoTracking());
@@ -65,7 +67,7 @@ public sealed class TestRequestService(
     public async Task<TestRequestDto> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestRequestRead);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "TestRequest", "Read", cancellationToken);
 
         var entity = await db.TestRequests
             .AsNoTracking()
@@ -92,7 +94,7 @@ public sealed class TestRequestService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestRequestCreate);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "TestRequest", "Create", cancellationToken);
         MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         var testExists = await db.MedicalTests.AnyAsync(t => t.Id == medicalTestId, cancellationToken);
@@ -165,7 +167,7 @@ public sealed class TestRequestService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestRequestUpdate);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "TestRequest", "Update", cancellationToken);
         MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         var entity = await db.TestRequests
@@ -215,7 +217,7 @@ public sealed class TestRequestService(
     public async Task DeleteAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(currentUser, UserPermissions.TestRequestDelete);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "TestRequest", "Delete", cancellationToken);
         MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         var entity = await db.TestRequests.FirstOrDefaultAsync(r => r.Id == id, cancellationToken)

@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace CRM.Medical.Infrastructure.Seeding;
 
 /// <summary>
-/// Ensures workflow permissions required by Doctor / LabPartner roles exist in the catalog and are assigned to those roles.
+/// Ensures baseline <see cref="AccessPolicy"/> rows for Doctor / LabPartner (ExternalPatient:Manage).
 /// Runs once per application start (idempotent).
 /// </summary>
 public sealed class ClinicalRoleDefaultPermissionsHostedService(
@@ -33,9 +33,8 @@ public sealed class ClinicalRoleDefaultPermissionsHostedService(
             if (role is null)
             {
                 logger.LogWarning(
-                    "Role '{Role}' was not found — skipped assigning {Permission}.",
-                    roleName,
-                    UserPermissions.ExternalPatientsManage);
+                    "Role '{Role}' was not found — skipped assigning ExternalPatient:Manage policy.",
+                    roleName);
                 continue;
             }
 

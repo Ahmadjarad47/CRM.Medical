@@ -1,3 +1,4 @@
+using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Domain.Enums;
 using CRM.Medical.Infrastructure.Persistence;
@@ -25,6 +26,24 @@ public sealed class AbacPolicySeedHostedService(
             new AccessPolicy
             {
                 Id = Guid.NewGuid(),
+                Name = "Admin full access",
+                Resource = "*",
+                Action = "*",
+                SubjectType = SubjectType.Role,
+                SubjectId = UserRoles.Admin,
+                Effect = PolicyEffect.Allow,
+                Priority = 1_000_000,
+                Condition = null,
+                IsEnabled = true,
+                Description = "Admin role has full access to all resources and actions."
+            },
+            cancellationToken);
+
+        await EnsurePolicyAsync(
+            db,
+            new AccessPolicy
+            {
+                Id = Guid.NewGuid(),
                 Name = "Doctors can view own test results",
                 Resource = "TestResult",
                 Action = "Read",
@@ -43,103 +62,13 @@ public sealed class AbacPolicySeedHostedService(
             new AccessPolicy
             {
                 Id = Guid.NewGuid(),
-                Name = "Admins can create permissions",
-                Resource = "Permission",
-                Action = "Create",
-                Effect = PolicyEffect.Allow,
-                SubjectType = SubjectType.Role,
-                SubjectId = "Admin",
-                Description = "Admins can create permission policies.",
-                Condition = """{"in":["Admin","user.roles"]}""",
-                Priority = 260,
-                IsEnabled = true
-            },
-            cancellationToken);
-
-        await EnsurePolicyAsync(
-            db,
-            new AccessPolicy
-            {
-                Id = Guid.NewGuid(),
-                Name = "Admins can update permissions",
-                Resource = "Permission",
-                Action = "Update",
-                Effect = PolicyEffect.Allow,
-                SubjectType = SubjectType.Role,
-                SubjectId = "Admin",
-                Description = "Admins can update permission policies.",
-                Condition = """{"in":["Admin","user.roles"]}""",
-                Priority = 260,
-                IsEnabled = true
-            },
-            cancellationToken);
-
-        await EnsurePolicyAsync(
-            db,
-            new AccessPolicy
-            {
-                Id = Guid.NewGuid(),
-                Name = "Admins can delete permissions",
-                Resource = "Permission",
-                Action = "Delete",
-                Effect = PolicyEffect.Allow,
-                SubjectType = SubjectType.Role,
-                SubjectId = "Admin",
-                Description = "Admins can delete permission policies.",
-                Condition = """{"in":["Admin","user.roles"]}""",
-                Priority = 260,
-                IsEnabled = true
-            },
-            cancellationToken);
-
-        await EnsurePolicyAsync(
-            db,
-            new AccessPolicy
-            {
-                Id = Guid.NewGuid(),
-                Name = "Admins can manage roles",
-                Resource = "Role",
-                Action = "Manage",
-                Effect = PolicyEffect.Allow,
-                SubjectType = SubjectType.Role,
-                SubjectId = "Admin",
-                Description = "Admins can manage roles.",
-                Condition = """{"in":["Admin","user.roles"]}""",
-                Priority = 300,
-                IsEnabled = true
-            },
-            cancellationToken);
-
-        await EnsurePolicyAsync(
-            db,
-            new AccessPolicy
-            {
-                Id = Guid.NewGuid(),
-                Name = "Admins and auditors can view permissions",
-                Resource = "Permission",
-                Action = "View",
-                Effect = PolicyEffect.Allow,
-                SubjectType = SubjectType.Role,
-                SubjectId = "Admin",
-                Description = "Admins and Auditors can view permission catalog.",
-                Condition = """{"in":["Admin","user.roles"]}""",
-                Priority = 250,
-                IsEnabled = true
-            },
-            cancellationToken);
-
-        await EnsurePolicyAsync(
-            db,
-            new AccessPolicy
-            {
-                Id = Guid.NewGuid(),
                 Name = "Auditors can view permissions",
                 Resource = "Permission",
                 Action = "View",
                 Effect = PolicyEffect.Allow,
                 SubjectType = SubjectType.Role,
                 SubjectId = "Auditor",
-                Description = "Admins and Auditors can view permission catalog.",
+                Description = "Auditors can view permission catalog.",
                 Condition = """{"in":["Auditor","user.roles"]}""",
                 Priority = 250,
                 IsEnabled = true
@@ -152,16 +81,20 @@ public sealed class AbacPolicySeedHostedService(
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     private static async Task EnsurePolicyAsync(
-        MedicalDbContext db,
-        AccessPolicy candidate,
-        CancellationToken cancellationToken)
+      MedicalDbContext db,
+      AccessPolicy candidate,
+      CancellationToken cancellationToken)
     {
         var exists = await db.AccessPolicies.AnyAsync(
             x => x.Resource == candidate.Resource
                  && x.Action == candidate.Action
                  && x.SubjectType == candidate.SubjectType
                  && x.SubjectId == candidate.SubjectId
-                 && x.Effect == candidate.Effect,
+                 && x.Effect == candidate.Effect
+                 && (
+                     (x.Condition == null && candidate.Condition == null)
+                     || x.Condition == candidate.Condition
+                 ),
             cancellationToken);
 
         if (exists)

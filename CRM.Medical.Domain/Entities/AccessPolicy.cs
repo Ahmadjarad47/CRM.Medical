@@ -4,7 +4,7 @@ namespace CRM.Medical.Domain.Entities;
 
 /// <summary>
 /// Dynamic ABAC policy entry persisted in the database.
-/// Permission key format is Resource:Action (for example TestResult:View).
+/// Policy is keyed by Resource + Action (for example TestResult:View in authorization policy names).
 /// </summary>
 public sealed class AccessPolicy : BaseEntity
 {

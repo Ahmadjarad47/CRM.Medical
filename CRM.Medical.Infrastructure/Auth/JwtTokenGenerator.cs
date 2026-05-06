@@ -2,7 +2,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using CRM.Medical.Application.Auth;
-using CRM.Medical.Application.Features.Users.Constants;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -25,11 +24,7 @@ public sealed class JwtTokenGenerator(IOptions<JwtSettings> options) : IJwtToken
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
 
-        // Role claims — used for role-based data scope in services; Admin also satisfies permission-named policies at the edge.
         claims.AddRange(user.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
-
-        // Permission claims — the actual authorization mechanism
-        claims.AddRange(user.Permissions.Select(p => new Claim(UserPermissions.ClaimType, p)));
 
         var token = new JwtSecurityToken(
             issuer: _settings.Issuer,

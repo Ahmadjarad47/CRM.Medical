@@ -145,24 +145,49 @@ public sealed class AccessPolicyService(
         };
     }
 
-    private async Task EnsureNoDuplicateActivePolicyAsync(Guid? id, NormalizedPolicyInput model, CancellationToken cancellationToken)
+    private async Task EnsureNoDuplicateActivePolicyAsync(
+     Guid? id,
+     NormalizedPolicyInput model,
+     CancellationToken cancellationToken)
     {
         if (!model.IsActive)
             return;
 
-        var duplicateExists = await db.AccessPolicies.AnyAsync(x =>
-            (!id.HasValue || x.Id != id.Value)
-            && x.IsEnabled
-            && x.Resource == model.Resource
-            && x.Action == model.Action
-            && x.SubjectType == model.SubjectType
-            && x.SubjectId == model.SubjectId
-            && x.Effect == model.Effect
-            && (x.Condition ?? string.Empty) == (model.ConditionJson ?? string.Empty),
-            cancellationToken);
+        var candidates = await db.AccessPolicies
+            .AsNoTracking()
+            .Where(x =>
+                (!id.HasValue || x.Id != id.Value) &&
+                x.IsEnabled &&
+                x.Resource == model.Resource &&
+                x.Action == model.Action &&
+                x.SubjectType == model.SubjectType &&
+                x.SubjectId == model.SubjectId &&
+                x.Effect == model.Effect)
+            .Select(x => new
+            {
+                x.Id,
+                x.Condition
+            })
+            .ToListAsync(cancellationToken);
+
+        var newCondition = NormalizeJson(model.ConditionJson);
+
+        var duplicateExists = candidates.Any(x =>
+            NormalizeJson(x.Condition) == newCondition);
 
         if (duplicateExists)
-            throw new ApplicationConflictException("An active policy with the same Resource, Action, SubjectType, SubjectId, Effect and ConditionJson already exists.");
+            throw new ApplicationConflictException(
+                "An active policy with the same Resource, Action, SubjectType, SubjectId, Effect and Condition already exists.");
+    }
+
+    private static string? NormalizeJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        using var doc = JsonDocument.Parse(json);
+
+        return JsonSerializer.Serialize(doc.RootElement);
     }
 
     private NormalizedPolicyInput ValidateAndNormalize(

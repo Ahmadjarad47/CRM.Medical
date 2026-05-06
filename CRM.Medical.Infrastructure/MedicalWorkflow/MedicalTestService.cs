@@ -5,8 +5,8 @@ using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.MedicalTests.DTOs;
 using CRM.Medical.Application.Features.MedicalTests.Services;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Features.MedicalWorkflow;
-using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +14,7 @@ using System.Linq.Expressions;
 
 namespace CRM.Medical.Infrastructure.MedicalWorkflow;
 
-public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor user)
+public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor user, IPolicyEngine policyEngine)
     : IMedicalTestService
 {
     private static readonly IReadOnlyDictionary<string, Expression<Func<MedicalTest, string?>>> SearchFields =
@@ -34,7 +34,7 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(user, UserPermissions.MedicalTestRead);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(user, policyEngine, "MedicalTest", "Read", cancellationToken);
 
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
         var query = db.MedicalTests.AsNoTracking();
@@ -59,7 +59,7 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
     public async Task<MedicalTestDto> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(user, UserPermissions.MedicalTestRead);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(user, policyEngine, "MedicalTest", "Read", cancellationToken);
 
         var entity = await db.MedicalTests.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"Medical test '{id}' was not found.");
@@ -78,7 +78,7 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(user, UserPermissions.MedicalTestCreate);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(user, policyEngine, "MedicalTest", "Create", cancellationToken);
         MedicalWorkflowAuthorization.DenyPatientMutations(user);
 
         var userId = user.GetRequiredUserId();
@@ -112,7 +112,7 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(user, UserPermissions.MedicalTestUpdate);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(user, policyEngine, "MedicalTest", "Update", cancellationToken);
         MedicalWorkflowAuthorization.DenyPatientMutations(user);
 
         var entity = await db.MedicalTests.FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
@@ -132,7 +132,7 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
     public async Task DeleteAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
-        MedicalWorkflowAuthorization.RequirePermissionOrAdmin(user, UserPermissions.MedicalTestDelete);
+        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(user, policyEngine, "MedicalTest", "Delete", cancellationToken);
         MedicalWorkflowAuthorization.DenyPatientMutations(user);
 
         var entity = await db.MedicalTests.FirstOrDefaultAsync(t => t.Id == id, cancellationToken)

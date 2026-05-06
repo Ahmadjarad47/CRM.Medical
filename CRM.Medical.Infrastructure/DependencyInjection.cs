@@ -87,10 +87,9 @@ public static class DependencyInjection
         services.AddSingleton<IConditionParser, JsonConditionParser>();
         services.AddScoped<PolicyEngine>();
         services.AddScoped<IPolicyEngine>(sp => sp.GetRequiredService<PolicyEngine>());
-        services.AddScoped<IPermissionEvaluator>(sp => sp.GetRequiredService<PolicyEngine>());
         services.AddScoped<IAccessPolicyService, AccessPolicyService>();
         services.AddScoped<IRolePermissionService, RolePermissionService>();
-        services.AddScoped<IUserEffectivePermissionsProvider, UserEffectivePermissionsProvider>();
+        services.AddScoped<IUserEffectiveAccessPoliciesProvider, UserEffectiveAccessPoliciesProvider>();
         services.AddScoped<IMedicalTestService, MedicalTestService>();
         services.AddScoped<ITestRequestService, TestRequestService>();
         services.AddScoped<IExternalPatientService, ExternalPatientService>();

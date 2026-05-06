@@ -21,8 +21,8 @@ public sealed class DbPolicyProvider(MedicalDbContext db, IMemoryCache cache) : 
             .AsNoTracking()
             .Where(x =>
                 x.IsEnabled
-                && x.Resource == permission.Resource
-                && x.Action == permission.Action
+                && (x.Resource == permission.Resource || x.Resource == "*")
+                && (x.Action == permission.Action || x.Action == "*")
                 && ((x.SubjectType == Domain.Enums.SubjectType.User && x.SubjectId == context.UserId)
                     || (x.SubjectType == Domain.Enums.SubjectType.Role && context.Roles.Contains(x.SubjectId))
                     || (x.SubjectType == Domain.Enums.SubjectType.Group && context.Roles.Contains(x.SubjectId))))

@@ -18,5 +18,4 @@ public sealed class SeedUserEntry
     public string Password { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
     public string Role { get; init; } = "Admin";
-    public bool AllPermissions { get; init; } = true;
 }
