@@ -22,11 +22,4 @@ public interface IUserManagementAccess
         User targetUser,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Returns the query unchanged for administrators. For doctors/labs, restricts to users they created.
-    /// </summary>
-    Task<IQueryable<User>> ScopeUsersQueryForActorAsync(
-        IQueryable<User> users,
-        string actorUserId,
-        CancellationToken cancellationToken = default);
 }

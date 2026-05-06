@@ -24,12 +24,6 @@ public sealed class MedicalDbContext(
 
     public DbSet<Template> Templates => Set<Template>();
 
-    public DbSet<Permission> Permissions => Set<Permission>();
-
-    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
-
-    public DbSet<AccessPolicy> AccessPolicies => Set<AccessPolicy>();
-
     public DbSet<MedicalTest> MedicalTests => Set<MedicalTest>();
 
     public DbSet<TestRequest> TestRequests => Set<TestRequest>();
@@ -47,6 +41,7 @@ public sealed class MedicalDbContext(
     public DbSet<MessageRead> MessageReads => Set<MessageRead>();
 
     public DbSet<MessageAttachment> MessageAttachments => Set<MessageAttachment>();
+    public DbSet<AccessPolicy> AccessPolicies => Set<AccessPolicy>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

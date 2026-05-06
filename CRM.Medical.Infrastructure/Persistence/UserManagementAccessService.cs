@@ -64,26 +64,6 @@ public sealed class UserManagementAccessService(UserManager<User> userManager)
         throw new ApplicationForbiddenException("You are not allowed to manage this user.");
     }
 
-    public async Task<IQueryable<User>> ScopeUsersQueryForActorAsync(
-        IQueryable<User> users,
-        string actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var actor = await userManager.FindByIdAsync(actorUserId)
-            ?? throw new ApplicationUnauthorizedException("Unable to identify the current user.");
-
-        if (await userManager.IsInRoleAsync(actor, UserRoles.Admin))
-            return users;
-
-        if (await userManager.IsInRoleAsync(actor, UserRoles.Doctor))
-            return users.Where(u => u.CreatedByUserId == actorUserId);
-
-        if (await userManager.IsInRoleAsync(actor, UserRoles.LabPartner))
-            return users.Where(u => u.CreatedByUserId == actorUserId);
-
-        throw new ApplicationForbiddenException("You are not allowed to list users.");
-    }
-
     private static bool IsCreatedBy(string actorUserId, User targetUser) =>
         string.Equals(targetUser.CreatedByUserId, actorUserId, StringComparison.Ordinal);
 }

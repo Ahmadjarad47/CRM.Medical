@@ -3,9 +3,7 @@ using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.Complaints.Commands.UpdateComplaintStatus;
 using CRM.Medical.Application.Features.Complaints.DTOs;
 using CRM.Medical.Application.Features.Complaints.Queries.ListComplaints;
-using CRM.Medical.API.Authorization;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.Controllers.Admin;
@@ -14,7 +12,6 @@ namespace CRM.Medical.API.Controllers.Admin;
 public sealed class ComplaintsController(ISender mediator) : AdminBaseController
 {
     [HttpGet]
-    [DynamicAuthorize("Complaint", "View")]
     [ProducesResponseType(typeof(PagedResult<ComplaintDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] ListComplaintsRequest request, CancellationToken ct) =>
         Ok(await mediator.Send(
@@ -22,7 +19,6 @@ public sealed class ComplaintsController(ISender mediator) : AdminBaseController
             ct));
 
     [HttpPut("{id:int}/status")]
-    [DynamicAuthorize("Complaint", "UpdateStatus")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateComplaintStatusRequest request, CancellationToken ct)
     {

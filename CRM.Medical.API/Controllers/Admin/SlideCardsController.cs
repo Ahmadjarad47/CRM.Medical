@@ -3,16 +3,13 @@ using CRM.Medical.Application.Features.SlideCards.Commands.CreateSlideCard;
 using CRM.Medical.Application.Features.SlideCards.DTOs;
 using CRM.Medical.Application.Features.SlideCards.Queries.GetSlideCardById;
 using CRM.Medical.Application.Features.SlideCards.Queries.ListAdminSlideCards;
-using CRM.Medical.Application.Features.Users.Constants;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.Controllers.Admin;
 
 [Route("api/admin/slide-cards")]
-[Authorize(Roles = UserRoles.Admin)]
 public sealed class SlideCardsController(ISender mediator) : AdminBaseController
 {
     [HttpGet]

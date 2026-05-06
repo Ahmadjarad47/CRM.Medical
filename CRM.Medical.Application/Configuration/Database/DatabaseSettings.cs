@@ -13,4 +13,6 @@ public sealed class DatabaseSettings
     public int CommandTimeout { get; set; } = 30;
     public string SslMode { get; set; } = "Disable";
     public bool Multiplexing { get; set; } = false;
+    public bool AutoMigrate { get; set; } = true;
+    public bool BaselineExistingDatabase { get; set; } = true;
 }

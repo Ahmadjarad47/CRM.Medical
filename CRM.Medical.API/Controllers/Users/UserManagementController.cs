@@ -7,28 +7,24 @@ using CRM.Medical.Application.Features.Users.Commands.DeactivateUser;
 using CRM.Medical.Application.Features.Users.Commands.DeleteUser;
 using CRM.Medical.Application.Features.Users.Commands.RemoveRoles;
 using CRM.Medical.Application.Features.Users.Commands.UpdateUser;
-using CRM.Medical.API.Authorization;
 using CRM.Medical.Application.Features.Users.DTOs;
 using CRM.Medical.Application.Features.Users.Queries.GetUserById;
 using CRM.Medical.Application.Features.Users.Queries.GetUsers;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.Controllers.Users;
 
 /// <summary>
-/// User administration (authorized via ABAC <c>User:*</c> policies).
+/// User administration endpoints.
 /// Admin: all users. Doctor / Lab partner: only users they may manage (see application rules).
 /// </summary>
 [ApiController]
-[Authorize]
 [Route("api/users/management")]
 public sealed class UserManagementController(ISender mediator) : ControllerBase
 {
     /// <summary>List users (paged). Requires <c>User:View</c>.</summary>
     [HttpGet]
-    [DynamicAuthorize("User", "View")]
     [ProducesResponseType(typeof(PagedResult<UserSummaryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ListUsers([FromQuery] ListUsersRequest request, CancellationToken ct) =>
@@ -45,7 +41,6 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
 
     /// <summary>Get one user by id. Requires <c>User:View</c>.</summary>
     [HttpGet("{userId}")]
-    [DynamicAuthorize("User", "View")]
     [ProducesResponseType(typeof(UserDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -54,7 +49,6 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
 
     /// <summary>Create a user. Requires <c>User:Create</c>.</summary>
     [HttpPost]
-    [DynamicAuthorize("User", "Create")]
     [ProducesResponseType(typeof(UserDetailDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -76,7 +70,6 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
 
     /// <summary>Update profile fields and <see cref="UserDetailDto.ProfileMetadata"/>. Requires <c>User:Update</c>.</summary>
     [HttpPut("{userId}")]
-    [DynamicAuthorize("User", "Update")]
     [ProducesResponseType(typeof(UserDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -88,7 +81,6 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
 
     /// <summary>Delete a user. Requires <c>User:Delete</c>.</summary>
     [HttpDelete("{userId}")]
-    [DynamicAuthorize("User", "Delete")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -100,7 +92,6 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
 
     /// <summary>Activate a user. Requires <c>User:Update</c>.</summary>
     [HttpPost("{userId}/activate")]
-    [DynamicAuthorize("User", "Update")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -112,7 +103,6 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
 
     /// <summary>Deactivate a user. Requires <c>User:Update</c>.</summary>
     [HttpPost("{userId}/deactivate")]
-    [DynamicAuthorize("User", "Update")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -124,7 +114,6 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
 
     /// <summary>Add roles. Requires <c>User:Update</c>.</summary>
     [HttpPost("{userId}/roles")]
-    [DynamicAuthorize("User", "Update")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -136,7 +125,6 @@ public sealed class UserManagementController(ISender mediator) : ControllerBase
 
     /// <summary>Remove roles. Requires <c>User:Update</c>.</summary>
     [HttpDelete("{userId}/roles")]
-    [DynamicAuthorize("User", "Update")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

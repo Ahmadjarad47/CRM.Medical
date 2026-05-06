@@ -3,16 +3,13 @@ using CRM.Medical.API.Mapping;
 using CRM.Medical.Application.Features.Banners.Commands.CreateBanner;
 using CRM.Medical.Application.Features.Banners.DTOs;
 using CRM.Medical.Application.Features.Banners.Queries.ListWebsiteBanners;
-using CRM.Medical.Application.Features.Users.Constants;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.Controllers.Admin;
 
 [Route("api/admin/banners")]
-[Authorize(Roles = UserRoles.Admin)]
 public sealed class BannersController(ISender mediator) : AdminBaseController
 {
     [HttpGet]

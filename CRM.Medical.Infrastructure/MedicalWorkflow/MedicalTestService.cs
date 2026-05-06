@@ -5,8 +5,8 @@ using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.MedicalTests.DTOs;
 using CRM.Medical.Application.Features.MedicalTests.Services;
-using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Features.MedicalWorkflow;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +14,7 @@ using System.Linq.Expressions;
 
 namespace CRM.Medical.Infrastructure.MedicalWorkflow;
 
-public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor user, IPolicyEngine policyEngine)
+public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor user, IAccessPolicyEvaluator accessPolicyEvaluator)
     : IMedicalTestService
 {
     private static readonly IReadOnlyDictionary<string, Expression<Func<MedicalTest, string?>>> SearchFields =
@@ -34,10 +34,9 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(user, policyEngine, "MedicalTest", "Read", cancellationToken);
 
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
-        var query = db.MedicalTests.AsNoTracking();
+        var query = await accessPolicyEvaluator.ApplyAsync(db.MedicalTests.AsNoTracking(), "medical_tests", "read", cancellationToken);
 
         query = query.ApplyAdvancedSearch(search, SearchFields, t => t.NameAr, t => t.NameEn, t => t.Category, t => t.SampleType, t => t.Status);
 
@@ -59,9 +58,9 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
     public async Task<MedicalTestDto> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(user, policyEngine, "MedicalTest", "Read", cancellationToken);
 
-        var entity = await db.MedicalTests.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
+        var entity = await (await accessPolicyEvaluator.ApplyAsync(db.MedicalTests.AsNoTracking(), "medical_tests", "read", cancellationToken))
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"Medical test '{id}' was not found.");
 
         return Map(entity);
@@ -78,8 +77,6 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(user, policyEngine, "MedicalTest", "Create", cancellationToken);
-        MedicalWorkflowAuthorization.DenyPatientMutations(user);
 
         var userId = user.GetRequiredUserId();
         var entity = new MedicalTest
@@ -93,6 +90,10 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
             Status = status.Trim(),
             CreatedByUserId = userId
         };
+
+        var canCreate = await accessPolicyEvaluator.CanAccessAsync(entity, "medical_tests", "create", cancellationToken);
+        if (!canCreate)
+            throw new ApplicationForbiddenException("You cannot create this medical test.");
 
         db.MedicalTests.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
@@ -112,11 +113,12 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(user, policyEngine, "MedicalTest", "Update", cancellationToken);
-        MedicalWorkflowAuthorization.DenyPatientMutations(user);
 
         var entity = await db.MedicalTests.FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"Medical test '{id}' was not found.");
+        var canUpdate = await accessPolicyEvaluator.CanAccessAsync(entity, "medical_tests", "update", cancellationToken);
+        if (!canUpdate)
+            throw new ApplicationForbiddenException("You cannot update this medical test.");
 
         entity.NameAr = nameAr.Trim();
         entity.NameEn = nameEn.Trim();
@@ -132,11 +134,12 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
     public async Task DeleteAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(user, policyEngine, "MedicalTest", "Delete", cancellationToken);
-        MedicalWorkflowAuthorization.DenyPatientMutations(user);
 
         var entity = await db.MedicalTests.FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"Medical test '{id}' was not found.");
+        var canDelete = await accessPolicyEvaluator.CanAccessAsync(entity, "medical_tests", "delete", cancellationToken);
+        if (!canDelete)
+            throw new ApplicationForbiddenException("You cannot delete this medical test.");
 
         var inUse = await db.TestRequests.AnyAsync(r => r.MedicalTestId == id, cancellationToken);
         if (inUse)

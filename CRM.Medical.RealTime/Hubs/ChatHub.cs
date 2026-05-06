@@ -10,7 +10,6 @@ using CRM.Medical.RealTime.Dtos;
 using CRM.Medical.RealTime.Groups;
 using CRM.Medical.RealTime.Presence;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -20,7 +19,6 @@ namespace CRM.Medical.RealTime.Hubs;
 /// <summary>
 /// Real-time chat hub — JWT authenticated via Bearer token on HTTP negotiate / WebSockets.
 /// </summary>
-[Authorize]
 public sealed class ChatHub(
     IMediator mediator,
     IChatAuthorizationService chatAuthorization,

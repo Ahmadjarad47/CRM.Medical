@@ -3,11 +3,10 @@ using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Common.Queries;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
-using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Features.MedicalWorkflow;
 using CRM.Medical.Application.Features.TestRequests.DTOs;
 using CRM.Medical.Application.Features.TestRequests.Services;
-using CRM.Medical.Application.Features.Users.Constants;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -20,9 +19,8 @@ public sealed class TestRequestService(
     MedicalDbContext db,
     ICurrentUserAccessor currentUser,
     UserManager<User> userManager,
-    IPolicyEngine policyEngine) : ITestRequestService
+    IAccessPolicyEvaluator accessPolicyEvaluator) : ITestRequestService
 {
-    private readonly TestRequestAccessEvaluator _access = new(db, currentUser);
     private static readonly IReadOnlyDictionary<string, Expression<Func<TestRequest, string?>>> SearchFields =
         new Dictionary<string, Expression<Func<TestRequest, string?>>>(StringComparer.OrdinalIgnoreCase)
         {
@@ -40,10 +38,9 @@ public sealed class TestRequestService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "TestRequest", "Read", cancellationToken);
 
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
-        var query = _access.FilterAccessible(db.TestRequests.AsNoTracking());
+        var query = await accessPolicyEvaluator.ApplyAsync(db.TestRequests.AsNoTracking(), "test_requests", "read", cancellationToken);
 
         query = query.ApplyAdvancedSearch(search, SearchFields, r => r.Status, r => r.Notes, r => r.DoctorId, r => r.LabClientId, r => r.DirectPatientId);
 
@@ -67,7 +64,6 @@ public sealed class TestRequestService(
     public async Task<TestRequestDto> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "TestRequest", "Read", cancellationToken);
 
         var entity = await db.TestRequests
             .AsNoTracking()
@@ -76,7 +72,9 @@ public sealed class TestRequestService(
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"Test request '{id}' was not found.");
 
-        await _access.EnsureCanAccessAsync(entity, cancellationToken);
+        var canAccess = await accessPolicyEvaluator.CanAccessAsync(entity, "test_requests", "read", cancellationToken);
+        if (!canAccess)
+            throw new ApplicationForbiddenException("You cannot access this test request.");
         return Map(entity);
     }
 
@@ -94,8 +92,6 @@ public sealed class TestRequestService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "TestRequest", "Create", cancellationToken);
-        MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         var testExists = await db.MedicalTests.AnyAsync(t => t.Id == medicalTestId, cancellationToken);
         if (!testExists)
@@ -104,31 +100,8 @@ public sealed class TestRequestService(
         await ValidatePatientSubjectAsync(directPatientId, externalPatientId, cancellationToken);
 
         var userId = currentUser.GetRequiredUserId();
-        var isAdmin = currentUser.IsInRole(UserRoles.Admin);
-
-        string? resolvedDoctorId;
-        string? resolvedLabId;
-
-        if (isAdmin)
-        {
-            resolvedDoctorId = string.IsNullOrWhiteSpace(doctorId) ? null : doctorId.Trim();
-            resolvedLabId = string.IsNullOrWhiteSpace(labClientId) ? null : labClientId.Trim();
-        }
-        else if (currentUser.IsInRole(UserRoles.Doctor))
-        {
-            resolvedDoctorId = userId;
-            resolvedLabId = string.IsNullOrWhiteSpace(labClientId) ? null : labClientId.Trim();
-        }
-        else if (currentUser.IsInRole(UserRoles.LabPartner))
-        {
-            resolvedLabId = userId;
-            resolvedDoctorId = string.IsNullOrWhiteSpace(doctorId) ? null : doctorId.Trim();
-        }
-        else
-        {
-            resolvedDoctorId = string.IsNullOrWhiteSpace(doctorId) ? null : doctorId.Trim();
-            resolvedLabId = string.IsNullOrWhiteSpace(labClientId) ? null : labClientId.Trim();
-        }
+        var resolvedDoctorId = string.IsNullOrWhiteSpace(doctorId) ? null : doctorId.Trim();
+        var resolvedLabId = string.IsNullOrWhiteSpace(labClientId) ? null : labClientId.Trim();
 
         var entity = new TestRequest
         {
@@ -144,6 +117,9 @@ public sealed class TestRequestService(
             ExternalPatientId = externalPatientId,
             CreatedByUserId = userId
         };
+        var canCreate = await accessPolicyEvaluator.CanAccessAsync(entity, "test_requests", "create", cancellationToken);
+        if (!canCreate)
+            throw new ApplicationForbiddenException("You cannot create this test request.");
 
         db.TestRequests.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
@@ -167,7 +143,6 @@ public sealed class TestRequestService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "TestRequest", "Update", cancellationToken);
         MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         var entity = await db.TestRequests
@@ -175,7 +150,9 @@ public sealed class TestRequestService(
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"Test request '{id}' was not found.");
 
-        await _access.EnsureCanAccessAsync(entity, cancellationToken);
+        var canUpdate = await accessPolicyEvaluator.CanAccessAsync(entity, "test_requests", "update", cancellationToken);
+        if (!canUpdate)
+            throw new ApplicationForbiddenException("You cannot modify this test request.");
 
         await ValidatePatientSubjectAsync(
             string.IsNullOrWhiteSpace(directPatientId) ? null : directPatientId.Trim(),
@@ -183,25 +160,8 @@ public sealed class TestRequestService(
             cancellationToken);
 
         var userId = currentUser.GetRequiredUserId();
-        var isAdmin = currentUser.IsInRole(UserRoles.Admin);
-
-        if (isAdmin)
-        {
-            entity.DoctorId = string.IsNullOrWhiteSpace(doctorId) ? null : doctorId.Trim();
-            entity.LabClientId = string.IsNullOrWhiteSpace(labClientId) ? null : labClientId.Trim();
-        }
-        else if (currentUser.IsInRole(UserRoles.Doctor))
-        {
-            entity.DoctorId = userId;
-            if (!string.IsNullOrWhiteSpace(labClientId))
-                entity.LabClientId = labClientId.Trim();
-        }
-        else if (currentUser.IsInRole(UserRoles.LabPartner))
-        {
-            entity.LabClientId = userId;
-            if (!string.IsNullOrWhiteSpace(doctorId))
-                entity.DoctorId = doctorId.Trim();
-        }
+        entity.DoctorId = string.IsNullOrWhiteSpace(doctorId) ? null : doctorId.Trim();
+        entity.LabClientId = string.IsNullOrWhiteSpace(labClientId) ? null : labClientId.Trim();
 
         entity.DirectPatientId = string.IsNullOrWhiteSpace(directPatientId) ? null : directPatientId.Trim();
         entity.ExternalPatientId = externalPatientId;
@@ -217,13 +177,14 @@ public sealed class TestRequestService(
     public async Task DeleteAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "TestRequest", "Delete", cancellationToken);
         MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         var entity = await db.TestRequests.FirstOrDefaultAsync(r => r.Id == id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"Test request '{id}' was not found.");
 
-        await _access.EnsureCanAccessAsync(entity, cancellationToken);
+        var canDelete = await accessPolicyEvaluator.CanAccessAsync(entity, "test_requests", "delete", cancellationToken);
+        if (!canDelete)
+            throw new ApplicationForbiddenException("You cannot delete this test request.");
 
         db.TestRequests.Remove(entity);
         await db.SaveChangesAsync(cancellationToken);
@@ -250,18 +211,8 @@ public sealed class TestRequestService(
         if (patient is null)
             throw new ApplicationBadRequestException("Direct patient was not found.");
 
-        if (!await userManager.IsInRoleAsync(patient, UserRoles.Patient))
+        if (!await userManager.IsInRoleAsync(patient, "Patient"))
             throw new ApplicationBadRequestException("DirectPatientId must reference a patient account.");
-
-        if (currentUser.IsInRole(UserRoles.Admin) || currentUser.IsInRole(UserRoles.LabPartner))
-            return;
-
-        if (currentUser.IsInRole(UserRoles.Doctor))
-        {
-            var actorId = currentUser.GetRequiredUserId();
-            if (!string.Equals(patient.CreatedByUserId, actorId, StringComparison.Ordinal))
-                throw new ApplicationForbiddenException("You may only assign patients under your care.");
-        }
     }
 
     private async Task ValidateExternalPatientAsync(int? externalPatientId, CancellationToken cancellationToken)

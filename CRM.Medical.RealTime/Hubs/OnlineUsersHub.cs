@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using CRM.Medical.RealTime.Presence;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
@@ -10,7 +9,6 @@ namespace CRM.Medical.RealTime.Hubs;
 /// Presence hub: optional RPC (<see cref="GetOnlineUsers"/>) plus <see cref="IOnlineUsersClient.UserOnline"/> /
 /// <see cref="IOnlineUsersClient.UserOffline"/> when a user transitions to first connection or last disconnect.
 /// </summary>
-[Authorize]
 public sealed class OnlineUsersHub(
     PresenceLifecycleCoordinator presenceLifecycle,
     IOnlineUserService onlineUserService,

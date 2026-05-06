@@ -12,13 +12,11 @@ using CRM.Medical.Application.Features.Chat.Queries.GetConversationParticipants;
 using CRM.Medical.Application.Features.Chat.Queries.GetMyConversations;
 using CRM.Medical.Application.Features.Chat.Queries.GetOnlineUsers;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace CRM.Medical.API.Controllers.Chat;
 
-[Authorize]
 [ApiController]
 [Route("api/chat")]
 [SwaggerTag("Chat — includes nested `ChatUserSummaryDto` on user references (ids retained)")]

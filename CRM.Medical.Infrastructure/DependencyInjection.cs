@@ -2,7 +2,6 @@ using Amazon;
 using Amazon.Runtime;
 using Amazon.S3;
 using CRM.Medical.Application.Auth;
-using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Common.Storage;
 using CRM.Medical.Application.Configuration.Database;
@@ -15,16 +14,15 @@ using CRM.Medical.Application.Features.Templates;
 using CRM.Medical.Application.Features.MedicalTests.Services;
 using CRM.Medical.Application.Features.ExternalPatients.Services;
 using CRM.Medical.Application.Features.TestRequests.Services;
-using CRM.Medical.Application.Features.Permissions.Services;
 using CRM.Medical.Application.Features.TestResults.Services;
 using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Application.Features.Chat.Persistence;
 using CRM.Medical.Application.Features.Chat.Services;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Infrastructure.MedicalWorkflow;
 using CRM.Medical.Application.Health;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Auth;
-using CRM.Medical.Infrastructure.Authorization;
 using CRM.Medical.Infrastructure.Caching;
 using CRM.Medical.Infrastructure.Configuration;
 using CRM.Medical.Infrastructure.Diagnostics;
@@ -32,6 +30,7 @@ using CRM.Medical.Infrastructure.Email;
 using CRM.Medical.Infrastructure.Persistence;
 using CRM.Medical.Infrastructure.Seeding;
 using CRM.Medical.Infrastructure.Chat;
+using CRM.Medical.Infrastructure.Authorization;
 using CRM.Medical.Infrastructure.Storage;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -83,13 +82,6 @@ public static class DependencyInjection
         services.AddScoped<ITemplateRepository, TemplateRepository>();
         services.AddScoped<IUserManagementAccess, UserManagementAccessService>();
         services.AddMemoryCache();
-        services.AddScoped<IPolicyProvider, DbPolicyProvider>();
-        services.AddSingleton<IConditionParser, JsonConditionParser>();
-        services.AddScoped<PolicyEngine>();
-        services.AddScoped<IPolicyEngine>(sp => sp.GetRequiredService<PolicyEngine>());
-        services.AddScoped<IAccessPolicyService, AccessPolicyService>();
-        services.AddScoped<IRolePermissionService, RolePermissionService>();
-        services.AddScoped<IUserEffectiveAccessPoliciesProvider, UserEffectiveAccessPoliciesProvider>();
         services.AddScoped<IMedicalTestService, MedicalTestService>();
         services.AddScoped<ITestRequestService, TestRequestService>();
         services.AddScoped<IExternalPatientService, ExternalPatientService>();
@@ -97,6 +89,14 @@ public static class DependencyInjection
 
         services.AddScoped<IChatPersistence, ChatPersistence>();
         services.AddScoped<IChatAuthorizationService, ChatAuthorizationService>();
+        services.AddScoped<ICurrentSubjectAccessor, CurrentSubjectAccessor>();
+        services.AddScoped<IAccessPolicyRuleStore, AccessPolicyRuleStore>();
+        services.AddScoped<IAccessPolicyConditionParser, AccessPolicyConditionParser>();
+        services.AddScoped<IAccessPolicyConditionValidator, AccessPolicyConditionValidator>();
+        services.AddScoped<IAccessPolicyMetadataProvider, AccessPolicyMetadataProvider>();
+        services.AddScoped<IAccessPolicyTokenResolver, AccessPolicyTokenResolver>();
+        services.AddScoped<IAccessPolicyExpressionCompiler, AccessPolicyExpressionCompiler>();
+        services.AddScoped<IAccessPolicyEvaluator, AccessPolicyEvaluator>();
         services.AddScoped<IChatUserProfileReader, EfChatUserProfileReader>();
         services.AddScoped<IChatUserSummaryLookup, ChatUserSummaryLookup>();
 
@@ -162,9 +162,7 @@ public static class DependencyInjection
         services.Configure<DevelopmentSeedOptions>(
             configuration.GetSection(DevelopmentSeedOptions.SectionName));
         services.AddHostedService<IdentityRoleSeedHostedService>();
-        services.AddHostedService<ClinicalRoleDefaultPermissionsHostedService>();
         services.AddHostedService<DevelopmentUserSeedHostedService>();
-        services.AddHostedService<AbacPolicySeedHostedService>();
 
         return services;
     }

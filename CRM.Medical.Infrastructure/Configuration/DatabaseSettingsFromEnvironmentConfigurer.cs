@@ -20,5 +20,8 @@ public sealed class DatabaseSettingsFromEnvironmentConfigurer(IConfiguration con
         options.CommandTimeout = int.TryParse(configuration["DB_COMMAND_TIMEOUT"], out var cmdTimeout) ? cmdTimeout : 30;
         options.SslMode = configuration["DB_SSL_MODE"] ?? "Disable";
         options.Multiplexing = bool.TryParse(configuration["DB_MULTIPLEXING"], out var multiplexing) && multiplexing;
+        options.AutoMigrate = !bool.TryParse(configuration["DB_AUTO_MIGRATE"], out var autoMigrate) || autoMigrate;
+        options.BaselineExistingDatabase =
+            !bool.TryParse(configuration["DB_BASELINE_EXISTING_DATABASE"], out var baselineExisting) || baselineExisting;
     }
 }

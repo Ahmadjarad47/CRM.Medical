@@ -2,11 +2,11 @@ using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Common.Queries;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
-using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Features.ExternalPatients.DTOs;
 using CRM.Medical.Application.Features.ExternalPatients.Services;
 using CRM.Medical.Application.Features.MedicalWorkflow;
 using CRM.Medical.Application.Features.Users.Constants;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -19,7 +19,7 @@ public sealed class ExternalPatientService(
     MedicalDbContext db,
     ICurrentUserAccessor currentUser,
     UserManager<User> userManager,
-    IPolicyEngine policyEngine) : IExternalPatientService
+    IAccessPolicyEvaluator accessPolicyEvaluator) : IExternalPatientService
 {
     private static readonly IReadOnlyDictionary<string, Expression<Func<ExternalPatient, string?>>> SearchFields =
         new Dictionary<string, Expression<Func<ExternalPatient, string?>>>(StringComparer.OrdinalIgnoreCase)
@@ -30,8 +30,6 @@ public sealed class ExternalPatientService(
             ["gender"] = e => e.Gender
         };
 
-    private readonly TestRequestAccessEvaluator _access = new(db, currentUser);
-
     public async Task<PagedResult<ExternalPatientDto>> ListAsync(
         int page,
         int pageSize,
@@ -39,10 +37,9 @@ public sealed class ExternalPatientService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "ExternalPatient", "Manage", cancellationToken);
 
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
-        var query = FilterAccessible(db.ExternalPatients.AsNoTracking());
+        var query = await accessPolicyEvaluator.ApplyAsync(db.ExternalPatients.AsNoTracking(), "external_patients", "read", cancellationToken);
 
         query = query.ApplyAdvancedSearch(search, SearchFields, e => e.FullName, e => e.PhoneNumber, e => e.ExternalId);
 
@@ -64,9 +61,8 @@ public sealed class ExternalPatientService(
     public async Task<ExternalPatientDto> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "ExternalPatient", "Manage", cancellationToken);
 
-        var entity = await FilterAccessible(db.ExternalPatients.AsNoTracking())
+        var entity = await (await accessPolicyEvaluator.ApplyAsync(db.ExternalPatients.AsNoTracking(), "external_patients", "read", cancellationToken))
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"External patient '{id}' was not found.");
 
@@ -82,8 +78,6 @@ public sealed class ExternalPatientService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "ExternalPatient", "Manage", cancellationToken);
-        MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         if (string.IsNullOrWhiteSpace(fullName))
             throw new ApplicationBadRequestException("Full name is required.");
@@ -102,6 +96,10 @@ public sealed class ExternalPatientService(
             CreatedByUserId = currentUser.GetRequiredUserId()
         };
 
+        var canCreate = await accessPolicyEvaluator.CanAccessAsync(entity, "external_patients", "create", cancellationToken);
+        if (!canCreate)
+            throw new ApplicationForbiddenException("You cannot create this external patient.");
+
         db.ExternalPatients.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -111,8 +109,6 @@ public sealed class ExternalPatientService(
     public async Task LinkToDirectPatientAsync(int externalPatientId, string directPatientUserId, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        await MedicalWorkflowAuthorization.RequireAccessOrAdminAsync(currentUser, policyEngine, "ExternalPatient", "Manage", cancellationToken);
-        MedicalWorkflowAuthorization.DenyPatientMutations(currentUser);
 
         if (string.IsNullOrWhiteSpace(directPatientUserId))
             throw new ApplicationBadRequestException("DirectPatientUserId is required.");
@@ -125,63 +121,15 @@ public sealed class ExternalPatientService(
         if (!await userManager.IsInRoleAsync(patient, UserRoles.Patient))
             throw new ApplicationBadRequestException("The user must be a patient account.");
 
-        if (currentUser.IsInRole(UserRoles.Doctor))
-        {
-            var doctorId = currentUser.GetRequiredUserId();
-            if (!string.Equals(patient.CreatedByUserId, doctorId, StringComparison.Ordinal))
-                throw new ApplicationForbiddenException("You may only link patients under your care.");
-        }
-
         var entity = await db.ExternalPatients.FirstOrDefaultAsync(e => e.Id == externalPatientId, cancellationToken)
             ?? throw new ApplicationNotFoundException($"External patient '{externalPatientId}' was not found.");
 
+        var canUpdate = await accessPolicyEvaluator.CanAccessAsync(entity, "external_patients", "update", cancellationToken);
+        if (!canUpdate)
+            throw new ApplicationForbiddenException("You cannot update this external patient.");
+
         entity.LinkToDirectPatient(directPatientUserId);
         await db.SaveChangesAsync(cancellationToken);
-    }
-
-    private IQueryable<ExternalPatient> FilterAccessible(IQueryable<ExternalPatient> query)
-    {
-        var userId = currentUser.UserId;
-        if (string.IsNullOrEmpty(userId))
-            return query.Where(_ => false);
-
-        if (currentUser.IsInRole(UserRoles.Admin))
-            return query;
-
-        var fromRequests = _access
-            .FilterAccessible(db.TestRequests.AsNoTracking())
-            .Where(r => r.ExternalPatientId != null)
-            .Select(r => r.ExternalPatientId!.Value);
-
-        if (currentUser.IsInRole(UserRoles.Patient))
-        {
-            return query.Where(e =>
-                e.LinkedDirectPatientId == userId
-                || fromRequests.Contains(e.Id));
-        }
-
-        if (currentUser.IsInRole(UserRoles.LabPartner))
-        {
-            return query.Where(e =>
-                e.CreatedByUserId == userId
-                || fromRequests.Contains(e.Id));
-        }
-
-        if (currentUser.IsInRole(UserRoles.Doctor))
-        {
-            var patientIds = db.Users.AsNoTracking()
-                .Where(u => u.CreatedByUserId == userId)
-                .Select(u => u.Id);
-
-            return query.Where(e =>
-                e.CreatedByUserId == userId
-                || fromRequests.Contains(e.Id)
-                || (e.LinkedDirectPatientId != null && patientIds.Contains(e.LinkedDirectPatientId)));
-        }
-
-        return query.Where(e =>
-            e.CreatedByUserId == userId
-            || fromRequests.Contains(e.Id));
     }
 
     private static ExternalPatientDto Map(ExternalPatient e) =>

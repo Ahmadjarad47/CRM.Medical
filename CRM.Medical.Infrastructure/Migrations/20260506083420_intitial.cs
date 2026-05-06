@@ -8,7 +8,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CRM.Medical.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class @new : Migration
+    public partial class intitial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -18,19 +18,22 @@ namespace CRM.Medical.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
                     Resource = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                    Action = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                    Effect = table.Column<int>(type: "integer", nullable: false),
-                    SubjectType = table.Column<int>(type: "integer", nullable: false),
-                    SubjectId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: false),
-                    Condition = table.Column<string>(type: "jsonb", nullable: true),
+                    Action = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    Effect = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
+                    SubjectType = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    SubjectKey = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    Condition = table.Column<JsonDocument>(type: "jsonb", nullable: true),
                     Priority = table.Column<int>(type: "integer", nullable: false),
                     IsEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                    Description = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
+                    Description = table.Column<string>(type: "character varying(1024)", maxLength: 1024, nullable: true),
+                    ValidFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ValidTo = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    UpdatedByUserId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CreatedByUserId = table.Column<string>(type: "text", nullable: true)
+                    CreatedByUserId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -86,22 +89,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_medical_tests", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "permissions",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Name = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CreatedByUserId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_permissions", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -235,33 +222,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                     table.PrimaryKey("PK_role_claims", x => x.Id);
                     table.ForeignKey(
                         name: "FK_role_claims_roles_RoleId",
-                        column: x => x.RoleId,
-                        principalTable: "roles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "role_permissions",
-                columns: table => new
-                {
-                    RoleId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: false),
-                    PermissionId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CreatedByUserId = table.Column<string>(type: "character varying(450)", maxLength: 450, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_role_permissions", x => new { x.RoleId, x.PermissionId });
-                    table.ForeignKey(
-                        name: "FK_role_permissions_permissions_PermissionId",
-                        column: x => x.PermissionId,
-                        principalTable: "permissions",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_role_permissions_roles_RoleId",
                         column: x => x.RoleId,
                         principalTable: "roles",
                         principalColumn: "Id",
@@ -660,14 +620,19 @@ namespace CRM.Medical.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_access_policies_Priority_Effect",
+                name: "IX_access_policies_Priority",
                 table: "access_policies",
-                columns: new[] { "Priority", "Effect" });
+                column: "Priority");
 
             migrationBuilder.CreateIndex(
-                name: "IX_access_policies_Resource_Action_SubjectType_SubjectId_IsEna~",
+                name: "IX_access_policies_Resource_Action_IsEnabled",
                 table: "access_policies",
-                columns: new[] { "Resource", "Action", "SubjectType", "SubjectId", "IsEnabled" });
+                columns: new[] { "Resource", "Action", "IsEnabled" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_access_policies_SubjectType_SubjectKey",
+                table: "access_policies",
+                columns: new[] { "SubjectType", "SubjectKey" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_banners_CreatedAt",
@@ -781,12 +746,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                 column: "SenderId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_permissions_Name",
-                table: "permissions",
-                column: "Name",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "IX_refresh_tokens_ExpiresAt",
                 table: "refresh_tokens",
                 column: "ExpiresAt");
@@ -806,11 +765,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                 name: "IX_role_claims_RoleId",
                 table: "role_claims",
                 column: "RoleId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_role_permissions_PermissionId",
-                table: "role_permissions",
-                column: "PermissionId");
 
             migrationBuilder.CreateIndex(
                 name: "RoleNameIndex",
@@ -990,9 +944,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                 name: "role_claims");
 
             migrationBuilder.DropTable(
-                name: "role_permissions");
-
-            migrationBuilder.DropTable(
                 name: "slide_cards");
 
             migrationBuilder.DropTable(
@@ -1018,9 +969,6 @@ namespace CRM.Medical.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "messages");
-
-            migrationBuilder.DropTable(
-                name: "permissions");
 
             migrationBuilder.DropTable(
                 name: "test_requests");

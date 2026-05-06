@@ -1,8 +1,6 @@
 using System.Text;
 using CRM.Medical.Application.Auth;
-using CRM.Medical.API.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 
 namespace CRM.Medical.API.Extensions;
@@ -65,10 +63,7 @@ public static class JwtAuthenticationExtensions
                 };
             });
 
-        // Permission policies are resolved dynamically via PermissionAwarePolicyProvider and evaluated by the ABAC engine.
         services.AddAuthorization();
-        services.AddSingleton<IAuthorizationPolicyProvider, PermissionAwarePolicyProvider>();
-        services.AddScoped<IAuthorizationHandler, DynamicPermissionAuthorizationHandler>();
 
         return services;
     }

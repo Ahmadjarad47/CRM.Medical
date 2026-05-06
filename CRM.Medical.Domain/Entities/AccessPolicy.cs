@@ -1,39 +1,35 @@
-using CRM.Medical.Domain.Enums;
+using System.Text.Json;
 
 namespace CRM.Medical.Domain.Entities;
 
-/// <summary>
-/// Dynamic ABAC policy entry persisted in the database.
-/// Policy is keyed by Resource + Action (for example TestResult:View in authorization policy names).
-/// </summary>
+public enum AccessPolicyEffect
+{
+    Deny = 0,
+    Allow = 1
+}
+
+public enum AccessPolicySubjectType
+{
+    User = 0,
+    Role = 1,
+    Authenticated = 2,
+    All = 3
+}
+
 public sealed class AccessPolicy : BaseEntity
 {
     public Guid Id { get; set; }
-
-    public string Name { get; set; } = string.Empty;
-
     public string Resource { get; set; } = string.Empty;
-
     public string Action { get; set; } = string.Empty;
-
-    public PolicyEffect Effect { get; set; } = PolicyEffect.Allow;
-
-    public SubjectType SubjectType { get; set; } = SubjectType.Role;
-
-    public string SubjectId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// JSON-encoded condition that is compiled and cached by the policy engine.
-    /// Null/empty means unconditional allow.
-    /// </summary>
-    public string? Condition { get; set; }
-
-    /// <summary>
-    /// Higher numbers are evaluated first.
-    /// </summary>
-    public int Priority { get; set; } = 100;
-
+    public AccessPolicyEffect Effect { get; set; } = AccessPolicyEffect.Allow;
+    public AccessPolicySubjectType SubjectType { get; set; } = AccessPolicySubjectType.Role;
+    public string SubjectKey { get; set; } = string.Empty;
+    public JsonDocument? Condition { get; set; }
+    public int Priority { get; set; }
     public bool IsEnabled { get; set; } = true;
-
     public string? Description { get; set; }
+    public DateTime? ValidFrom { get; set; }
+    public DateTime? ValidTo { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public string? UpdatedByUserId { get; set; }
 }

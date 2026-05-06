@@ -82,7 +82,7 @@ public sealed class DevelopmentUserSeedHostedService(
         await userManager.AddToRoleAsync(user, role);
 
         logger.LogInformation(
-            "Seeded {Role} user '{Email}' (effective access is determined by AccessPolicy at runtime).",
+            "Seeded {Role} user '{Email}'.",
             role,
             email);
     }

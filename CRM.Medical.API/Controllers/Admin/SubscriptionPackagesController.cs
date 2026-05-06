@@ -6,9 +6,7 @@ using CRM.Medical.Application.Features.SubscriptionPackages.Commands.UpdateSubsc
 using CRM.Medical.Application.Features.SubscriptionPackages.DTOs;
 using CRM.Medical.Application.Features.SubscriptionPackages.Queries.GetSubscriptionPackageById;
 using CRM.Medical.Application.Features.SubscriptionPackages.Queries.ListSubscriptionPackages;
-using CRM.Medical.API.Authorization;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CRM.Medical.API.Controllers.Admin;
@@ -17,7 +15,6 @@ namespace CRM.Medical.API.Controllers.Admin;
 public sealed class SubscriptionPackagesController(ISender mediator) : AdminBaseController
 {
     [HttpGet]
-    [DynamicAuthorize("Subscription", "View")]
     [ProducesResponseType(typeof(PagedResult<SubscriptionPackageDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] ListSubscriptionPackagesRequest request, CancellationToken ct) =>
         Ok(await mediator.Send(
@@ -29,13 +26,11 @@ public sealed class SubscriptionPackagesController(ISender mediator) : AdminBase
             ct));
 
     [HttpGet("{id:int}")]
-    [DynamicAuthorize("Subscription", "View")]
     [ProducesResponseType(typeof(SubscriptionPackageDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetById(int id, CancellationToken ct) =>
         Ok(await mediator.Send(new GetSubscriptionPackageByIdQuery(id), ct));
 
     [HttpPost]
-    [DynamicAuthorize("Subscription", "Manage")]
     [ProducesResponseType(typeof(SubscriptionPackageDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create([FromBody] CreateSubscriptionPackageRequest request, CancellationToken ct)
     {
@@ -52,7 +47,6 @@ public sealed class SubscriptionPackagesController(ISender mediator) : AdminBase
     }
 
     [HttpPut("{id:int}")]
-    [DynamicAuthorize("Subscription", "Manage")]
     [ProducesResponseType(typeof(SubscriptionPackageDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateSubscriptionPackageRequest request, CancellationToken ct) =>
         Ok(await mediator.Send(
@@ -67,13 +61,11 @@ public sealed class SubscriptionPackagesController(ISender mediator) : AdminBase
             ct));
 
     [HttpPost("{id:int}/activate")]
-    [DynamicAuthorize("Subscription", "Manage")]
     [ProducesResponseType(typeof(SubscriptionPackageDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Activate(int id, CancellationToken ct) =>
         Ok(await mediator.Send(new SetSubscriptionPackageActiveCommand(id, true), ct));
 
     [HttpPost("{id:int}/deactivate")]
-    [DynamicAuthorize("Subscription", "Manage")]
     [ProducesResponseType(typeof(SubscriptionPackageDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Deactivate(int id, CancellationToken ct) =>
         Ok(await mediator.Send(new SetSubscriptionPackageActiveCommand(id, false), ct));
