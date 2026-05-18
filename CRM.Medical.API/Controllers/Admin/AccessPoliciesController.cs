@@ -28,33 +28,25 @@ public sealed class AccessPoliciesController(
     public ActionResult<IReadOnlyList<AccessPolicyTableMetadataResponse>> GetTables()
     {
         var tables = db.Model.GetEntityTypes()
-            .Select(entityType => new
-            {
-                EntityType = entityType,
-                TableName = entityType.GetTableName(),
-                Schema = entityType.GetSchema()
-            })
-            .Where(x => !string.IsNullOrWhiteSpace(x.TableName))
-            .Select(x =>
-            {
-                var storeObject = StoreObjectIdentifier.Table(x.TableName!, x.Schema);
-                return new AccessPolicyTableMetadataResponse(
-                    x.TableName!,
-                    x.Schema,
-                    x.EntityType.ClrType.Name,
-                    x.EntityType.GetProperties()
-                        .Select(property => new AccessPolicyColumnMetadataResponse(
-                            property.Name,
-                            property.GetColumnName(storeObject) ?? property.Name,
-                            property.ClrType.Name,
-                            property.IsNullable))
-                        .OrderBy(column => column.ColumnName)
-                        .ToList());
-            })
+            .Select(CreateTableMetadata)
+            .OfType<AccessPolicyTableMetadataResponse>()
             .OrderBy(table => table.TableName)
             .ToList();
 
         return Ok(tables);
+    }
+
+    [HttpGet("tables/{tableName}/fields")]
+    public ActionResult<IReadOnlyList<AccessPolicyColumnMetadataResponse>> GetTableFields(string tableName)
+    {
+        var table = db.Model.GetEntityTypes()
+            .Select(CreateTableMetadata)
+            .OfType<AccessPolicyTableMetadataResponse>()
+            .FirstOrDefault(x => string.Equals(x.TableName, tableName, StringComparison.OrdinalIgnoreCase));
+
+        return table is null
+            ? NotFound(new { Message = $"Table '{tableName}' was not found." })
+            : Ok(table.Columns);
     }
 
     [HttpGet("{id:guid}")]
@@ -206,6 +198,30 @@ public sealed class AccessPoliciesController(
         }
 
         return result;
+    }
+
+    private static AccessPolicyTableMetadataResponse? CreateTableMetadata(IEntityType entityType)
+    {
+        var tableName = entityType.GetTableName();
+        if (string.IsNullOrWhiteSpace(tableName))
+            return null;
+
+        var schema = entityType.GetSchema();
+        var storeObject = StoreObjectIdentifier.Table(tableName, schema);
+        var columns = entityType.GetProperties()
+            .Select(property => new AccessPolicyColumnMetadataResponse(
+                property.Name,
+                property.GetColumnName(storeObject) ?? property.Name,
+                property.ClrType.Name,
+                property.IsNullable))
+            .OrderBy(column => column.ColumnName)
+            .ToList();
+
+        return new AccessPolicyTableMetadataResponse(
+            tableName,
+            schema,
+            entityType.ClrType.Name,
+            columns);
     }
 
     public sealed record AccessPolicyTableMetadataResponse(
