@@ -20,14 +20,25 @@ public sealed class AccessPolicyEngineTests
     }
 
     [Fact]
-    public void TokenResolver_Should_Resolve_CurrentUserId()
+    public void RuntimeTokenResolver_Should_Resolve_CurrentUserId()
     {
-        var resolver = new AccessPolicyTokenResolver();
+        var resolver = new AccessPolicyRuntimeTokenResolver();
         var subject = new CurrentSubjectContext("u1", ["Doctor"], ["r1"], "Cairo", "admin", true);
 
-        var value = resolver.ResolveToken("@CurrentUserId", subject);
+        var value = resolver.Resolve("@CurrentUserId", subject);
 
         Assert.Equal("u1", value);
+    }
+
+    [Fact]
+    public void RuntimeTokenResolver_Should_Resolve_CurrentUserEmail()
+    {
+        var resolver = new AccessPolicyRuntimeTokenResolver();
+        var subject = new CurrentSubjectContext("u1", ["Doctor"], ["r1"], null, null, true, "u1@test.com");
+
+        var value = resolver.Resolve("@CurrentUserEmail", subject);
+
+        Assert.Equal("u1@test.com", value);
     }
 
     [Fact]
@@ -44,7 +55,7 @@ public sealed class AccessPolicyEngineTests
     [Fact]
     public void Compiler_Should_Filter_Doctor_Own_Requests()
     {
-        var compiler = new AccessPolicyExpressionCompiler(new AccessPolicyTokenResolver());
+        var compiler = new AccessPolicyExpressionCompiler(new AccessPolicyRuntimeTokenResolver());
         var subject = new CurrentSubjectContext("doctor-1", [], [], null, null, true);
         var condition = new AccessConditionPredicate("doctorId", "eq", JsonDocument.Parse("\"@CurrentUserId\"").RootElement);
         var fn = compiler.Compile<TestRequest>(condition, subject).Compile();
@@ -59,7 +70,7 @@ public sealed class AccessPolicyEngineTests
     [Fact]
     public void Compiler_Should_Filter_Conversation_Participant_CollectionAny()
     {
-        var compiler = new AccessPolicyExpressionCompiler(new AccessPolicyTokenResolver());
+        var compiler = new AccessPolicyExpressionCompiler(new AccessPolicyRuntimeTokenResolver());
         var subject = new CurrentSubjectContext("u1", [], [], null, null, true);
         var condition = new AccessConditionCollectionAny(
             "participants",

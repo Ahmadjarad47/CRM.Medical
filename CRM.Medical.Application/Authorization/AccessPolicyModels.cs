@@ -10,7 +10,9 @@ public sealed record CurrentSubjectContext(
     IReadOnlyList<string> RoleIds,
     string? City,
     string? CreatedByUserId,
-    bool IsAuthenticated);
+    bool IsAuthenticated,
+    string? Email = null,
+    string? TenantId = null);
 
 public sealed record AccessPolicyEvaluationRequest(string Resource, string Action);
 
@@ -50,9 +52,9 @@ public interface IAccessPolicyMetadataProvider
     string ResolveResource<TEntity>();
 }
 
-public interface IAccessPolicyTokenResolver
+public interface IAccessPolicyRuntimeTokenResolver
 {
-    object? ResolveToken(string token, CurrentSubjectContext subject);
+    object? Resolve(string token, CurrentSubjectContext subject);
 }
 
 public interface IAccessPolicyExpressionCompiler

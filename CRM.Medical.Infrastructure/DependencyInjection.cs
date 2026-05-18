@@ -94,7 +94,7 @@ public static class DependencyInjection
         services.AddScoped<IAccessPolicyConditionParser, AccessPolicyConditionParser>();
         services.AddScoped<IAccessPolicyConditionValidator, AccessPolicyConditionValidator>();
         services.AddScoped<IAccessPolicyMetadataProvider, AccessPolicyMetadataProvider>();
-        services.AddScoped<IAccessPolicyTokenResolver, AccessPolicyTokenResolver>();
+        services.AddScoped<IAccessPolicyRuntimeTokenResolver, AccessPolicyRuntimeTokenResolver>();
         services.AddScoped<IAccessPolicyExpressionCompiler, AccessPolicyExpressionCompiler>();
         services.AddScoped<IAccessPolicyEvaluator, AccessPolicyEvaluator>();
         services.AddScoped<IChatUserProfileReader, EfChatUserProfileReader>();

@@ -44,7 +44,7 @@ public sealed class AccessPolicyEvaluatorTests
             new FakeRuleStore(policies),
             new AccessPolicyConditionParser(),
             new AccessPolicyConditionValidator(),
-            new AccessPolicyExpressionCompiler(new AccessPolicyTokenResolver()));
+            new AccessPolicyExpressionCompiler(new AccessPolicyRuntimeTokenResolver()));
 
         var data = new[]
         {
@@ -369,6 +369,105 @@ public sealed class AccessPolicyEvaluatorTests
         Assert.Equal(["u1"], ids);
     }
 
+    [Fact]
+    public async Task Evaluator_Should_Resolve_CurrentUserId_For_ExternalPatient_Ownership()
+    {
+        var subject = new CurrentSubjectContext("patient-1", ["Patient"], [], null, null, true);
+        var policies = new List<AccessPolicy>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Resource = "external_patients",
+                Action = "read",
+                Effect = AccessPolicyEffect.Allow,
+                SubjectType = AccessPolicySubjectType.Role,
+                SubjectKey = "Patient",
+                Priority = 10,
+                IsEnabled = true,
+                Condition = JsonDocument.Parse("""{"field":"externalId","operator":"eq","value":"@CurrentUserId"}""")
+            }
+        };
+
+        var evaluator = CreateEvaluator(subject, policies);
+        var data = new[]
+        {
+            new ExternalPatient { Id = 1, FullName = "Own", ExternalId = "patient-1" },
+            new ExternalPatient { Id = 2, FullName = "Other", ExternalId = "patient-2" }
+        }.AsQueryable();
+
+        var query = await evaluator.ApplyAsync(data, "external_patients", "read", CancellationToken.None);
+        var ids = query.Select(x => x.Id).ToArray();
+
+        Assert.Equal([1], ids);
+    }
+
+    [Fact]
+    public async Task Evaluator_Should_Resolve_CurrentUserEmail()
+    {
+        var subject = new CurrentSubjectContext("creator-1", ["Admin"], [], null, null, true, "owner@test.com");
+        var policies = new List<AccessPolicy>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Resource = "users",
+                Action = "read",
+                Effect = AccessPolicyEffect.Allow,
+                SubjectType = AccessPolicySubjectType.Role,
+                SubjectKey = "Admin",
+                Priority = 10,
+                IsEnabled = true,
+                Condition = JsonDocument.Parse("""{"field":"email","operator":"eq","value":"@CurrentUserEmail"}""")
+            }
+        };
+
+        var evaluator = CreateEvaluator(subject, policies);
+        var data = new[]
+        {
+            new User { Id = "u1", FullName = "Owner", Email = "owner@test.com" },
+            new User { Id = "u2", FullName = "Other", Email = "other@test.com" }
+        }.AsQueryable();
+
+        var query = await evaluator.ApplyAsync(data, "users", "read", CancellationToken.None);
+        var ids = query.Select(x => x.Id).ToArray();
+
+        Assert.Equal(["u1"], ids);
+    }
+
+    [Fact]
+    public async Task Evaluator_Should_Filter_Users_Created_By_CurrentUserId()
+    {
+        var subject = new CurrentSubjectContext("creator-1", ["Admin"], [], null, null, true);
+        var policies = new List<AccessPolicy>
+        {
+            new()
+            {
+                Id = Guid.NewGuid(),
+                Resource = "users",
+                Action = "read",
+                Effect = AccessPolicyEffect.Allow,
+                SubjectType = AccessPolicySubjectType.Role,
+                SubjectKey = "Admin",
+                Priority = 10,
+                IsEnabled = true,
+                Condition = JsonDocument.Parse("""{"field":"createdByUserId","operator":"eq","value":"@CurrentUserId"}""")
+            }
+        };
+
+        var evaluator = CreateEvaluator(subject, policies);
+        var data = new[]
+        {
+            new User { Id = "u1", FullName = "Owned", Email = "owned@test.com", CreatedByUserId = "creator-1" },
+            new User { Id = "u2", FullName = "Other", Email = "other@test.com", CreatedByUserId = "creator-2" }
+        }.AsQueryable();
+
+        var query = await evaluator.ApplyAsync(data, "users", "read", CancellationToken.None);
+        var ids = query.Select(x => x.Id).ToArray();
+
+        Assert.Equal(["u1"], ids);
+    }
+
     private static AccessPolicyEvaluator CreateEvaluator(CurrentSubjectContext subject, IReadOnlyList<AccessPolicy> policies)
     {
         return new AccessPolicyEvaluator(
@@ -376,7 +475,7 @@ public sealed class AccessPolicyEvaluatorTests
             new FakeRuleStore(policies),
             new AccessPolicyConditionParser(),
             new AccessPolicyConditionValidator(),
-            new AccessPolicyExpressionCompiler(new AccessPolicyTokenResolver()));
+            new AccessPolicyExpressionCompiler(new AccessPolicyRuntimeTokenResolver()));
     }
 
     private sealed class FakeCurrentSubjectAccessor(CurrentSubjectContext context) : ICurrentSubjectAccessor

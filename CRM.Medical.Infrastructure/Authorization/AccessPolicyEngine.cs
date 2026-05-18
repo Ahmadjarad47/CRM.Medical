@@ -39,7 +39,9 @@ internal sealed class CurrentSubjectAccessor(
             roleIds,
             user?.City,
             user?.CreatedByUserId,
-            true);
+            true,
+            currentUser.Email ?? user?.Email,
+            currentUser.TenantId);
     }
 }
 
@@ -74,16 +76,20 @@ internal sealed class AccessPolicyRuleStore(MedicalDbContext db, IMemoryCache ca
     }
 }
 
-internal sealed class AccessPolicyTokenResolver : IAccessPolicyTokenResolver
+internal sealed class AccessPolicyRuntimeTokenResolver : IAccessPolicyRuntimeTokenResolver
 {
-    public object? ResolveToken(string token, CurrentSubjectContext subject) =>
+    public object? Resolve(string token, CurrentSubjectContext subject) =>
         token switch
         {
             "@CurrentUserId" => subject.UserId,
+            "@CurrentUserEmail" => subject.Email,
+            "@CurrentUserRole" => subject.RoleNames.FirstOrDefault(),
             "@CurrentRoleIds" => subject.RoleIds,
             "@CurrentRoleNames" => subject.RoleNames,
+            "@CurrentTenantId" => subject.TenantId,
             "@CurrentCity" => subject.City,
             "@CurrentUserCreatedById" => subject.CreatedByUserId,
+            "@NowUtc" => DateTime.UtcNow,
             _ => null
         };
 }
@@ -248,7 +254,7 @@ internal sealed class AccessPolicyMetadataProvider : IAccessPolicyMetadataProvid
             : throw new ApplicationBadRequestException($"No access-policy resource mapping exists for {typeof(TEntity).Name}.");
 }
 
-internal sealed class AccessPolicyExpressionCompiler(IAccessPolicyTokenResolver tokenResolver) : IAccessPolicyExpressionCompiler
+internal sealed class AccessPolicyExpressionCompiler(IAccessPolicyRuntimeTokenResolver tokenResolver) : IAccessPolicyExpressionCompiler
 {
     public Expression<Func<TEntity, bool>> Compile<TEntity>(AccessConditionNode? condition, CurrentSubjectContext subject)
     {
@@ -320,40 +326,48 @@ internal sealed class AccessPolicyExpressionCompiler(IAccessPolicyTokenResolver 
         if (op is "notnull")
             return Expression.NotEqual(left, Expression.Constant(null, left.Type));
 
-        var right = Expression.Constant(ChangeType(rawValue, Nullable.GetUnderlyingType(left.Type) ?? left.Type), left.Type);
         return op switch
         {
-            "eq" => Expression.Equal(left, right),
-            "neq" => Expression.NotEqual(left, right),
-            "gt" => Expression.GreaterThan(left, right),
-            "gte" => Expression.GreaterThanOrEqual(left, right),
-            "lt" => Expression.LessThan(left, right),
-            "lte" => Expression.LessThanOrEqual(left, right),
+            "eq" => Expression.Equal(left, BuildConstant(left.Type, rawValue)),
+            "neq" => Expression.NotEqual(left, BuildConstant(left.Type, rawValue)),
+            "gt" => Expression.GreaterThan(left, BuildConstant(left.Type, rawValue)),
+            "gte" => Expression.GreaterThanOrEqual(left, BuildConstant(left.Type, rawValue)),
+            "lt" => Expression.LessThan(left, BuildConstant(left.Type, rawValue)),
+            "lte" => Expression.LessThanOrEqual(left, BuildConstant(left.Type, rawValue)),
             "in" => BuildIn(left, rawValue, negate: false),
             "nin" => BuildIn(left, rawValue, negate: true),
             "contains" => BuildContains(left, rawValue),
-            "startswith" => Expression.Call(left, typeof(string).GetMethod(nameof(string.StartsWith), [typeof(string)])!, right),
-            "endswith" => Expression.Call(left, typeof(string).GetMethod(nameof(string.EndsWith), [typeof(string)])!, right),
+            "startswith" => Expression.Call(left, typeof(string).GetMethod(nameof(string.StartsWith), [typeof(string)])!, BuildConstant(left.Type, rawValue)),
+            "endswith" => Expression.Call(left, typeof(string).GetMethod(nameof(string.EndsWith), [typeof(string)])!, BuildConstant(left.Type, rawValue)),
             _ => throw new ApplicationBadRequestException($"Operator '{predicate.Operator}' is not supported for expression compilation.")
         };
     }
+
+    private static ConstantExpression BuildConstant(Type targetType, object? rawValue) =>
+        Expression.Constant(ChangeType(rawValue, Nullable.GetUnderlyingType(targetType) ?? targetType), targetType);
 
     private object? ResolveValue(JsonElement? element, CurrentSubjectContext subject)
     {
         if (element is null)
             return null;
-        if (element.Value.ValueKind == JsonValueKind.String)
+
+        return ResolveElementValue(element.Value, subject);
+    }
+
+    private object? ResolveElementValue(JsonElement element, CurrentSubjectContext subject)
+    {
+        if (element.ValueKind == JsonValueKind.String)
         {
-            var value = element.Value.GetString();
+            var value = element.GetString();
             if (!string.IsNullOrWhiteSpace(value) && value.StartsWith('@'))
-                return tokenResolver.ResolveToken(value, subject);
+                return tokenResolver.Resolve(value, subject);
             return value;
         }
-        return element.Value.ValueKind switch
+        return element.ValueKind switch
         {
-            JsonValueKind.Number when element.Value.TryGetInt64(out var i) => i,
-            JsonValueKind.Number => element.Value.GetDouble(),
-            JsonValueKind.Array => element.Value.EnumerateArray().Select(x => x.ToString()).ToArray(),
+            JsonValueKind.Number when element.TryGetInt64(out var i) => i,
+            JsonValueKind.Number => element.GetDouble(),
+            JsonValueKind.Array => element.EnumerateArray().Select(x => ResolveElementValue(x, subject)).ToArray(),
             JsonValueKind.True => true,
             JsonValueKind.False => false,
             _ => null
@@ -379,7 +393,7 @@ internal sealed class AccessPolicyExpressionCompiler(IAccessPolicyTokenResolver 
         {
             null => [],
             IEnumerable<string> s => s.ToArray(),
-            IEnumerable<object> o => o.Select(x => x.ToString() ?? string.Empty).ToArray(),
+            IEnumerable<object?> o => o.Select(x => x?.ToString() ?? string.Empty).ToArray(),
             _ => [rawValue.ToString() ?? string.Empty]
         };
 
