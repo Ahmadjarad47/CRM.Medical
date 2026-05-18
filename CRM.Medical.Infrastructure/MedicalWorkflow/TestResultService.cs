@@ -46,14 +46,26 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
         query = query.ApplyAdvancedSearch(search, SearchFields, r => r.Status, r => r.PdfUrl);
 
         var totalCount = await query.CountAsync(cancellationToken);
-        var rows = await query
-            .OrderByDescending(r => r.ResultDate)
+        var rows = await (
+            from result in query
+            join tr in scopedRequests on result.TestRequestId equals tr.Id
+            join createdBy in db.Users.AsNoTracking() on tr.CreatedByUserId equals createdBy.Id into createdByUsers
+            from createdBy in createdByUsers.DefaultIfEmpty()
+            orderby result.ResultDate descending
+            select new
+            {
+                Result = result,
+                TestRequestCreatedByUserId = tr.CreatedByUserId,
+                TestRequestCreatedByFullName = createdBy == null ? null : createdBy.FullName
+            })
             .ApplyPagination(normalizedPage, normalizedPageSize)
             .ToListAsync(cancellationToken);
 
         return new PagedResult<TestResultDto>
         {
-            Items = rows.Select(Map).ToList(),
+            Items = rows
+                .Select(r => Map(r.Result, r.TestRequestCreatedByUserId, r.TestRequestCreatedByFullName))
+                .ToList(),
             Page = normalizedPage,
             PageSize = normalizedPageSize,
             TotalCount = totalCount
@@ -72,7 +84,8 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
         if (!canRead)
             throw new ApplicationForbiddenException("You cannot access this test request.");
 
-        return Map(entity);
+        var createdByFullName = await GetUserFullNameAsync(request.CreatedByUserId, cancellationToken);
+        return Map(entity, request.CreatedByUserId, createdByFullName);
     }
 
     public async Task<TestResultDto> GetByTestRequestIdAsync(int testRequestId, CancellationToken cancellationToken)
@@ -89,7 +102,8 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
         var entity = await db.TestResults.AsNoTracking().FirstOrDefaultAsync(r => r.TestRequestId == testRequestId, cancellationToken)
             ?? throw new ApplicationNotFoundException("No result exists for this test request.");
 
-        return Map(entity);
+        var createdByFullName = await GetUserFullNameAsync(request.CreatedByUserId, cancellationToken);
+        return Map(entity, request.CreatedByUserId, createdByFullName);
     }
 
     public async Task<TestResultDto> CreateAsync(
@@ -127,7 +141,8 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
         db.TestResults.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Map(entity);
+        var createdByFullName = await GetUserFullNameAsync(request.CreatedByUserId, cancellationToken);
+        return Map(entity, request.CreatedByUserId, createdByFullName);
     }
 
     public async Task UpdateAsync(
@@ -172,10 +187,27 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    private static TestResultDto Map(TestResult e) =>
+    private Task<string?> GetUserFullNameAsync(string? userId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            return Task.FromResult<string?>(null);
+
+        return db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.FullName)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private static TestResultDto Map(
+        TestResult e,
+        string? testRequestCreatedByUserId,
+        string? testRequestCreatedByFullName) =>
         new(
             e.Id,
             e.TestRequestId,
+            testRequestCreatedByUserId,
+            testRequestCreatedByFullName,
             e.ResultDate,
             MedicalWorkflowJson.ToJsonElement(e.ResultData),
             e.PdfUrl,
