@@ -4,6 +4,7 @@ using CRM.Medical.Application.Authorization;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace CRM.Medical.API.Controllers.Admin;
 
@@ -22,6 +23,39 @@ public sealed class AccessPoliciesController(
             .ThenBy(x => x.Action)
             .ThenBy(x => x.Priority)
             .ToListAsync(cancellationToken);
+
+    [HttpGet("tables")]
+    public ActionResult<IReadOnlyList<AccessPolicyTableMetadataResponse>> GetTables()
+    {
+        var tables = db.Model.GetEntityTypes()
+            .Select(entityType => new
+            {
+                EntityType = entityType,
+                TableName = entityType.GetTableName(),
+                Schema = entityType.GetSchema()
+            })
+            .Where(x => !string.IsNullOrWhiteSpace(x.TableName))
+            .Select(x =>
+            {
+                var storeObject = StoreObjectIdentifier.Table(x.TableName!, x.Schema);
+                return new AccessPolicyTableMetadataResponse(
+                    x.TableName!,
+                    x.Schema,
+                    x.EntityType.ClrType.Name,
+                    x.EntityType.GetProperties()
+                        .Select(property => new AccessPolicyColumnMetadataResponse(
+                            property.Name,
+                            property.GetColumnName(storeObject) ?? property.Name,
+                            property.ClrType.Name,
+                            property.IsNullable))
+                        .OrderBy(column => column.ColumnName)
+                        .ToList());
+            })
+            .OrderBy(table => table.TableName)
+            .ToList();
+
+        return Ok(tables);
+    }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<AccessPolicy>> GetById(Guid id, CancellationToken cancellationToken)
@@ -98,14 +132,12 @@ public sealed class AccessPoliciesController(
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> SoftDelete(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var entity = await db.AccessPolicies.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
             return NotFound();
-        entity.DeletedAt = DateTime.UtcNow;
-        entity.IsEnabled = false;
-        entity.UpdatedAt = DateTime.UtcNow;
+        db.AccessPolicies.Remove(entity);
         await db.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
@@ -175,4 +207,16 @@ public sealed class AccessPoliciesController(
 
         return result;
     }
+
+    public sealed record AccessPolicyTableMetadataResponse(
+        string TableName,
+        string? Schema,
+        string EntityName,
+        IReadOnlyList<AccessPolicyColumnMetadataResponse> Columns);
+
+    public sealed record AccessPolicyColumnMetadataResponse(
+        string FieldName,
+        string ColumnName,
+        string Type,
+        bool IsNullable);
 }
