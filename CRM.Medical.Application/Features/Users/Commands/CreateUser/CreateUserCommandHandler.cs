@@ -54,7 +54,7 @@ public sealed class CreateUserCommandHandler(
             IsActive = true,
             EmailConfirmed = true, 
             CreatedAt = now,
-            CreatedByUserId = isAdmin ? null : actorId,
+            CreatedByUserId = actorId,
             ProfileMetadata = ProfileMetadataMapper.ToJsonDocument(request.ProfileMetadata)
         };
 

@@ -1,3 +1,4 @@
+using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
@@ -8,10 +9,12 @@ namespace CRM.Medical.Infrastructure.Persistence;
 
 public sealed class MedicalDbContext(
     DbContextOptions<MedicalDbContext> options,
-    IDateTimeProvider dateTimeProvider)
+    IDateTimeProvider dateTimeProvider,
+    ICurrentUserAccessor currentUser)
     : IdentityDbContext<User, IdentityRole, string>(options)
 {
     private readonly IDateTimeProvider _dateTimeProvider = dateTimeProvider;
+    private readonly ICurrentUserAccessor _currentUser = currentUser;
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     public DbSet<Complaint> Complaints => Set<Complaint>();
@@ -76,6 +79,7 @@ public sealed class MedicalDbContext(
     private void ApplyAuditing()
     {
         var utc = _dateTimeProvider.UtcNow;
+        var currentUserId = _currentUser.UserId;
 
         foreach (var entry in ChangeTracker.Entries<User>())
         {
@@ -98,6 +102,8 @@ public sealed class MedicalDbContext(
                 case EntityState.Added:
                     if (entry.Entity.CreatedAt == default)
                         entry.Entity.CreatedAt = utc;
+                    if (string.IsNullOrWhiteSpace(entry.Entity.CreatedByUserId) && !string.IsNullOrWhiteSpace(currentUserId))
+                        entry.Entity.CreatedByUserId = currentUserId;
                     break;
                 case EntityState.Modified:
                     entry.Entity.UpdatedAt = utc;
