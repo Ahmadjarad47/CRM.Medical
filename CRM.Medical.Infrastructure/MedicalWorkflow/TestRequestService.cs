@@ -52,9 +52,13 @@ public sealed class TestRequestService(
             .ApplyPagination(normalizedPage, normalizedPageSize)
             .ToListAsync(cancellationToken);
 
+        var userNames = await GetUserNamesByIdsAsync(
+            rows.SelectMany(row => new[] { row.DoctorId, row.LabClientId, row.DirectPatientId }),
+            cancellationToken);
+
         return new PagedResult<TestRequestDto>
         {
-            Items = rows.Select(Map).ToList(),
+            Items = rows.Select(row => Map(row, userNames)).ToList(),
             Page = normalizedPage,
             PageSize = normalizedPageSize,
             TotalCount = totalCount
@@ -75,7 +79,9 @@ public sealed class TestRequestService(
         var canAccess = await accessPolicyEvaluator.CanAccessAsync(entity, "test_requests", "read", cancellationToken);
         if (!canAccess)
             throw new ApplicationForbiddenException("You cannot access this test request.");
-        return Map(entity);
+
+        var userNames = await GetUserNamesByIdsAsync([entity.DoctorId, entity.LabClientId, entity.DirectPatientId], cancellationToken);
+        return Map(entity, userNames);
     }
 
     public async Task<TestRequestDto> CreateAsync(
@@ -126,7 +132,8 @@ public sealed class TestRequestService(
 
         await db.Entry(entity).Reference(r => r.MedicalTest).LoadAsync(cancellationToken);
         await db.Entry(entity).Reference(r => r.ExternalPatient).LoadAsync(cancellationToken);
-        return Map(entity);
+        var userNames = await GetUserNamesByIdsAsync([entity.DoctorId, entity.LabClientId, entity.DirectPatientId], cancellationToken);
+        return Map(entity, userNames);
     }
 
     public async Task UpdateAsync(
@@ -225,14 +232,36 @@ public sealed class TestRequestService(
             throw new ApplicationBadRequestException($"External patient '{externalPatientId.Value}' was not found.");
     }
 
-    private static TestRequestDto Map(TestRequest r) =>
+    private async Task<Dictionary<string, string>> GetUserNamesByIdsAsync(
+        IEnumerable<string?> userIds,
+        CancellationToken cancellationToken)
+    {
+        var ids = userIds
+            .Where(userId => !string.IsNullOrWhiteSpace(userId))
+            .Select(userId => userId!.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        if (ids.Length == 0)
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+
+        return await db.Users
+            .AsNoTracking()
+            .Where(user => ids.Contains(user.Id))
+            .ToDictionaryAsync(user => user.Id, user => user.FullName, StringComparer.Ordinal, cancellationToken);
+    }
+
+    private static TestRequestDto Map(TestRequest r, IReadOnlyDictionary<string, string> userNames) =>
         new(
             r.Id,
             r.MedicalTestId,
             r.MedicalTest?.NameEn,
             r.DoctorId,
+            ResolveUserName(userNames, r.DoctorId),
             r.LabClientId,
+            ResolveUserName(userNames, r.LabClientId),
             r.DirectPatientId,
+            ResolvePatientName(r, userNames),
             r.ExternalPatientId,
             r.ExternalPatient?.FullName,
             r.RequestDate,
@@ -242,4 +271,12 @@ public sealed class TestRequestService(
             MedicalWorkflowJson.ToJsonElement(r.Metadata),
             r.CreatedAt,
             r.UpdatedAt);
+
+    private static string? ResolveUserName(IReadOnlyDictionary<string, string> userNames, string? userId) =>
+        !string.IsNullOrWhiteSpace(userId) && userNames.TryGetValue(userId, out var fullName)
+            ? fullName
+            : null;
+
+    private static string? ResolvePatientName(TestRequest request, IReadOnlyDictionary<string, string> userNames) =>
+        ResolveUserName(userNames, request.DirectPatientId) ?? request.ExternalPatient?.FullName;
 }

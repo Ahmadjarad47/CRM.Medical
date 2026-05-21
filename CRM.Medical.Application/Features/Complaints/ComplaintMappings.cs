@@ -11,6 +11,7 @@ internal static class ComplaintMappings
             c.UserId,
             c.Title,
             c.Description,
+            c.Note,
             c.AttachmentUrl,
             c.Status,
             c.CreatedAt,

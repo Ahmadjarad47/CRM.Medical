@@ -208,6 +208,7 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
             e.TestRequestId,
             testRequestCreatedByUserId,
             testRequestCreatedByFullName,
+            testRequestCreatedByFullName,
             e.ResultDate,
             MedicalWorkflowJson.ToJsonElement(e.ResultData),
             e.PdfUrl,

@@ -1,7 +1,7 @@
 using CRM.Medical.Application.Abstractions;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.Users.DTOs;
-using CRM.Medical.Application.Authorization;
 using CRM.Medical.Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
@@ -12,7 +12,8 @@ namespace CRM.Medical.Application.Features.Users.Queries.GetUsers;
 public sealed class GetUsersQueryHandler(
     UserManager<User> userManager,
     ICurrentUserAccessor currentUser,
-    IAccessPolicyEvaluator accessPolicyEvaluator)
+    IAccessPolicyEvaluator accessPolicyEvaluator,
+    IAccessPolicyReadService accessPolicyReadService)
     : IRequestHandler<GetUsersQuery, PagedResult<UserSummaryDto>>
 {
     public async Task<PagedResult<UserSummaryDto>> Handle(
@@ -59,21 +60,47 @@ public sealed class GetUsersQueryHandler(
         var users = await query
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
-            .Select(u => new UserSummaryDto(
-                u.Id,
-                u.Email!,
-                u.FullName,
-                u.City,
-                u.PhoneNumber,
-                u.IsActive,
-                u.EmailConfirmed,
-                u.CreatedAt,
-                u.CreatedByUserId))
             .ToListAsync(cancellationToken);
+
+        var userRoleMap = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        foreach (var user in users)
+        {
+            var roles = await userManager.GetRolesAsync(user);
+            userRoleMap[user.Id] = roles.ToList().AsReadOnly();
+        }
+
+        var roleNames = userRoleMap.Values.SelectMany(x => x).Distinct(StringComparer.OrdinalIgnoreCase);
+        var accessPoliciesByRole = await accessPolicyReadService.GetPoliciesForRolesAsync(roleNames, cancellationToken);
+
+        var items = users
+            .Select(user =>
+            {
+                userRoleMap.TryGetValue(user.Id, out var roles);
+                roles ??= [];
+
+                var accessPolicies = roles
+                    .SelectMany(roleName => accessPoliciesByRole.TryGetValue(roleName, out var policies) ? policies : [])
+                    .DistinctBy(policy => policy.Id)
+                    .ToList();
+
+                return new UserSummaryDto(
+                    user.Id,
+                    user.Email!,
+                    user.FullName,
+                    user.City,
+                    user.PhoneNumber,
+                    user.IsActive,
+                    user.EmailConfirmed,
+                    user.CreatedAt,
+                    user.CreatedByUserId,
+                    roles,
+                    accessPolicies);
+            })
+            .ToList();
 
         var result = new PagedResult<UserSummaryDto>
         {
-            Items = users,
+            Items = items,
             Page = request.Page,
             PageSize = request.PageSize,
             TotalCount = totalCount

@@ -6,6 +6,7 @@ public sealed record TestResultDto(
     int Id,
     int TestRequestId,
     string? TestRequestCreatedByUserId,
+    string? TestRequestCreatedByName,
     string? TestRequestCreatedByFullName,
     DateTime ResultDate,
     JsonElement? ResultData,

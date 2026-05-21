@@ -5,6 +5,7 @@ public sealed record ComplaintDto(
     string UserId,
     string Title,
     string Description,
+    string? Note,
     string? AttachmentUrl,
     string Status,
     DateTime CreatedAt,

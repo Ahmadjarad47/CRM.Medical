@@ -6,5 +6,6 @@ public sealed class SubmitComplaintRequest
 {
     public string Title { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
+    public string? Note { get; init; }
     public IFormFile? Attachment { get; init; }
 }

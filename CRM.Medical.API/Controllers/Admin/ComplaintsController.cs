@@ -22,7 +22,7 @@ public sealed class ComplaintsController(ISender mediator) : AdminBaseController
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateComplaintStatusRequest request, CancellationToken ct)
     {
-        await mediator.Send(new UpdateComplaintStatusCommand(id, request.Status), ct);
+        await mediator.Send(new UpdateComplaintStatusCommand(id, request.Status, request.Note), ct);
         return NoContent();
     }
 }

@@ -26,6 +26,7 @@ public sealed class SubmitComplaintCommandHandler(
             UserId = request.UserId,
             Title = request.Title,
             Description = request.Description,
+            Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim(),
             AttachmentUrl = attachmentUrl,
             Status = ComplaintStatuses.Pending,
             CreatedAt = now

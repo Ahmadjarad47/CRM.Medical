@@ -26,6 +26,9 @@ public sealed class ComplaintConfiguration : IEntityTypeConfiguration<Complaint>
             .IsRequired()
             .HasMaxLength(8000);
 
+        builder.Property(c => c.Note)
+            .HasMaxLength(4000);
+
         builder.Property(c => c.AttachmentUrl)
             .HasMaxLength(2048);
 

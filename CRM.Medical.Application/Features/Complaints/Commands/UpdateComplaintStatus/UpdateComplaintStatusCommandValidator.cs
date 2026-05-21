@@ -15,5 +15,8 @@ public sealed class UpdateComplaintStatusCommandValidator : AbstractValidator<Up
             .Must(s => ComplaintStatuses.All.Contains(s))
             .WithMessage(
                 _ => $"Status must be one of: {string.Join(", ", ComplaintStatuses.All)}.");
+
+        RuleFor(x => x.Note)
+            .MaximumLength(4000);
     }
 }

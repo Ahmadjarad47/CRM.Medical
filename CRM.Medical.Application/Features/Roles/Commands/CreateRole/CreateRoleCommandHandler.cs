@@ -15,6 +15,6 @@ public sealed class CreateRoleCommandHandler(RoleManager<IdentityRole> roleManag
         if (!result.Succeeded)
             throw new ApplicationBadRequestException(string.Join("; ", result.Errors.Select(e => e.Description)));
 
-        return new RoleDto(role.Id, role.Name!);
+        return new RoleDto(role.Id, role.Name!, []);
     }
 }

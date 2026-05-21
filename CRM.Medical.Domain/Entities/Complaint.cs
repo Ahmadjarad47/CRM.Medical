@@ -7,6 +7,7 @@ public sealed class Complaint : BaseEntity
     public User User { get; set; } = null!;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public string? Note { get; set; }
     public string? AttachmentUrl { get; set; }
     public string Status { get; set; } = string.Empty;
 }

@@ -8,4 +8,5 @@ public sealed record SubmitComplaintCommand(
     string UserId,
     string Title,
     string Description,
+    string? Note,
     IFormFile? Attachment) : IRequest<ComplaintDto>;

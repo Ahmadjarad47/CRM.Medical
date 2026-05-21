@@ -1,3 +1,5 @@
+using CRM.Medical.Application.Authorization;
+
 namespace CRM.Medical.Application.Features.Users.DTOs;
 
 public sealed record UserSummaryDto(
@@ -9,4 +11,6 @@ public sealed record UserSummaryDto(
     bool IsActive,
     bool EmailConfirmed,
     DateTime CreatedAt,
-    string? CreatedByUserId);
+    string? CreatedByUserId,
+    IReadOnlyList<string> Roles,
+    IReadOnlyList<AccessPolicySummaryDto> AccessPolicies);

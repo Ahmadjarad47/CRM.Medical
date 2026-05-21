@@ -33,6 +33,7 @@ public sealed class MeComplaintsController(ISender mediator) : UserBaseControlle
             User.GetRequiredUserId(),
             request.Title,
             request.Description,
+            request.Note,
             request.Attachment);
         var result = await mediator.Send(command, ct);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);

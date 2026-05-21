@@ -1,4 +1,5 @@
 using CRM.Medical.Application.Abstractions;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Common.Json;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Application.Exceptions;
@@ -15,7 +16,8 @@ public sealed class CreateUserCommandHandler(
     UserManager<User> userManager,
     IDateTimeProvider dateTimeProvider,
     IUserManagementAccess userManagementAccess,
-    ICurrentUserAccessor currentUser)
+    ICurrentUserAccessor currentUser,
+    IAccessPolicyReadService accessPolicyReadService)
     : IRequestHandler<CreateUserCommand, UserDetailDto>
 {
     public async Task<UserDetailDto> Handle(CreateUserCommand request, CancellationToken cancellationToken)
@@ -72,6 +74,11 @@ public sealed class CreateUserCommandHandler(
         }
 
         var roles = await userManager.GetRolesAsync(user);
+        var accessPoliciesByRole = await accessPolicyReadService.GetPoliciesForRolesAsync(roles, cancellationToken);
+        var accessPolicies = roles
+            .SelectMany(roleName => accessPoliciesByRole.TryGetValue(roleName, out var policies) ? policies : [])
+            .DistinctBy(policy => policy.Id)
+            .ToList();
 
         return new UserDetailDto(
             user.Id,
@@ -87,6 +94,7 @@ public sealed class CreateUserCommandHandler(
             user.UpdatedAt,
             user.CreatedByUserId,
             roles.ToList().AsReadOnly(),
+            accessPolicies,
             ProfileMetadataMapper.ToJsonElement(user.ProfileMetadata));
     }
 }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CRM.Medical.Application.Authorization;
 
 namespace CRM.Medical.Application.Features.Users.DTOs;
 
@@ -16,4 +17,5 @@ public sealed record UserDetailDto(
     DateTime? UpdatedAt,
     string? CreatedByUserId,
     IReadOnlyList<string> Roles,
+    IReadOnlyList<AccessPolicySummaryDto> AccessPolicies,
     JsonElement? ProfileMetadata);

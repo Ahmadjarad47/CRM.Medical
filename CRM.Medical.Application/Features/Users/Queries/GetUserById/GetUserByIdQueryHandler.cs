@@ -1,4 +1,5 @@
 using CRM.Medical.Application.Abstractions;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.Users.Constants;
@@ -14,7 +15,8 @@ public sealed class GetUserByIdQueryHandler(
     UserManager<User> userManager,
     ICacheService cache,
     IUserManagementAccess userManagementAccess,
-    ICurrentUserAccessor currentUser)
+    ICurrentUserAccessor currentUser,
+    IAccessPolicyReadService accessPolicyReadService)
     : IRequestHandler<GetUserByIdQuery, UserDetailDto>
 {
     public async Task<UserDetailDto> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
@@ -40,6 +42,11 @@ public sealed class GetUserByIdQueryHandler(
         }
 
         var roles = await userManager.GetRolesAsync(user);
+        var accessPoliciesByRole = await accessPolicyReadService.GetPoliciesForRolesAsync(roles, cancellationToken);
+        var accessPolicies = roles
+            .SelectMany(roleName => accessPoliciesByRole.TryGetValue(roleName, out var policies) ? policies : [])
+            .DistinctBy(policy => policy.Id)
+            .ToList();
 
         var dto = new UserDetailDto(
             user.Id,
@@ -55,6 +62,7 @@ public sealed class GetUserByIdQueryHandler(
             user.UpdatedAt,
             user.CreatedByUserId,
             roles.ToList().AsReadOnly(),
+            accessPolicies,
             user.ProfileMetadata?.RootElement);
 
         if (isAdmin)

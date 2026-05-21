@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Common.Queries;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.Roles.DTOs;
@@ -8,7 +9,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CRM.Medical.Application.Features.Roles.Queries.GetRoles;
 
-public sealed class GetRolesQueryHandler(RoleManager<IdentityRole> roleManager)
+public sealed class GetRolesQueryHandler(
+    RoleManager<IdentityRole> roleManager,
+    IAccessPolicyReadService accessPolicyReadService)
     : IRequestHandler<GetRolesQuery, PagedResult<RoleDto>>
 {
     private static readonly IReadOnlyDictionary<string, Expression<Func<IdentityRole, string?>>> SearchFields =
@@ -30,12 +33,25 @@ public sealed class GetRolesQueryHandler(RoleManager<IdentityRole> roleManager)
         var roles = await query
             .OrderBy(r => r.Name!)
             .ApplyPagination(normalizedPage, normalizedPageSize)
-            .Select(r => new RoleDto(r.Id, r.Name!))
             .ToListAsync(cancellationToken);
+
+        var roleNames = roles
+            .Select(role => role.Name)
+            .Where(roleName => !string.IsNullOrWhiteSpace(roleName))
+            .Cast<string>()
+            .ToArray();
+        var accessPoliciesByRole = await accessPolicyReadService.GetPoliciesForRolesAsync(roleNames, cancellationToken);
+
+        var items = roles
+            .Select(role => new RoleDto(
+                role.Id,
+                role.Name!,
+                accessPoliciesByRole.TryGetValue(role.Name!, out var policies) ? policies : []))
+            .ToList();
 
         return new PagedResult<RoleDto>
         {
-            Items = roles,
+            Items = items,
             Page = normalizedPage,
             PageSize = normalizedPageSize,
             TotalCount = totalCount

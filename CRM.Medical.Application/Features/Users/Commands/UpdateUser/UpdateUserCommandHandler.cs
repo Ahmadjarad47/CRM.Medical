@@ -1,4 +1,5 @@
 using CRM.Medical.Application.Abstractions;
+using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Common.Caching;
 using CRM.Medical.Application.Common.Json;
 using CRM.Medical.Application.Common.Time;
@@ -16,7 +17,8 @@ public sealed class UpdateUserCommandHandler(
     IDateTimeProvider dateTimeProvider,
     ICacheService cache,
     IUserManagementAccess userManagementAccess,
-    ICurrentUserAccessor currentUser)
+    ICurrentUserAccessor currentUser,
+    IAccessPolicyReadService accessPolicyReadService)
     : IRequestHandler<UpdateUserCommand, UserDetailDto>
 {
     public async Task<UserDetailDto> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
@@ -47,6 +49,11 @@ public sealed class UpdateUserCommandHandler(
         await cache.RemoveAsync(CacheKeys.UserById(user.Id), cancellationToken);
 
         var roles = await userManager.GetRolesAsync(user);
+        var accessPoliciesByRole = await accessPolicyReadService.GetPoliciesForRolesAsync(roles, cancellationToken);
+        var accessPolicies = roles
+            .SelectMany(roleName => accessPoliciesByRole.TryGetValue(roleName, out var policies) ? policies : [])
+            .DistinctBy(policy => policy.Id)
+            .ToList();
 
         return new UserDetailDto(
             user.Id,
@@ -62,6 +69,7 @@ public sealed class UpdateUserCommandHandler(
             user.UpdatedAt,
             user.CreatedByUserId,
             roles.ToList().AsReadOnly(),
+            accessPolicies,
             ProfileMetadataMapper.ToJsonElement(user.ProfileMetadata));
     }
 }

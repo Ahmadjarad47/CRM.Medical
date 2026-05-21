@@ -97,6 +97,7 @@ public static class DependencyInjection
         services.AddScoped<IAccessPolicyRuntimeTokenResolver, AccessPolicyRuntimeTokenResolver>();
         services.AddScoped<IAccessPolicyExpressionCompiler, AccessPolicyExpressionCompiler>();
         services.AddScoped<IAccessPolicyEvaluator, AccessPolicyEvaluator>();
+        services.AddScoped<IAccessPolicyReadService, AccessPolicyReadService>();
         services.AddScoped<IChatUserProfileReader, EfChatUserProfileReader>();
         services.AddScoped<IChatUserSummaryLookup, ChatUserSummaryLookup>();
 

@@ -16,6 +16,7 @@ public sealed class UpdateComplaintStatusCommandHandler(
             ?? throw new ApplicationNotFoundException($"Complaint '{request.Id}' was not found.");
 
         complaint.Status = request.Status;
+        complaint.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
         complaint.UpdatedAt = dateTimeProvider.UtcNow;
         await complaints.UpdateAsync(complaint, cancellationToken);
     }
