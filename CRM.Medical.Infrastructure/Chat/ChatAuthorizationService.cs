@@ -1,10 +1,9 @@
 using CRM.Medical.Application.Exceptions;
+using CRM.Medical.Application.Features.Chat.Persistence;
 using CRM.Medical.Application.Features.Chat.Services;
 using CRM.Medical.Application.Authorization;
 using CRM.Medical.Domain.Entities;
-using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 namespace CRM.Medical.Infrastructure.Chat;
 
@@ -12,22 +11,16 @@ namespace CRM.Medical.Infrastructure.Chat;
 /// Enforces healthcare chat routing rules using Identity roles and <see cref="TestRequest"/> workflow links.
 /// </summary>
 public sealed class ChatAuthorizationService(
-    MedicalDbContext db,
+    IChatPersistence chatPersistence,
     UserManager<User> userManager,
     IAccessPolicyEvaluator accessPolicyEvaluator)
     : IChatAuthorizationService
 {
-    private readonly MedicalDbContext _db = db;
     private readonly UserManager<User> _userManager = userManager;
 
     public async Task EnsureActiveParticipantAsync(string userId, Guid conversationId, CancellationToken cancellationToken = default)
     {
-        var scoped = await accessPolicyEvaluator.ApplyAsync(
-            _db.ConversationParticipants.AsNoTracking(),
-            "conversation_participants",
-            "read",
-            cancellationToken);
-        var ok = await scoped.AnyAsync(p => p.ConversationId == conversationId && p.UserId == userId && p.LeftAt == null, cancellationToken);
+        var ok = await chatPersistence.IsActiveParticipantAsync(userId, conversationId, cancellationToken);
 
         if (!ok)
             throw new ApplicationForbiddenException("You are not an active participant in this conversation.");
