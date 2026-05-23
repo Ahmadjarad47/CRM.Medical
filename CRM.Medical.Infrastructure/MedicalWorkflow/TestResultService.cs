@@ -42,6 +42,14 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
 
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
         var scopedRequests = await accessPolicyEvaluator.ApplyAsync(db.TestRequests.AsNoTracking(), "test_requests", "read", cancellationToken);
+        var textSearchFields = new Dictionary<string, Expression<Func<TestResult, string?>>>(SearchFields, StringComparer.OrdinalIgnoreCase)
+        {
+            ["createdbyname"] = r => (
+                from tr in db.TestRequests
+                join user in db.Users on tr.CreatedByUserId equals user.Id
+                where tr.Id == r.TestRequestId
+                select user.FullName).FirstOrDefault()
+        };
         var query =
             from result in db.TestResults.AsNoTracking()
             join tr in scopedRequests on result.TestRequestId equals tr.Id
@@ -52,11 +60,16 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
 
         query = query.ApplyAdvancedSearch(
             search,
-            SearchFields,
+            textSearchFields,
             ExactSearchFields,
             BuildDefaultExactPredicate,
             r => r.Status,
-            r => r.PdfUrl);
+            r => r.PdfUrl,
+            r => (
+                from tr in db.TestRequests
+                join user in db.Users on tr.CreatedByUserId equals user.Id
+                where tr.Id == r.TestRequestId
+                select user.FullName).FirstOrDefault());
 
         var totalCount = await query.CountAsync(cancellationToken);
         var rows = await (

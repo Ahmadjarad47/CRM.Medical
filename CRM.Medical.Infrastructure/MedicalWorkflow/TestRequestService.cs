@@ -29,7 +29,10 @@ public sealed class TestRequestService(
             ["notes"] = r => r.Notes,
             ["doctor"] = r => r.DoctorId,
             ["lab"] = r => r.LabClientId,
-            ["directpatient"] = r => r.DirectPatientId
+            ["directpatient"] = r => r.DirectPatientId,
+            ["medicaltestnamear"] = r => r.MedicalTest.NameAr,
+            ["medicaltestnameen"] = r => r.MedicalTest.NameEn,
+            ["externalpatientname"] = r => r.ExternalPatient == null ? null : r.ExternalPatient.FullName
         };
 
     private static readonly IReadOnlyDictionary<string, Func<string, Expression<Func<TestRequest, bool>>?>> ExactSearchFields =
@@ -50,17 +53,47 @@ public sealed class TestRequestService(
 
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
         var query = await accessPolicyEvaluator.ApplyAsync(db.TestRequests.AsNoTracking(), "test_requests", "read", cancellationToken);
+        var textSearchFields = new Dictionary<string, Expression<Func<TestRequest, string?>>>(SearchFields, StringComparer.OrdinalIgnoreCase)
+        {
+            ["doctorname"] = r => db.Users
+                .Where(u => u.Id == r.DoctorId)
+                .Select(u => u.FullName)
+                .FirstOrDefault(),
+            ["labname"] = r => db.Users
+                .Where(u => u.Id == r.LabClientId)
+                .Select(u => u.FullName)
+                .FirstOrDefault(),
+            ["patientname"] = r => db.Users
+                .Where(u => u.Id == r.DirectPatientId)
+                .Select(u => u.FullName)
+                .FirstOrDefault()
+        };
 
         query = query.ApplyAdvancedSearch(
             search,
-            SearchFields,
+            textSearchFields,
             ExactSearchFields,
             BuildDefaultExactPredicate,
             r => r.Status,
             r => r.Notes,
             r => r.DoctorId,
             r => r.LabClientId,
-            r => r.DirectPatientId);
+            r => r.DirectPatientId,
+            r => r.MedicalTest.NameAr,
+            r => r.MedicalTest.NameEn,
+            r => r.ExternalPatient == null ? null : r.ExternalPatient.FullName,
+            r => db.Users
+                .Where(u => u.Id == r.DoctorId)
+                .Select(u => u.FullName)
+                .FirstOrDefault(),
+            r => db.Users
+                .Where(u => u.Id == r.LabClientId)
+                .Select(u => u.FullName)
+                .FirstOrDefault(),
+            r => db.Users
+                .Where(u => u.Id == r.DirectPatientId)
+                .Select(u => u.FullName)
+                .FirstOrDefault());
 
         var totalCount = await query.CountAsync(cancellationToken);
         var rows = await query

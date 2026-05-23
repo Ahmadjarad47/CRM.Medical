@@ -27,7 +27,8 @@ public sealed class ExternalPatientService(
             ["name"] = e => e.FullName,
             ["phone"] = e => e.PhoneNumber,
             ["externalid"] = e => e.ExternalId,
-            ["gender"] = e => e.Gender
+            ["gender"] = e => e.Gender,
+            ["linkeddirectpatient"] = e => e.LinkedDirectPatientId
         };
 
     private static readonly IReadOnlyDictionary<string, Func<string, Expression<Func<ExternalPatient, bool>>?>> ExactSearchFields =
@@ -56,7 +57,8 @@ public sealed class ExternalPatientService(
             e => e.FullName,
             e => e.PhoneNumber,
             e => e.ExternalId,
-            e => e.Gender);
+            e => e.Gender,
+            e => e.LinkedDirectPatientId);
 
         var totalCount = await query.CountAsync(cancellationToken);
         var rows = await query

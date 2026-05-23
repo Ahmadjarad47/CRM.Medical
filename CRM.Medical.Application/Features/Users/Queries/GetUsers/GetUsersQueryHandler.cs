@@ -23,7 +23,9 @@ public sealed class GetUsersQueryHandler(
         {
             ["id"] = u => u.Id,
             ["name"] = u => u.FullName,
-            ["email"] = u => u.Email
+            ["email"] = u => u.Email,
+            ["phone"] = u => u.PhoneNumber,
+            ["city"] = u => u.City
         };
 
     public async Task<PagedResult<UserSummaryDto>> Handle(
@@ -34,7 +36,14 @@ public sealed class GetUsersQueryHandler(
 
         var query = userManager.Users.AsNoTracking();
         query = await accessPolicyEvaluator.ApplyAsync(query, "users", "read", cancellationToken);
-        query = query.ApplyAdvancedSearch(request.SearchTerm, SearchFields, u => u.FullName, u => u.Email, u => u.Id);
+        query = query.ApplyAdvancedSearch(
+            request.SearchTerm,
+            SearchFields,
+            u => u.FullName,
+            u => u.Email,
+            u => u.Id,
+            u => u.PhoneNumber,
+            u => u.City);
 
         if (request.IsActive.HasValue)
             query = query.Where(u => u.IsActive == request.IsActive.Value);
