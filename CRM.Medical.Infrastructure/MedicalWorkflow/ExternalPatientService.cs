@@ -30,6 +30,13 @@ public sealed class ExternalPatientService(
             ["gender"] = e => e.Gender
         };
 
+    private static readonly IReadOnlyDictionary<string, Func<string, Expression<Func<ExternalPatient, bool>>?>> ExactSearchFields =
+        new Dictionary<string, Func<string, Expression<Func<ExternalPatient, bool>>?>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["id"] = token => ParseIntPredicate(token, value => e => e.Id == value),
+            ["age"] = token => ParseIntPredicate(token, value => e => e.Age == value)
+        };
+
     public async Task<PagedResult<ExternalPatientDto>> ListAsync(
         int page,
         int pageSize,
@@ -41,7 +48,15 @@ public sealed class ExternalPatientService(
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
         var query = await accessPolicyEvaluator.ApplyAsync(db.ExternalPatients.AsNoTracking(), "external_patients", "read", cancellationToken);
 
-        query = query.ApplyAdvancedSearch(search, SearchFields, e => e.FullName, e => e.PhoneNumber, e => e.ExternalId);
+        query = query.ApplyAdvancedSearch(
+            search,
+            SearchFields,
+            ExactSearchFields,
+            BuildDefaultExactPredicate,
+            e => e.FullName,
+            e => e.PhoneNumber,
+            e => e.ExternalId,
+            e => e.Gender);
 
         var totalCount = await query.CountAsync(cancellationToken);
         var rows = await query
@@ -134,4 +149,12 @@ public sealed class ExternalPatientService(
 
     private static ExternalPatientDto Map(ExternalPatient e) =>
         new(e.Id, e.FullName, e.Age, e.Gender, e.PhoneNumber, e.ExternalId, e.LinkedDirectPatientId, e.CreatedAt);
+
+    private static Expression<Func<ExternalPatient, bool>>? BuildDefaultExactPredicate(string token) =>
+        ParseIntPredicate(token, value => e => e.Id == value || e.Age == value);
+
+    private static Expression<Func<ExternalPatient, bool>>? ParseIntPredicate(
+        string token,
+        Func<int, Expression<Func<ExternalPatient, bool>>> predicateFactory) =>
+        int.TryParse(token, out var value) ? predicateFactory(value) : null;
 }

@@ -4,6 +4,7 @@ using CRM.Medical.Application.Common.Queries;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.MedicalWorkflow;
+using CRM.Medical.Application.Features.TestRequests.CQRS;
 using CRM.Medical.Application.Features.TestRequests.DTOs;
 using CRM.Medical.Application.Features.TestRequests.Services;
 using CRM.Medical.Application.Authorization;
@@ -31,6 +32,14 @@ public sealed class TestRequestService(
             ["directpatient"] = r => r.DirectPatientId
         };
 
+    private static readonly IReadOnlyDictionary<string, Func<string, Expression<Func<TestRequest, bool>>?>> ExactSearchFields =
+        new Dictionary<string, Func<string, Expression<Func<TestRequest, bool>>?>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["id"] = token => ParseIntPredicate(token, value => r => r.Id == value),
+            ["medicaltestid"] = token => ParseIntPredicate(token, value => r => r.MedicalTestId == value),
+            ["externalpatientid"] = token => ParseIntPredicate(token, value => r => r.ExternalPatientId == value)
+        };
+
     public async Task<PagedResult<TestRequestDto>> ListAsync(
         int page,
         int pageSize,
@@ -42,7 +51,16 @@ public sealed class TestRequestService(
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
         var query = await accessPolicyEvaluator.ApplyAsync(db.TestRequests.AsNoTracking(), "test_requests", "read", cancellationToken);
 
-        query = query.ApplyAdvancedSearch(search, SearchFields, r => r.Status, r => r.Notes, r => r.DoctorId, r => r.LabClientId, r => r.DirectPatientId);
+        query = query.ApplyAdvancedSearch(
+            search,
+            SearchFields,
+            ExactSearchFields,
+            BuildDefaultExactPredicate,
+            r => r.Status,
+            r => r.Notes,
+            r => r.DoctorId,
+            r => r.LabClientId,
+            r => r.DirectPatientId);
 
         var totalCount = await query.CountAsync(cancellationToken);
         var rows = await query
@@ -84,56 +102,47 @@ public sealed class TestRequestService(
         return Map(entity, userNames);
     }
 
-    public async Task<TestRequestDto> CreateAsync(
-        int medicalTestId,
-        DateTime requestDate,
-        string status,
-        double totalAmount,
-        string? notes,
-        JsonDocument? metadata,
-        string? doctorId,
-        string? labClientId,
-        string? directPatientId,
-        int? externalPatientId,
+    public async Task<IReadOnlyList<TestRequestDto>> CreateAsync(
+        IReadOnlyList<CreateTestRequestItemCommand> items,
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
+        if (items.Count == 0)
+            throw new ApplicationBadRequestException("At least one test request item is required.");
 
-        var testExists = await db.MedicalTests.AnyAsync(t => t.Id == medicalTestId, cancellationToken);
-        if (!testExists)
-            throw new ApplicationBadRequestException($"Medical test '{medicalTestId}' was not found.");
+        var entities = new List<TestRequest>(items.Count);
+        foreach (var item in items)
+            entities.Add(await BuildCreateEntityAsync(item, cancellationToken));
 
-        await ValidatePatientSubjectAsync(directPatientId, externalPatientId, cancellationToken);
-
-        var userId = currentUser.GetRequiredUserId();
-        var resolvedDoctorId = string.IsNullOrWhiteSpace(doctorId) ? null : doctorId.Trim();
-        var resolvedLabId = string.IsNullOrWhiteSpace(labClientId) ? null : labClientId.Trim();
-
-        var entity = new TestRequest
-        {
-            MedicalTestId = medicalTestId,
-            RequestDate = requestDate,
-            Status = status.Trim(),
-            TotalAmount = totalAmount,
-            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
-            Metadata = metadata,
-            DoctorId = resolvedDoctorId,
-            LabClientId = resolvedLabId,
-            DirectPatientId = string.IsNullOrWhiteSpace(directPatientId) ? null : directPatientId.Trim(),
-            ExternalPatientId = externalPatientId,
-            CreatedByUserId = userId
-        };
-        var canCreate = await accessPolicyEvaluator.CanAccessAsync(entity, "test_requests", "create", cancellationToken);
-        if (!canCreate)
-            throw new ApplicationForbiddenException("You cannot create this test request.");
-
-        db.TestRequests.Add(entity);
+        db.TestRequests.AddRange(entities);
         await db.SaveChangesAsync(cancellationToken);
 
-        await db.Entry(entity).Reference(r => r.MedicalTest).LoadAsync(cancellationToken);
-        await db.Entry(entity).Reference(r => r.ExternalPatient).LoadAsync(cancellationToken);
-        var userNames = await GetUserNamesByIdsAsync([entity.DoctorId, entity.LabClientId, entity.DirectPatientId], cancellationToken);
-        return Map(entity, userNames);
+        var medicalTestIds = entities.Select(entity => entity.MedicalTestId).Distinct().ToArray();
+        var externalPatientIds = entities
+            .Where(entity => entity.ExternalPatientId.HasValue)
+            .Select(entity => entity.ExternalPatientId!.Value)
+            .Distinct()
+            .ToArray();
+
+        var medicalTestNames = await db.MedicalTests
+            .AsNoTracking()
+            .Where(test => medicalTestIds.Contains(test.Id))
+            .ToDictionaryAsync(test => test.Id, test => (string?)test.NameEn, cancellationToken);
+
+        var externalPatientNames = externalPatientIds.Length == 0
+            ? new Dictionary<int, string?>()
+            : await db.ExternalPatients
+                .AsNoTracking()
+                .Where(patient => externalPatientIds.Contains(patient.Id))
+                .ToDictionaryAsync(patient => patient.Id, patient => (string?)patient.FullName, cancellationToken);
+
+        var userNames = await GetUserNamesByIdsAsync(
+            entities.SelectMany(entity => new[] { entity.DoctorId, entity.LabClientId, entity.DirectPatientId }),
+            cancellationToken);
+
+        return entities
+            .Select(entity => MapCreated(entity, medicalTestNames, externalPatientNames, userNames))
+            .ToList();
     }
 
     public async Task UpdateAsync(
@@ -279,4 +288,79 @@ public sealed class TestRequestService(
 
     private static string? ResolvePatientName(TestRequest request, IReadOnlyDictionary<string, string> userNames) =>
         ResolveUserName(userNames, request.DirectPatientId) ?? request.ExternalPatient?.FullName;
+
+    private async Task<TestRequest> BuildCreateEntityAsync(
+        CreateTestRequestItemCommand item,
+        CancellationToken cancellationToken)
+    {
+        var testExists = await db.MedicalTests.AnyAsync(t => t.Id == item.MedicalTestId, cancellationToken);
+        if (!testExists)
+            throw new ApplicationBadRequestException($"Medical test '{item.MedicalTestId}' was not found.");
+
+        await ValidatePatientSubjectAsync(item.DirectPatientId, item.ExternalPatientId, cancellationToken);
+
+        var entity = new TestRequest
+        {
+            MedicalTestId = item.MedicalTestId,
+            RequestDate = item.RequestDate,
+            Status = item.Status.Trim(),
+            TotalAmount = item.TotalAmount,
+            Notes = string.IsNullOrWhiteSpace(item.Notes) ? null : item.Notes.Trim(),
+            Metadata = item.Metadata,
+            DoctorId = string.IsNullOrWhiteSpace(item.DoctorId) ? null : item.DoctorId.Trim(),
+            LabClientId = string.IsNullOrWhiteSpace(item.LabClientId) ? null : item.LabClientId.Trim(),
+            DirectPatientId = string.IsNullOrWhiteSpace(item.DirectPatientId) ? null : item.DirectPatientId.Trim(),
+            ExternalPatientId = item.ExternalPatientId,
+            CreatedByUserId = currentUser.GetRequiredUserId()
+        };
+
+        var canCreate = await accessPolicyEvaluator.CanAccessAsync(entity, "test_requests", "create", cancellationToken);
+        if (!canCreate)
+            throw new ApplicationForbiddenException("You cannot create this test request.");
+
+        return entity;
+    }
+
+    private static TestRequestDto MapCreated(
+        TestRequest request,
+        IReadOnlyDictionary<int, string?> medicalTestNames,
+        IReadOnlyDictionary<int, string?> externalPatientNames,
+        IReadOnlyDictionary<string, string> userNames) =>
+        new(
+            request.Id,
+            request.MedicalTestId,
+            medicalTestNames.TryGetValue(request.MedicalTestId, out var medicalTestName) ? medicalTestName : null,
+            request.DoctorId,
+            ResolveUserName(userNames, request.DoctorId),
+            request.LabClientId,
+            ResolveUserName(userNames, request.LabClientId),
+            request.DirectPatientId,
+            ResolveUserName(userNames, request.DirectPatientId)
+                ?? (request.ExternalPatientId.HasValue &&
+                    externalPatientNames.TryGetValue(request.ExternalPatientId.Value, out var externalPatientName)
+                    ? externalPatientName
+                    : null),
+            request.ExternalPatientId,
+            request.ExternalPatientId.HasValue &&
+            externalPatientNames.TryGetValue(request.ExternalPatientId.Value, out var fullName)
+                ? fullName
+                : null,
+            request.RequestDate,
+            request.Status,
+            request.TotalAmount,
+            request.Notes,
+            MedicalWorkflowJson.ToJsonElement(request.Metadata),
+            request.CreatedAt,
+            request.UpdatedAt);
+
+    private static Expression<Func<TestRequest, bool>>? BuildDefaultExactPredicate(string token) =>
+        ParseIntPredicate(token, value => r =>
+            r.Id == value ||
+            r.MedicalTestId == value ||
+            r.ExternalPatientId == value);
+
+    private static Expression<Func<TestRequest, bool>>? ParseIntPredicate(
+        string token,
+        Func<int, Expression<Func<TestRequest, bool>>> predicateFactory) =>
+        int.TryParse(token, out var value) ? predicateFactory(value) : null;
 }

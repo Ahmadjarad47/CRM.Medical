@@ -4,7 +4,7 @@ using MediatR;
 
 namespace CRM.Medical.Application.Features.TestRequests.CQRS;
 
-public sealed record CreateTestRequestCommand(
+public sealed record CreateTestRequestItemCommand(
     int MedicalTestId,
     DateTime RequestDate,
     string Status,
@@ -14,4 +14,7 @@ public sealed record CreateTestRequestCommand(
     string? DoctorId,
     string? LabClientId,
     string? DirectPatientId,
-    int? ExternalPatientId) : IRequest<TestRequestDto>;
+    int? ExternalPatientId);
+
+public sealed record CreateTestRequestCommand(
+    IReadOnlyList<CreateTestRequestItemCommand> Items) : IRequest<IReadOnlyList<TestRequestDto>>;

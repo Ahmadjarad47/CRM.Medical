@@ -24,6 +24,13 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
             ["pdf"] = r => r.PdfUrl
         };
 
+    private static readonly IReadOnlyDictionary<string, Func<string, Expression<Func<TestResult, bool>>?>> ExactSearchFields =
+        new Dictionary<string, Func<string, Expression<Func<TestResult, bool>>?>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["id"] = token => ParseIntPredicate(token, value => r => r.Id == value),
+            ["testrequestid"] = token => ParseIntPredicate(token, value => r => r.TestRequestId == value)
+        };
+
     public async Task<PagedResult<TestResultDto>> ListAsync(
         int page,
         int pageSize,
@@ -43,7 +50,13 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
         if (testRequestId is { } tid)
             query = query.Where(r => r.TestRequestId == tid);
 
-        query = query.ApplyAdvancedSearch(search, SearchFields, r => r.Status, r => r.PdfUrl);
+        query = query.ApplyAdvancedSearch(
+            search,
+            SearchFields,
+            ExactSearchFields,
+            BuildDefaultExactPredicate,
+            r => r.Status,
+            r => r.PdfUrl);
 
         var totalCount = await query.CountAsync(cancellationToken);
         var rows = await (
@@ -215,4 +228,12 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
             e.Status,
             e.CreatedAt,
             e.UpdatedAt);
+
+    private static Expression<Func<TestResult, bool>>? BuildDefaultExactPredicate(string token) =>
+        ParseIntPredicate(token, value => r => r.Id == value || r.TestRequestId == value);
+
+    private static Expression<Func<TestResult, bool>>? ParseIntPredicate(
+        string token,
+        Func<int, Expression<Func<TestResult, bool>>> predicateFactory) =>
+        int.TryParse(token, out var value) ? predicateFactory(value) : null;
 }

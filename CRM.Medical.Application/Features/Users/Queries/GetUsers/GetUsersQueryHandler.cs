@@ -1,5 +1,7 @@
+using System.Linq.Expressions;
 using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Authorization;
+using CRM.Medical.Application.Common.Queries;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.Users.DTOs;
 using CRM.Medical.Domain.Entities;
@@ -16,6 +18,14 @@ public sealed class GetUsersQueryHandler(
     IAccessPolicyReadService accessPolicyReadService)
     : IRequestHandler<GetUsersQuery, PagedResult<UserSummaryDto>>
 {
+    private static readonly IReadOnlyDictionary<string, Expression<Func<User, string?>>> SearchFields =
+        new Dictionary<string, Expression<Func<User, string?>>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["id"] = u => u.Id,
+            ["name"] = u => u.FullName,
+            ["email"] = u => u.Email
+        };
+
     public async Task<PagedResult<UserSummaryDto>> Handle(
         GetUsersQuery request,
         CancellationToken cancellationToken)
@@ -24,14 +34,7 @@ public sealed class GetUsersQueryHandler(
 
         var query = userManager.Users.AsNoTracking();
         query = await accessPolicyEvaluator.ApplyAsync(query, "users", "read", cancellationToken);
-
-        if (!string.IsNullOrWhiteSpace(request.SearchTerm))
-        {
-            var term = request.SearchTerm.ToLowerInvariant();
-            query = query.Where(u =>
-                u.FullName.ToLower().Contains(term) ||
-                u.Email!.ToLower().Contains(term));
-        }
+        query = query.ApplyAdvancedSearch(request.SearchTerm, SearchFields, u => u.FullName, u => u.Email, u => u.Id);
 
         if (request.IsActive.HasValue)
             query = query.Where(u => u.IsActive == request.IsActive.Value);

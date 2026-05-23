@@ -5,21 +5,12 @@ using MediatR;
 namespace CRM.Medical.Application.Features.TestRequests.CQRS;
 
 public sealed class CreateTestRequestCommandHandler(ITestRequestService testRequests)
-    : IRequestHandler<CreateTestRequestCommand, TestRequestDto>
+    : IRequestHandler<CreateTestRequestCommand, IReadOnlyList<TestRequestDto>>
 {
-    public Task<TestRequestDto> Handle(
+    public Task<IReadOnlyList<TestRequestDto>> Handle(
         CreateTestRequestCommand request,
         CancellationToken cancellationToken) =>
         testRequests.CreateAsync(
-            request.MedicalTestId,
-            request.RequestDate,
-            request.Status,
-            request.TotalAmount,
-            request.Notes,
-            request.Metadata,
-            request.DoctorId,
-            request.LabClientId,
-            request.DirectPatientId,
-            request.ExternalPatientId,
+            request.Items,
             cancellationToken);
 }

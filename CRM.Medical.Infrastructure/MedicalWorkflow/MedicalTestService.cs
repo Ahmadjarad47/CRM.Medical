@@ -27,6 +27,12 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
             ["status"] = t => t.Status
         };
 
+    private static readonly IReadOnlyDictionary<string, Func<string, Expression<Func<MedicalTest, bool>>?>> ExactSearchFields =
+        new Dictionary<string, Func<string, Expression<Func<MedicalTest, bool>>?>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["id"] = token => ParseIntPredicate(token, value => t => t.Id == value)
+        };
+
     public async Task<PagedResult<MedicalTestDto>> ListAsync(
         int page,
         int pageSize,
@@ -38,7 +44,16 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
         var query = await accessPolicyEvaluator.ApplyAsync(db.MedicalTests.AsNoTracking(), "medical_tests", "read", cancellationToken);
 
-        query = query.ApplyAdvancedSearch(search, SearchFields, t => t.NameAr, t => t.NameEn, t => t.Category, t => t.SampleType, t => t.Status);
+        query = query.ApplyAdvancedSearch(
+            search,
+            SearchFields,
+            ExactSearchFields,
+            BuildDefaultExactPredicate,
+            t => t.NameAr,
+            t => t.NameEn,
+            t => t.Category,
+            t => t.SampleType,
+            t => t.Status);
 
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
@@ -161,4 +176,12 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
             e.Status,
             e.CreatedAt,
             e.UpdatedAt);
+
+    private static Expression<Func<MedicalTest, bool>>? BuildDefaultExactPredicate(string token) =>
+        ParseIntPredicate(token, value => t => t.Id == value);
+
+    private static Expression<Func<MedicalTest, bool>>? ParseIntPredicate(
+        string token,
+        Func<int, Expression<Func<MedicalTest, bool>>> predicateFactory) =>
+        int.TryParse(token, out var value) ? predicateFactory(value) : null;
 }

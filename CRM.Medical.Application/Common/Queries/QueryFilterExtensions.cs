@@ -21,6 +21,15 @@ public static partial class QueryFilterExtensions
         string? search,
         IReadOnlyDictionary<string, Expression<Func<T, string?>>> fieldSelectors,
         params Expression<Func<T, string?>>[] defaultSelectors)
+        => query.ApplyAdvancedSearch(search, fieldSelectors, exactFieldSelectors: null, defaultExactSelector: null, defaultSelectors);
+
+    public static IQueryable<T> ApplyAdvancedSearch<T>(
+        this IQueryable<T> query,
+        string? search,
+        IReadOnlyDictionary<string, Expression<Func<T, string?>>> fieldSelectors,
+        IReadOnlyDictionary<string, Func<string, Expression<Func<T, bool>>?>>? exactFieldSelectors,
+        Func<string, Expression<Func<T, bool>>?>? defaultExactSelector,
+        params Expression<Func<T, string?>>[] defaultSelectors)
     {
         if (string.IsNullOrWhiteSpace(search))
             return query;
@@ -34,12 +43,14 @@ public static partial class QueryFilterExtensions
 
         foreach (var token in tokens)
         {
-            var selectorSet = ResolveSelectors(token.Field, fieldSelectors, defaultSelectors);
-            if (selectorSet.Count == 0)
-                continue;
-
             var tokenValue = token.Value.Trim().ToLowerInvariant();
             if (string.IsNullOrEmpty(tokenValue))
+                continue;
+
+            var selectorSet = ResolveSelectors(token.Field, fieldSelectors, defaultSelectors);
+            var exactPredicateSet = ResolveExactPredicates(token.Field, tokenValue, exactFieldSelectors, defaultExactSelector);
+
+            if (selectorSet.Count == 0 && exactPredicateSet.Count == 0)
                 continue;
 
             Expression? orPredicate = null;
@@ -51,6 +62,12 @@ public static partial class QueryFilterExtensions
                 var contains = BuildWildcardContainsExpression(lowered, tokenValue);
                 var fieldPredicate = Expression.AndAlso(notNull, contains);
                 orPredicate = orPredicate is null ? fieldPredicate : Expression.OrElse(orPredicate, fieldPredicate);
+            }
+
+            foreach (var exactPredicate in exactPredicateSet)
+            {
+                var predicateBody = ReplaceParameter(exactPredicate.Body, exactPredicate.Parameters[0], parameter);
+                orPredicate = orPredicate is null ? predicateBody : Expression.OrElse(orPredicate, predicateBody);
             }
 
             if (orPredicate is null)
@@ -77,6 +94,30 @@ public static partial class QueryFilterExtensions
 
         if (fieldSelectors.TryGetValue(field.ToLowerInvariant(), out var selector))
             return [selector];
+
+        return [];
+    }
+
+    private static IReadOnlyList<Expression<Func<T, bool>>> ResolveExactPredicates<T>(
+        string? field,
+        string tokenValue,
+        IReadOnlyDictionary<string, Func<string, Expression<Func<T, bool>>?>>? exactFieldSelectors,
+        Func<string, Expression<Func<T, bool>>?>? defaultExactSelector)
+    {
+        if (field is null)
+        {
+            var defaultPredicate = defaultExactSelector?.Invoke(tokenValue);
+            return defaultPredicate is null ? [] : [defaultPredicate];
+        }
+
+        if (exactFieldSelectors is null)
+            return [];
+
+        if (exactFieldSelectors.TryGetValue(field.ToLowerInvariant(), out var factory))
+        {
+            var predicate = factory(tokenValue);
+            return predicate is null ? [] : [predicate];
+        }
 
         return [];
     }

@@ -27,22 +27,23 @@ public sealed class TestRequestsController(ISender mediator) : ControllerBase
         mediator.Send(new GetTestRequestByIdQuery(id), cancellationToken);
 
     [HttpPost]
-    [ProducesResponseType(typeof(TestRequestDto), StatusCodes.Status200OK)]
-    public Task<TestRequestDto> Create(
-        [FromBody] SaveTestRequestRequest request,
+    [ProducesResponseType(typeof(IReadOnlyList<TestRequestDto>), StatusCodes.Status200OK)]
+    public Task<IReadOnlyList<TestRequestDto>> Create(
+        [FromBody] IReadOnlyList<SaveTestRequestRequest> request,
         CancellationToken cancellationToken) =>
         mediator.Send(
             new CreateTestRequestCommand(
-                request.MedicalTestId,
-                request.RequestDate,
-                request.Status,
-                request.TotalAmount,
-                request.Notes,
-                request.Metadata.ToJsonDocument(),
-                request.DoctorId,
-                request.LabClientId,
-                request.DirectPatientId,
-                request.ExternalPatientId),
+                request.Select(item => new CreateTestRequestItemCommand(
+                    item.MedicalTestId,
+                    item.RequestDate,
+                    item.Status,
+                    item.TotalAmount,
+                    item.Notes,
+                    item.Metadata.ToJsonDocument(),
+                    item.DoctorId,
+                    item.LabClientId,
+                    item.DirectPatientId,
+                    item.ExternalPatientId)).ToList()),
             cancellationToken);
 
     [HttpPut("{id:int}")]
