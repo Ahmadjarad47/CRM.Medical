@@ -4,7 +4,6 @@ using CRM.Medical.Application.Common.Queries;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.MedicalWorkflow;
-using CRM.Medical.Application.Features.TestRequests.CQRS;
 using CRM.Medical.Application.Features.TestRequests.DTOs;
 using CRM.Medical.Application.Features.TestRequests.Services;
 using CRM.Medical.Application.Authorization;
@@ -136,21 +135,43 @@ public sealed class TestRequestService(
     }
 
     public async Task<IReadOnlyList<TestRequestDto>> CreateAsync(
-        IReadOnlyList<CreateTestRequestItemCommand> items,
+        IReadOnlyList<int> medicalTestIds,
+        DateTime requestDate,
+        string status,
+        double totalAmount,
+        string? notes,
+        JsonDocument? metadata,
+        string? doctorId,
+        string? labClientId,
+        string? directPatientId,
+        int? externalPatientId,
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        if (items.Count == 0)
-            throw new ApplicationBadRequestException("At least one test request item is required.");
+        if (medicalTestIds.Count == 0)
+            throw new ApplicationBadRequestException("At least one medicalTestId is required.");
 
-        var entities = new List<TestRequest>(items.Count);
-        foreach (var item in items)
-            entities.Add(await BuildCreateEntityAsync(item, cancellationToken));
+        await ValidatePatientSubjectAsync(directPatientId, externalPatientId, cancellationToken);
+
+        var entities = new List<TestRequest>(medicalTestIds.Count);
+        foreach (var medicalTestId in medicalTestIds.Distinct())
+            entities.Add(await BuildCreateEntityAsync(
+                medicalTestId,
+                requestDate,
+                status,
+                totalAmount,
+                notes,
+                metadata,
+                doctorId,
+                labClientId,
+                directPatientId,
+                externalPatientId,
+                cancellationToken));
 
         db.TestRequests.AddRange(entities);
         await db.SaveChangesAsync(cancellationToken);
 
-        var medicalTestIds = entities.Select(entity => entity.MedicalTestId).Distinct().ToArray();
+        var createdMedicalTestIds = entities.Select(entity => entity.MedicalTestId).Distinct().ToArray();
         var externalPatientIds = entities
             .Where(entity => entity.ExternalPatientId.HasValue)
             .Select(entity => entity.ExternalPatientId!.Value)
@@ -159,7 +180,7 @@ public sealed class TestRequestService(
 
         var medicalTestNames = await db.MedicalTests
             .AsNoTracking()
-            .Where(test => medicalTestIds.Contains(test.Id))
+            .Where(test => createdMedicalTestIds.Contains(test.Id))
             .ToDictionaryAsync(test => test.Id, test => (string?)test.NameEn, cancellationToken);
 
         var externalPatientNames = externalPatientIds.Length == 0
@@ -323,27 +344,34 @@ public sealed class TestRequestService(
         ResolveUserName(userNames, request.DirectPatientId) ?? request.ExternalPatient?.FullName;
 
     private async Task<TestRequest> BuildCreateEntityAsync(
-        CreateTestRequestItemCommand item,
+        int medicalTestId,
+        DateTime requestDate,
+        string status,
+        double totalAmount,
+        string? notes,
+        JsonDocument? metadata,
+        string? doctorId,
+        string? labClientId,
+        string? directPatientId,
+        int? externalPatientId,
         CancellationToken cancellationToken)
     {
-        var testExists = await db.MedicalTests.AnyAsync(t => t.Id == item.MedicalTestId, cancellationToken);
+        var testExists = await db.MedicalTests.AnyAsync(t => t.Id == medicalTestId, cancellationToken);
         if (!testExists)
-            throw new ApplicationBadRequestException($"Medical test '{item.MedicalTestId}' was not found.");
-
-        await ValidatePatientSubjectAsync(item.DirectPatientId, item.ExternalPatientId, cancellationToken);
+            throw new ApplicationBadRequestException($"Medical test '{medicalTestId}' was not found.");
 
         var entity = new TestRequest
         {
-            MedicalTestId = item.MedicalTestId,
-            RequestDate = item.RequestDate,
-            Status = item.Status.Trim(),
-            TotalAmount = item.TotalAmount,
-            Notes = string.IsNullOrWhiteSpace(item.Notes) ? null : item.Notes.Trim(),
-            Metadata = item.Metadata,
-            DoctorId = string.IsNullOrWhiteSpace(item.DoctorId) ? null : item.DoctorId.Trim(),
-            LabClientId = string.IsNullOrWhiteSpace(item.LabClientId) ? null : item.LabClientId.Trim(),
-            DirectPatientId = string.IsNullOrWhiteSpace(item.DirectPatientId) ? null : item.DirectPatientId.Trim(),
-            ExternalPatientId = item.ExternalPatientId,
+            MedicalTestId = medicalTestId,
+            RequestDate = requestDate,
+            Status = status.Trim(),
+            TotalAmount = totalAmount,
+            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            Metadata = metadata,
+            DoctorId = string.IsNullOrWhiteSpace(doctorId) ? null : doctorId.Trim(),
+            LabClientId = string.IsNullOrWhiteSpace(labClientId) ? null : labClientId.Trim(),
+            DirectPatientId = string.IsNullOrWhiteSpace(directPatientId) ? null : directPatientId.Trim(),
+            ExternalPatientId = externalPatientId,
             CreatedByUserId = currentUser.GetRequiredUserId()
         };
 

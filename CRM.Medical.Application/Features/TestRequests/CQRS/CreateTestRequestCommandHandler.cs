@@ -11,6 +11,15 @@ public sealed class CreateTestRequestCommandHandler(ITestRequestService testRequ
         CreateTestRequestCommand request,
         CancellationToken cancellationToken) =>
         testRequests.CreateAsync(
-            request.Items,
+            request.MedicalTestIds,
+            request.RequestDate,
+            request.Status,
+            request.TotalAmount,
+            request.Notes,
+            request.Metadata,
+            request.DoctorId,
+            request.LabClientId,
+            request.DirectPatientId,
+            request.ExternalPatientId,
             cancellationToken);
 }

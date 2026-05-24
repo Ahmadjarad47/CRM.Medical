@@ -1,5 +1,4 @@
 using CRM.Medical.Application.Common.Responses;
-using CRM.Medical.Application.Features.TestRequests.CQRS;
 using System.Text.Json;
 using CRM.Medical.Application.Features.TestRequests.DTOs;
 
@@ -16,7 +15,16 @@ public interface ITestRequestService
     Task<TestRequestDto> GetByIdAsync(int id, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<TestRequestDto>> CreateAsync(
-        IReadOnlyList<CreateTestRequestItemCommand> items,
+        IReadOnlyList<int> medicalTestIds,
+        DateTime requestDate,
+        string status,
+        double totalAmount,
+        string? notes,
+        JsonDocument? metadata,
+        string? doctorId,
+        string? labClientId,
+        string? directPatientId,
+        int? externalPatientId,
         CancellationToken cancellationToken);
 
     Task UpdateAsync(
