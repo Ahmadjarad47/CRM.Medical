@@ -9,6 +9,7 @@ using CRM.Medical.Application.Features.Chat.Commands.UploadMessageAttachment;
 using CRM.Medical.Application.Features.Chat.DTOs;
 using CRM.Medical.Application.Features.Chat.Queries.GetConversationMessages;
 using CRM.Medical.Application.Features.Chat.Queries.GetConversationParticipants;
+using CRM.Medical.Application.Features.Chat.Queries.GetAvailableChatUsers;
 using CRM.Medical.Application.Features.Chat.Queries.GetMyConversations;
 using CRM.Medical.Application.Features.Chat.Queries.GetOnlineUsers;
 using MediatR;
@@ -89,6 +90,12 @@ public sealed class ChatController(ISender mediator) : ControllerBase
     [ProducesResponseType(typeof(IReadOnlyList<OnlineUserDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOnlineUsers(CancellationToken ct) =>
         Ok(await mediator.Send(new GetOnlineUsersQuery(User.GetRequiredUserId()), ct));
+
+    [HttpGet("available-users")]
+    [SwaggerOperation(Summary = "Users available for starting chats", Description = "Returns support admins first, then the current user's linked doctor/lab peers when applicable.")]
+    [ProducesResponseType(typeof(IReadOnlyList<ChatUserSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAvailableUsers(CancellationToken ct) =>
+        Ok(await mediator.Send(new GetAvailableChatUsersQuery(User.GetRequiredUserId()), ct));
 
     [HttpGet("conversations/{conversationId:guid}/participants")]
     [SwaggerOperation(Summary = "Participants", Description = "Each row includes `userId`, `fullName`, and nested `user` summary.")]

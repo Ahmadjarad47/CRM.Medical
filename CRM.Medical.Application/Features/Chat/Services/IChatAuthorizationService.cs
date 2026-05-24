@@ -15,6 +15,10 @@ public interface IChatAuthorizationService
         Guid conversationId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<string>> GetPeerUserIdsActorMayChatAsync(
+        string actorUserId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Restricts an arbitrary user id list to peers the actor may chat with.</summary>
     Task<IReadOnlyList<string>> FilterToPeersActorMayChatAsync(
         string actorUserId,
