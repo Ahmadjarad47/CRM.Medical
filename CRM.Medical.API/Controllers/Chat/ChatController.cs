@@ -86,7 +86,7 @@ public sealed class ChatController(ISender mediator) : ControllerBase
         Ok(await mediator.Send(new UploadMessageAttachmentCommand(User.GetRequiredUserId(), messageId, file), ct));
 
     [HttpGet("online-users")]
-    [SwaggerOperation(Summary = "Online peers", Description = "Each row has `userId`, `isOnline`, and nested `user` (`ChatUserSummaryDto`).")]
+    [SwaggerOperation(Summary = "Chat users with online status", Description = "Returns all users this account can chat with; each row has `userId`, `isOnline`, and nested `user` (`ChatUserSummaryDto`).")]
     [ProducesResponseType(typeof(IReadOnlyList<OnlineUserDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOnlineUsers(CancellationToken ct) =>
         Ok(await mediator.Send(new GetOnlineUsersQuery(User.GetRequiredUserId()), ct));

@@ -74,20 +74,44 @@ public sealed class ChatAuthorizationService(
         foreach (var adminId in await GetActiveUserIdsInRoleAsync(UserRoles.Admin, cancellationToken))
             candidateIds.Add(adminId);
 
-        if (!string.IsNullOrWhiteSpace(actor.CreatedByUserId))
-            candidateIds.Add(actor.CreatedByUserId);
+        var isDoctor = roles.Any(role => string.Equals(role, UserRoles.Doctor, StringComparison.OrdinalIgnoreCase));
+        var isLabPartner = roles.Any(role => string.Equals(role, UserRoles.LabPartner, StringComparison.OrdinalIgnoreCase));
+        var isPatientLike = roles.Any(role =>
+            string.Equals(role, UserRoles.Patient, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, UserRoles.User, StringComparison.OrdinalIgnoreCase));
 
-        foreach (var id in await GetCreatedUserIdsAsync(actorUserId, cancellationToken))
-            candidateIds.Add(id);
+        if (isPatientLike)
+        {
+            if (!string.IsNullOrWhiteSpace(actor.CreatedByUserId))
+                candidateIds.Add(actor.CreatedByUserId);
 
-        foreach (var id in await GetDoctorRelatedUserIdsAsync(actorUserId, cancellationToken))
-            candidateIds.Add(id);
+            foreach (var id in await GetPatientRelatedProviderIdsAsync(actorUserId, cancellationToken))
+                candidateIds.Add(id);
+        }
 
-        foreach (var id in await GetLabRelatedUserIdsAsync(actorUserId, cancellationToken))
-            candidateIds.Add(id);
+        if (isLabPartner)
+        {
+            foreach (var id in await GetCreatedUserIdsAsync(actorUserId, cancellationToken))
+                candidateIds.Add(id);
 
-        foreach (var id in await GetPatientRelatedProviderIdsAsync(actorUserId, cancellationToken))
-            candidateIds.Add(id);
+            foreach (var id in await GetLabRelatedPatientIdsAsync(actorUserId, cancellationToken))
+                candidateIds.Add(id);
+
+            foreach (var id in await GetActiveUserIdsInRoleAsync(UserRoles.Doctor, cancellationToken))
+                candidateIds.Add(id);
+        }
+
+        if (isDoctor)
+        {
+            foreach (var id in await GetCreatedUserIdsAsync(actorUserId, cancellationToken))
+                candidateIds.Add(id);
+
+            foreach (var id in await GetDoctorRelatedPatientIdsAsync(actorUserId, cancellationToken))
+                candidateIds.Add(id);
+
+            foreach (var id in await GetActiveUserIdsInRoleAsync(UserRoles.LabPartner, cancellationToken))
+                candidateIds.Add(id);
+        }
 
         candidateIds.Remove(actorUserId);
         return await FilterToActiveUserIdsAsync(candidateIds, cancellationToken);
@@ -155,7 +179,7 @@ public sealed class ChatAuthorizationService(
             .ToListAsync(cancellationToken);
     }
 
-    private async Task<IReadOnlyList<string>> GetDoctorRelatedUserIdsAsync(string doctorUserId, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<string>> GetDoctorRelatedPatientIdsAsync(string doctorUserId, CancellationToken cancellationToken)
     {
         var directPatientIds = await _db.TestRequests.AsNoTracking()
             .Where(request => request.DoctorId == doctorUserId && request.DirectPatientId != null)
@@ -163,19 +187,10 @@ public sealed class ChatAuthorizationService(
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        var labIds = await _db.TestRequests.AsNoTracking()
-            .Where(request => request.DoctorId == doctorUserId && request.LabClientId != null)
-            .Select(request => request.LabClientId!)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        return directPatientIds
-            .Concat(labIds)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+        return directPatientIds.Distinct(StringComparer.Ordinal).ToList();
     }
 
-    private async Task<IReadOnlyList<string>> GetLabRelatedUserIdsAsync(string labUserId, CancellationToken cancellationToken)
+    private async Task<IReadOnlyList<string>> GetLabRelatedPatientIdsAsync(string labUserId, CancellationToken cancellationToken)
     {
         var directPatientIds = await _db.TestRequests.AsNoTracking()
             .Where(request => request.LabClientId == labUserId && request.DirectPatientId != null)
@@ -183,16 +198,7 @@ public sealed class ChatAuthorizationService(
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        var doctorIds = await _db.TestRequests.AsNoTracking()
-            .Where(request => request.LabClientId == labUserId && request.DoctorId != null)
-            .Select(request => request.DoctorId!)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
-        return directPatientIds
-            .Concat(doctorIds)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+        return directPatientIds.Distinct(StringComparer.Ordinal).ToList();
     }
 
     private async Task<IReadOnlyList<string>> GetPatientRelatedProviderIdsAsync(string patientUserId, CancellationToken cancellationToken)
