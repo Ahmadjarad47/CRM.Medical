@@ -74,34 +74,20 @@ public sealed class ChatAuthorizationService(
         foreach (var adminId in await GetActiveUserIdsInRoleAsync(UserRoles.Admin, cancellationToken))
             candidateIds.Add(adminId);
 
-        if (roles.Any(role => string.Equals(role, UserRoles.Doctor, StringComparison.OrdinalIgnoreCase)))
-        {
-            foreach (var id in await GetCreatedUserIdsAsync(actorUserId, cancellationToken))
-                candidateIds.Add(id);
+        if (!string.IsNullOrWhiteSpace(actor.CreatedByUserId))
+            candidateIds.Add(actor.CreatedByUserId);
 
-            foreach (var id in await GetDoctorRelatedUserIdsAsync(actorUserId, cancellationToken))
-                candidateIds.Add(id);
-        }
+        foreach (var id in await GetCreatedUserIdsAsync(actorUserId, cancellationToken))
+            candidateIds.Add(id);
 
-        if (roles.Any(role => string.Equals(role, UserRoles.LabPartner, StringComparison.OrdinalIgnoreCase)))
-        {
-            foreach (var id in await GetCreatedUserIdsAsync(actorUserId, cancellationToken))
-                candidateIds.Add(id);
+        foreach (var id in await GetDoctorRelatedUserIdsAsync(actorUserId, cancellationToken))
+            candidateIds.Add(id);
 
-            foreach (var id in await GetLabRelatedUserIdsAsync(actorUserId, cancellationToken))
-                candidateIds.Add(id);
-        }
+        foreach (var id in await GetLabRelatedUserIdsAsync(actorUserId, cancellationToken))
+            candidateIds.Add(id);
 
-        if (roles.Any(role =>
-                string.Equals(role, UserRoles.Patient, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(role, UserRoles.User, StringComparison.OrdinalIgnoreCase)))
-        {
-            if (!string.IsNullOrWhiteSpace(actor.CreatedByUserId))
-                candidateIds.Add(actor.CreatedByUserId);
-
-            foreach (var id in await GetPatientRelatedProviderIdsAsync(actorUserId, cancellationToken))
-                candidateIds.Add(id);
-        }
+        foreach (var id in await GetPatientRelatedProviderIdsAsync(actorUserId, cancellationToken))
+            candidateIds.Add(id);
 
         candidateIds.Remove(actorUserId);
         return await FilterToActiveUserIdsAsync(candidateIds, cancellationToken);
