@@ -3,6 +3,7 @@ namespace CRM.Medical.Application.Features.Dashboard.Queries.GetDashboard;
 public sealed record DashboardResponse(
     DashboardScope Scope,
     DashboardSummary Summary,
+    DashboardWorkflow Workflow,
     DashboardCharts Charts,
     DashboardRecentData Recent);
 
@@ -33,6 +34,21 @@ public sealed record DashboardCharts(
     IReadOnlyList<DashboardTimeSeriesItem> MonthlyRequests,
     IReadOnlyList<DashboardTimeSeriesItem> MonthlyRevenue,
     IReadOnlyList<DashboardChartItem> UserRoleDistribution);
+
+public sealed record DashboardWorkflow(
+    string Title,
+    string LiveStatusLabel,
+    IReadOnlyList<DashboardWorkflowStageItem> Stages);
+
+public sealed record DashboardWorkflowStageItem(
+    string Key,
+    string Title,
+    string Subtitle,
+    int Count,
+    string Badge,
+    string Icon,
+    string Accent,
+    int SortOrder);
 
 public sealed record DashboardChartItem(string Label, int Count, double Value);
 

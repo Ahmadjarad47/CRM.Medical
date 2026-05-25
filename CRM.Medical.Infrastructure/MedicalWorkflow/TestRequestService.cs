@@ -4,6 +4,7 @@ using CRM.Medical.Application.Common.Queries;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.MedicalWorkflow;
+using CRM.Medical.Application.Features.Notifications.Services;
 using CRM.Medical.Application.Features.TestRequests.DTOs;
 using CRM.Medical.Application.Features.TestRequests.Services;
 using CRM.Medical.Application.Authorization;
@@ -19,7 +20,8 @@ public sealed class TestRequestService(
     MedicalDbContext db,
     ICurrentUserAccessor currentUser,
     UserManager<User> userManager,
-    IAccessPolicyEvaluator accessPolicyEvaluator) : ITestRequestService
+    IAccessPolicyEvaluator accessPolicyEvaluator,
+    INotificationService notificationService) : ITestRequestService
 {
     private static readonly IReadOnlyDictionary<string, Expression<Func<TestRequest, string?>>> SearchFields =
         new Dictionary<string, Expression<Func<TestRequest, string?>>>(StringComparer.OrdinalIgnoreCase)
@@ -202,6 +204,14 @@ public sealed class TestRequestService(
         db.TestRequests.AddRange(entities);
         await db.SaveChangesAsync(cancellationToken);
 
+        var createdRecipients = await ResolveCreateRecipientsAsync(entities, cancellationToken);
+        await notificationService.SendWorkflowNotificationAsync(
+            new WorkflowNotificationRequest(
+                WorkflowNotificationEventTypes.TestRequestCreated,
+                createdRecipients,
+                BuildTestRequestData(entities[0])),
+            cancellationToken);
+
         var createdMedicalTestIds = entities.Select(entity => entity.MedicalTestId).Distinct().ToArray();
         var externalPatientIds = entities
             .Where(entity => entity.ExternalPatientId.HasValue)
@@ -262,6 +272,7 @@ public sealed class TestRequestService(
             cancellationToken);
 
         var userId = currentUser.GetRequiredUserId();
+        var previousStatus = entity.Status;
         entity.DoctorId = string.IsNullOrWhiteSpace(doctorId) ? null : doctorId.Trim();
         entity.LabClientId = string.IsNullOrWhiteSpace(labClientId) ? null : labClientId.Trim();
 
@@ -274,6 +285,19 @@ public sealed class TestRequestService(
         entity.Metadata = metadata;
 
         await db.SaveChangesAsync(cancellationToken);
+
+        var statusEventType = MapStatusToWorkflowEventType(entity.Status);
+        if (statusEventType is not null &&
+            !string.Equals(previousStatus, entity.Status, StringComparison.OrdinalIgnoreCase))
+        {
+            var recipients = await ResolveStatusRecipientsAsync(entity, cancellationToken);
+            await notificationService.SendWorkflowNotificationAsync(
+                new WorkflowNotificationRequest(
+                    statusEventType,
+                    recipients,
+                    BuildTestRequestData(entity)),
+                cancellationToken);
+        }
     }
 
     public async Task DeleteAsync(int id, CancellationToken cancellationToken)
@@ -353,6 +377,104 @@ public sealed class TestRequestService(
 
     private static string? ResolvePatientName(TestRequest request, IReadOnlyDictionary<string, string> userNames) =>
         ResolveUserName(userNames, request.DirectPatientId) ?? request.ExternalPatient?.FullName;
+
+    private async Task<IReadOnlyCollection<string>> ResolveCreateRecipientsAsync(
+        IReadOnlyCollection<TestRequest> requests,
+        CancellationToken cancellationToken)
+    {
+        var directPatientIds = requests
+            .Select(x => x.DirectPatientId)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x!.Trim());
+
+        var doctorIds = requests
+            .Select(x => x.DoctorId)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x!.Trim());
+
+        var externalPatientIds = requests
+            .Where(x => x.ExternalPatientId.HasValue)
+            .Select(x => x.ExternalPatientId!.Value)
+            .Distinct()
+            .ToArray();
+
+        var linkedPatientIds = externalPatientIds.Length == 0
+            ? []
+            : await db.ExternalPatients
+                .AsNoTracking()
+                .Where(x => externalPatientIds.Contains(x.Id) && x.LinkedDirectPatientId != null)
+                .Select(x => x.LinkedDirectPatientId!)
+                .ToListAsync(cancellationToken);
+
+        return directPatientIds
+            .Concat(linkedPatientIds)
+            .Concat(doctorIds)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private async Task<IReadOnlyCollection<string>> ResolveStatusRecipientsAsync(
+        TestRequest request,
+        CancellationToken cancellationToken)
+    {
+        var patientIds = new List<string>();
+        var ownerIds = new List<string>();
+        if (!string.IsNullOrWhiteSpace(request.DirectPatientId))
+        {
+            patientIds.Add(request.DirectPatientId.Trim());
+        }
+        else if (request.ExternalPatientId.HasValue)
+        {
+            var linkedUserId = await db.ExternalPatients
+                .AsNoTracking()
+                .Where(x => x.Id == request.ExternalPatientId.Value)
+                .Select(x => x.LinkedDirectPatientId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(linkedUserId))
+                patientIds.Add(linkedUserId.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.CreatedByUserId))
+            ownerIds.Add(request.CreatedByUserId.Trim());
+
+        var doctorIds = string.IsNullOrWhiteSpace(request.DoctorId)
+            ? Array.Empty<string>()
+            : [request.DoctorId.Trim()];
+
+        return MapStatusToWorkflowEventType(request.Status) switch
+        {
+            WorkflowNotificationEventTypes.TestRequestApproved => patientIds.Concat(ownerIds).Distinct(StringComparer.Ordinal).ToArray(),
+            WorkflowNotificationEventTypes.TestRequestRejected => patientIds.Concat(ownerIds).Distinct(StringComparer.Ordinal).ToArray(),
+            WorkflowNotificationEventTypes.TestRequestSampleReceived => patientIds.Concat(doctorIds).Distinct(StringComparer.Ordinal).ToArray(),
+            WorkflowNotificationEventTypes.TestRequestInProgress => patientIds.Distinct(StringComparer.Ordinal).ToArray(),
+            WorkflowNotificationEventTypes.TestRequestCompleted => patientIds.Concat(doctorIds).Distinct(StringComparer.Ordinal).ToArray(),
+            _ => []
+        };
+    }
+
+    private static IReadOnlyDictionary<string, string> BuildTestRequestData(TestRequest request) =>
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["testRequestId"] = request.Id.ToString(),
+            ["status"] = request.Status
+        };
+
+    private static string? MapStatusToWorkflowEventType(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+            return null;
+
+        return status.Trim() switch
+        {
+            "Approved" => WorkflowNotificationEventTypes.TestRequestApproved,
+            "Rejected" => WorkflowNotificationEventTypes.TestRequestRejected,
+            "SampleReceived" => WorkflowNotificationEventTypes.TestRequestSampleReceived,
+            "InProgress" => WorkflowNotificationEventTypes.TestRequestInProgress,
+            "Completed" => WorkflowNotificationEventTypes.TestRequestCompleted,
+            _ => null
+        };
+    }
 
     private async Task<TestRequest> BuildCreateEntityAsync(
         int medicalTestId,
@@ -527,8 +649,8 @@ public sealed class TestRequestService(
         if (parameterSchema is null)
             return [];
 
-        var schema = parameterSchema.RootElement;
-        var values = metadata?.RootElement;
+        var schema = UnwrapParameterSchema(parameterSchema.RootElement);
+        var values = UnwrapMetadataValues(metadata?.RootElement);
         var items = new List<TestRequestParameterItemDto>();
 
         if (schema.ValueKind == JsonValueKind.Array)
@@ -563,6 +685,39 @@ public sealed class TestRequestService(
         }
 
         return items;
+    }
+
+    private static JsonElement UnwrapParameterSchema(JsonElement schema)
+    {
+        if (schema.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var propertyName in new[] { "parameters", "fields", "items", "schema" })
+            {
+                if (schema.TryGetProperty(propertyName, out var nested) &&
+                    nested.ValueKind is JsonValueKind.Array or JsonValueKind.Object)
+                    return nested;
+            }
+        }
+
+        return schema;
+    }
+
+    private static JsonElement? UnwrapMetadataValues(JsonElement? values)
+    {
+        if (values is null)
+            return null;
+
+        if (values.Value.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var propertyName in new[] { "values", "parameters", "data", "results", "metadata" })
+            {
+                if (values.Value.TryGetProperty(propertyName, out var nested) &&
+                    nested.ValueKind is JsonValueKind.Array or JsonValueKind.Object)
+                    return nested;
+            }
+        }
+
+        return values;
     }
 
     private static TestRequestParameterItemDto? MapSchemaItem(

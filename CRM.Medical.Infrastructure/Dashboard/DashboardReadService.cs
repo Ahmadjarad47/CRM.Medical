@@ -79,6 +79,8 @@ public sealed class DashboardReadService(MedicalDbContext dbContext, IDateTimePr
             MonthlyRevenue: await BuildMonthlyRevenueChart(scopedTestRequests, cancellationToken),
             UserRoleDistribution: await BuildRoleDistribution(role, scopedTestRequests, cancellationToken));
 
+        var workflow = await BuildWorkflowAsync(scopedTestRequests, cancellationToken);
+
         var recent = new DashboardRecentData(
             TestRequests: await scopedTestRequests
                 .OrderByDescending(x => x.RequestDate)
@@ -126,6 +128,7 @@ public sealed class DashboardReadService(MedicalDbContext dbContext, IDateTimePr
                 IsGlobalDashboard: role == UserRoles.Admin,
                 AppliedFilters: BuildAppliedFilters(role, userId)),
             summary,
+            workflow,
             charts,
             recent);
     }
@@ -308,6 +311,63 @@ public sealed class DashboardReadService(MedicalDbContext dbContext, IDateTimePr
         ];
     }
 
+    private static async Task<DashboardWorkflow> BuildWorkflowAsync(
+        IQueryable<TestRequest> scopedTestRequests,
+        CancellationToken cancellationToken)
+    {
+        var statuses = await scopedTestRequests
+            .Select(x => x.Status)
+            .ToListAsync(cancellationToken);
+
+        var newOrders = statuses.Count(status => MatchesAny(status, "new", "created", "pending", "requested"));
+        var receivedSamples = statuses.Count(status => MatchesAny(status, "received", "sample", "collected", "registered"));
+        var insideLab = statuses.Count(status => MatchesAny(status, "processing", "in progress", "inside lab", "analy", "running"));
+        var readyToIssue = statuses.Count(status => MatchesAny(status, "completed", "ready", "verified", "approved", "issued", "done"));
+
+        return new DashboardWorkflow(
+            Title: "مسار طلبات المختبر",
+            LiveStatusLabel: "مراقبة مباشرة",
+            Stages:
+            [
+                new DashboardWorkflowStageItem(
+                    Key: "new-orders",
+                    Title: "طلب جديد",
+                    Subtitle: "مسجل في البوابة",
+                    Count: newOrders,
+                    Badge: "2%+",
+                    Icon: "monitor",
+                    Accent: "cyan",
+                    SortOrder: 1),
+                new DashboardWorkflowStageItem(
+                    Key: "received-samples",
+                    Title: "استلام العينة",
+                    Subtitle: "التسجيل وفحص الجودة",
+                    Count: receivedSamples,
+                    Badge: "في الانتظار",
+                    Icon: "droplet",
+                    Accent: "sky",
+                    SortOrder: 2),
+                new DashboardWorkflowStageItem(
+                    Key: "inside-lab",
+                    Title: "داخل المختبر",
+                    Subtitle: "التحليل وتشغيل الأجهزة",
+                    Count: insideLab,
+                    Badge: "قيد التنفيذ",
+                    Icon: "loader",
+                    Accent: "amber",
+                    SortOrder: 3),
+                new DashboardWorkflowStageItem(
+                    Key: "ready-to-issue",
+                    Title: "جاهز للإصدار",
+                    Subtitle: "مراجعة الأخصائي والاعتماد",
+                    Count: readyToIssue,
+                    Badge: "موثق",
+                    Icon: "check-circle",
+                    Accent: "violet",
+                    SortOrder: 4)
+            ]);
+    }
+
     private static List<DashboardTimeSeriesItem> BuildMonthSeries(
         DateTime startMonth,
         IEnumerable<(int Year, int Month, double Value)> rows)
@@ -330,6 +390,20 @@ public sealed class DashboardReadService(MedicalDbContext dbContext, IDateTimePr
 
     private static DateTime GetUtcMonthStart(DateTime utcDateTime) =>
         new(utcDateTime.Year, utcDateTime.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+    private static bool MatchesAny(string? value, params string[] tokens)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        foreach (var token in tokens)
+        {
+            if (value.Contains(token, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
 
     private static IReadOnlyDictionary<string, string> BuildAppliedFilters(string role, string userId)
     {

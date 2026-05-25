@@ -19,6 +19,7 @@ using CRM.Medical.Application.Features.TestResults.Services;
 using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Application.Features.Chat.Persistence;
 using CRM.Medical.Application.Features.Chat.Services;
+using CRM.Medical.Application.Features.Notifications.Services;
 using CRM.Medical.Application.Authorization;
 using CRM.Medical.Infrastructure.MedicalWorkflow;
 using CRM.Medical.Application.Health;
@@ -30,6 +31,7 @@ using CRM.Medical.Infrastructure.Diagnostics;
 using CRM.Medical.Infrastructure.Dashboard;
 using CRM.Medical.Infrastructure.Email;
 using CRM.Medical.Infrastructure.Persistence;
+using CRM.Medical.Infrastructure.Notifications;
 using CRM.Medical.Infrastructure.Seeding;
 using CRM.Medical.Infrastructure.Chat;
 using CRM.Medical.Infrastructure.Authorization;
@@ -54,6 +56,7 @@ public static class DependencyInjection
         services.ConfigureOptions<DatabaseSettingsFromEnvironmentConfigurer>();
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<S3StorageSettings>(configuration.GetSection(S3StorageSettings.SectionName));
+        services.Configure<FirebaseOptions>(configuration.GetSection(FirebaseOptions.SectionName));
         services.AddSingleton<IDatabaseConnectionStringBuilder, NpgsqlDatabaseConnectionStringBuilder>();
 
         services.AddSingleton<IAmazonS3>(sp =>
@@ -89,6 +92,8 @@ public static class DependencyInjection
         services.AddScoped<ITestRequestService, TestRequestService>();
         services.AddScoped<IExternalPatientService, ExternalPatientService>();
         services.AddScoped<ITestResultService, TestResultService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddSingleton<IFirebasePushSender, FirebasePushSender>();
 
         services.AddScoped<IChatPersistence, ChatPersistence>();
         services.AddScoped<IChatAuthorizationService, ChatAuthorizationService>();

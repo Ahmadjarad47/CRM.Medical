@@ -4,6 +4,7 @@ using CRM.Medical.Application.Common.Queries;
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.MedicalWorkflow;
+using CRM.Medical.Application.Features.Notifications.Services;
 using CRM.Medical.Application.Features.TestResults.DTOs;
 using CRM.Medical.Application.Features.TestResults.Services;
 using CRM.Medical.Application.Authorization;
@@ -14,7 +15,11 @@ using System.Linq.Expressions;
 
 namespace CRM.Medical.Infrastructure.MedicalWorkflow;
 
-public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor currentUser, IAccessPolicyEvaluator accessPolicyEvaluator)
+public sealed class TestResultService(
+    MedicalDbContext db,
+    ICurrentUserAccessor currentUser,
+    IAccessPolicyEvaluator accessPolicyEvaluator,
+    INotificationService notificationService)
     : ITestResultService
 {
     private static readonly IReadOnlyDictionary<string, Expression<Func<TestResult, string?>>> SearchFields =
@@ -167,6 +172,25 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
         db.TestResults.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
 
+        var createRecipients = await ResolveTestResultRecipientsAsync(request, cancellationToken);
+        await notificationService.SendWorkflowNotificationAsync(
+            new WorkflowNotificationRequest(
+                WorkflowNotificationEventTypes.TestResultCreated,
+                createRecipients,
+                BuildTestResultData(entity)),
+            cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(entity.PdfUrl))
+        {
+            var reportRecipients = await ResolveReportRecipientsAsync(request, cancellationToken);
+            await notificationService.SendWorkflowNotificationAsync(
+                new WorkflowNotificationRequest(
+                    WorkflowNotificationEventTypes.ReportReady,
+                    reportRecipients,
+                    BuildTestResultData(entity)),
+                cancellationToken);
+        }
+
         var createdByFullName = await GetUserFullNameAsync(request.CreatedByUserId, cancellationToken);
         return Map(entity, request.CreatedByUserId, createdByFullName);
     }
@@ -189,12 +213,24 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
         if (!canUpdate)
             throw new ApplicationForbiddenException("You cannot modify this test result.");
 
+        var previousPdfUrl = entity.PdfUrl;
         entity.ResultDate = resultDate;
         entity.ResultData = resultData;
         entity.PdfUrl = string.IsNullOrWhiteSpace(pdfUrl) ? null : pdfUrl.Trim();
         entity.Status = status.Trim();
 
         await db.SaveChangesAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(previousPdfUrl) && !string.IsNullOrWhiteSpace(entity.PdfUrl))
+        {
+            var reportRecipients = await ResolveReportRecipientsAsync(request, cancellationToken);
+            await notificationService.SendWorkflowNotificationAsync(
+                new WorkflowNotificationRequest(
+                    WorkflowNotificationEventTypes.ReportReady,
+                    reportRecipients,
+                    BuildTestResultData(entity)),
+                cancellationToken);
+        }
     }
 
     public async Task DeleteAsync(int id, CancellationToken cancellationToken)
@@ -223,6 +259,68 @@ public sealed class TestResultService(MedicalDbContext db, ICurrentUserAccessor 
             .Where(u => u.Id == userId)
             .Select(u => u.FullName)
             .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<IReadOnlyCollection<string>> ResolveTestResultRecipientsAsync(
+        TestRequest request,
+        CancellationToken cancellationToken)
+    {
+        var recipients = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(request.DirectPatientId))
+        {
+            recipients.Add(request.DirectPatientId.Trim());
+        }
+        else if (request.ExternalPatientId.HasValue)
+        {
+            var linkedUserId = await db.ExternalPatients
+                .AsNoTracking()
+                .Where(x => x.Id == request.ExternalPatientId.Value)
+                .Select(x => x.LinkedDirectPatientId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(linkedUserId))
+                recipients.Add(linkedUserId.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.DoctorId))
+            recipients.Add(request.DoctorId.Trim());
+
+        return recipients.Distinct(StringComparer.Ordinal).ToArray();
+    }
+
+    private async Task<IReadOnlyCollection<string>> ResolveReportRecipientsAsync(
+        TestRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(request.DirectPatientId))
+            return [request.DirectPatientId.Trim()];
+
+        if (!request.ExternalPatientId.HasValue)
+            return [];
+
+        var linkedUserId = await db.ExternalPatients
+            .AsNoTracking()
+            .Where(x => x.Id == request.ExternalPatientId.Value)
+            .Select(x => x.LinkedDirectPatientId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return string.IsNullOrWhiteSpace(linkedUserId) ? [] : [linkedUserId.Trim()];
+    }
+
+    private static IReadOnlyDictionary<string, string> BuildTestResultData(TestResult result)
+    {
+        var data = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["testResultId"] = result.Id.ToString(),
+            ["testRequestId"] = result.TestRequestId.ToString(),
+            ["status"] = result.Status
+        };
+
+        if (!string.IsNullOrWhiteSpace(result.PdfUrl))
+            data["reportUrl"] = result.PdfUrl;
+
+        return data;
     }
 
     private static TestResultDto Map(
