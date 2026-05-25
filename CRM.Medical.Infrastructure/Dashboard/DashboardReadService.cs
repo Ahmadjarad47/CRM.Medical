@@ -63,21 +63,18 @@ public sealed class DashboardReadService(MedicalDbContext dbContext, IDateTimePr
             TotalRevenue: totalRevenue);
 
         var charts = new DashboardCharts(
-            RequestStatus: await scopedTestRequests
-                .GroupBy(x => string.IsNullOrWhiteSpace(x.Status) ? "Unknown" : x.Status)
-                .Select(x => new DashboardChartItem(x.Key, x.Count(), 0d))
-                .OrderByDescending(x => x.Count)
-                .ToListAsync(cancellationToken),
-            ResultStatus: await scopedTestResults
-                .GroupBy(x => string.IsNullOrWhiteSpace(x.Status) ? "Unknown" : x.Status)
-                .Select(x => new DashboardChartItem(x.Key, x.Count(), 0d))
-                .OrderByDescending(x => x.Count)
-                .ToListAsync(cancellationToken),
-            TestCategoryBreakdown: await scopedMedicalTests
-                .GroupBy(x => string.IsNullOrWhiteSpace(x.Category) ? "Uncategorized" : x.Category)
-                .Select(x => new DashboardChartItem(x.Key, x.Count(), 0d))
-                .OrderByDescending(x => x.Count)
-                .ToListAsync(cancellationToken),
+            RequestStatus: await BuildCountChart(
+                scopedTestRequests.Select(x => x.Status),
+                "Unknown",
+                cancellationToken),
+            ResultStatus: await BuildCountChart(
+                scopedTestResults.Select(x => x.Status),
+                "Unknown",
+                cancellationToken),
+            TestCategoryBreakdown: await BuildCountChart(
+                scopedMedicalTests.Select(x => x.Category),
+                "Uncategorized",
+                cancellationToken),
             MonthlyRequests: await BuildMonthlyRequestChart(scopedTestRequests, cancellationToken),
             MonthlyRevenue: await BuildMonthlyRevenueChart(scopedTestRequests, cancellationToken),
             UserRoleDistribution: await BuildRoleDistribution(role, scopedTestRequests, cancellationToken));
@@ -226,7 +223,7 @@ public sealed class DashboardReadService(MedicalDbContext dbContext, IDateTimePr
         IQueryable<TestRequest> scopedTestRequests,
         CancellationToken cancellationToken)
     {
-        var startMonth = new DateTime(_dateTimeProvider.UtcNow.Year, _dateTimeProvider.UtcNow.Month, 1).AddMonths(-5);
+        var startMonth = GetUtcMonthStart(_dateTimeProvider.UtcNow).AddMonths(-5);
 
         var rows = await scopedTestRequests
             .Where(x => x.RequestDate >= startMonth)
@@ -241,7 +238,7 @@ public sealed class DashboardReadService(MedicalDbContext dbContext, IDateTimePr
         IQueryable<TestRequest> scopedTestRequests,
         CancellationToken cancellationToken)
     {
-        var startMonth = new DateTime(_dateTimeProvider.UtcNow.Year, _dateTimeProvider.UtcNow.Month, 1).AddMonths(-5);
+        var startMonth = GetUtcMonthStart(_dateTimeProvider.UtcNow).AddMonths(-5);
 
         var rows = await scopedTestRequests
             .Where(x => x.RequestDate >= startMonth)
@@ -250,6 +247,23 @@ public sealed class DashboardReadService(MedicalDbContext dbContext, IDateTimePr
             .ToListAsync(cancellationToken);
 
         return BuildMonthSeries(startMonth, rows.Select(x => (x.Year, x.Month, x.Revenue)));
+    }
+
+    private static async Task<List<DashboardChartItem>> BuildCountChart(
+        IQueryable<string?> source,
+        string fallbackLabel,
+        CancellationToken cancellationToken)
+    {
+        var rows = await source
+            .Select(value => value == null || value == string.Empty ? fallbackLabel : value)
+            .GroupBy(value => value)
+            .Select(group => new { Label = group.Key, Count = group.Count() })
+            .OrderByDescending(group => group.Count)
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(row => new DashboardChartItem(row.Label!, row.Count, 0d))
+            .ToList();
     }
 
     private async Task<List<DashboardChartItem>> BuildRoleDistribution(
@@ -313,6 +327,9 @@ public sealed class DashboardReadService(MedicalDbContext dbContext, IDateTimePr
 
         return series;
     }
+
+    private static DateTime GetUtcMonthStart(DateTime utcDateTime) =>
+        new(utcDateTime.Year, utcDateTime.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
     private static IReadOnlyDictionary<string, string> BuildAppliedFilters(string role, string userId)
     {

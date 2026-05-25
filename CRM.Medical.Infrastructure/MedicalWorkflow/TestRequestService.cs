@@ -209,10 +209,13 @@ public sealed class TestRequestService(
             .Distinct()
             .ToArray();
 
-        var medicalTestNames = await db.MedicalTests
+        var medicalTests = await db.MedicalTests
             .AsNoTracking()
             .Where(test => createdMedicalTestIds.Contains(test.Id))
-            .ToDictionaryAsync(test => test.Id, test => (string?)test.NameEn, cancellationToken);
+            .ToDictionaryAsync(
+                test => test.Id,
+                test => new MedicalTestLookupItem(test.NameEn, test.ParameterSchema),
+                cancellationToken);
 
         var externalPatientNames = externalPatientIds.Length == 0
             ? new Dictionary<int, string?>()
@@ -225,7 +228,7 @@ public sealed class TestRequestService(
             entities.SelectMany(entity => new[] { entity.DoctorId, entity.LabClientId, entity.DirectPatientId }),
             cancellationToken);
 
-        return MapCreatedGroup(entities, medicalTestNames, externalPatientNames, userNames);
+        return MapCreatedGroup(entities, medicalTests, externalPatientNames, userNames);
     }
 
     public async Task UpdateAsync(
@@ -392,7 +395,7 @@ public sealed class TestRequestService(
 
     private static GroupedTestRequestDto MapCreatedGroup(
         IReadOnlyList<TestRequest> requests,
-        IReadOnlyDictionary<int, string?> medicalTestNames,
+        IReadOnlyDictionary<int, MedicalTestLookupItem> medicalTests,
         IReadOnlyDictionary<int, string?> externalPatientNames,
         IReadOnlyDictionary<string, string> userNames)
     {
@@ -405,7 +408,10 @@ public sealed class TestRequestService(
             .Select(request => new TestRequestMedicalTestItemDto(
                 request.Id,
                 request.MedicalTestId,
-                medicalTestNames.TryGetValue(request.MedicalTestId, out var medicalTestName) ? medicalTestName : null))
+                medicalTests.TryGetValue(request.MedicalTestId, out var medicalTest) ? medicalTest.NameEn : null,
+                BuildParameterItems(
+                    medicalTests.TryGetValue(request.MedicalTestId, out medicalTest) ? medicalTest.ParameterSchema : null,
+                    request.Metadata)))
             .ToList();
 
         return new(
@@ -449,7 +455,8 @@ public sealed class TestRequestService(
             .Select(request => new TestRequestMedicalTestItemDto(
                 request.Id,
                 request.MedicalTestId,
-                request.MedicalTest?.NameEn))
+                request.MedicalTest?.NameEn,
+                BuildParameterItems(request.MedicalTest?.ParameterSchema, request.Metadata)))
             .ToList();
 
         return new(
@@ -503,11 +510,175 @@ public sealed class TestRequestService(
         int? ExternalPatientId,
         string? MetadataJson);
 
+    private sealed record MedicalTestLookupItem(
+        string? NameEn,
+        JsonDocument? ParameterSchema);
+
     private static Expression<Func<TestRequest, bool>>? BuildDefaultExactPredicate(string token) =>
         ParseIntPredicate(token, value => r =>
             r.Id == value ||
             r.MedicalTestId == value ||
             r.ExternalPatientId == value);
+
+    private static IReadOnlyList<TestRequestParameterItemDto> BuildParameterItems(
+        JsonDocument? parameterSchema,
+        JsonDocument? metadata)
+    {
+        if (parameterSchema is null)
+            return [];
+
+        var schema = parameterSchema.RootElement;
+        var values = metadata?.RootElement;
+        var items = new List<TestRequestParameterItemDto>();
+
+        if (schema.ValueKind == JsonValueKind.Array)
+        {
+            var index = 0;
+            foreach (var schemaItem in schema.EnumerateArray())
+            {
+                var value = ResolveParameterValue(schemaItem, values, index);
+                var mapped = MapSchemaItem(schemaItem, value, index);
+                if (mapped is not null)
+                    items.Add(mapped);
+
+                index++;
+            }
+
+            return items;
+        }
+
+        if (schema.ValueKind == JsonValueKind.Object)
+        {
+            var index = 0;
+            foreach (var property in schema.EnumerateObject())
+            {
+                var value = ResolvePropertyValue(values, property.Name, index);
+                items.Add(new TestRequestParameterItemDto(
+                    property.Name,
+                    null,
+                    property.Name,
+                    CloneJsonElement(value)));
+                index++;
+            }
+        }
+
+        return items;
+    }
+
+    private static TestRequestParameterItemDto? MapSchemaItem(
+        JsonElement schemaItem,
+        JsonElement? value,
+        int index)
+    {
+        if (schemaItem.ValueKind != JsonValueKind.Object)
+        {
+            var fallbackName = schemaItem.ToString();
+            return string.IsNullOrWhiteSpace(fallbackName)
+                ? null
+                : new TestRequestParameterItemDto(fallbackName, null, null, CloneJsonElement(value));
+        }
+
+        var parameterName =
+            GetStringProperty(schemaItem, "parameterName") ??
+            GetStringProperty(schemaItem, "name") ??
+            GetStringProperty(schemaItem, "nameEn") ??
+            GetStringProperty(schemaItem, "label") ??
+            GetStringProperty(schemaItem, "title") ??
+            GetStringProperty(schemaItem, "key") ??
+            GetStringProperty(schemaItem, "code") ??
+            $"Parameter {index + 1}";
+
+        var parameterNameAr =
+            GetStringProperty(schemaItem, "parameterNameAr") ??
+            GetStringProperty(schemaItem, "nameAr") ??
+            GetStringProperty(schemaItem, "labelAr") ??
+            GetStringProperty(schemaItem, "titleAr");
+
+        var parameterKey =
+            GetStringProperty(schemaItem, "key") ??
+            GetStringProperty(schemaItem, "code") ??
+            GetStringProperty(schemaItem, "id") ??
+            GetStringProperty(schemaItem, "name") ??
+            GetStringProperty(schemaItem, "parameterName");
+
+        return new TestRequestParameterItemDto(
+            parameterName,
+            parameterNameAr,
+            parameterKey,
+            CloneJsonElement(value));
+    }
+
+    private static JsonElement? ResolveParameterValue(JsonElement schemaItem, JsonElement? values, int index)
+    {
+        if (values is null)
+            return null;
+
+        if (values.Value.ValueKind == JsonValueKind.Array)
+        {
+            var valuesArray = values.Value;
+            return index < valuesArray.GetArrayLength() ? valuesArray[index] : null;
+        }
+
+        if (values.Value.ValueKind != JsonValueKind.Object)
+            return index == 0 ? values : null;
+
+        if (schemaItem.ValueKind != JsonValueKind.Object)
+            return null;
+
+        foreach (var candidate in GetCandidateKeys(schemaItem))
+        {
+            if (values.Value.TryGetProperty(candidate, out var objectValue))
+                return objectValue;
+        }
+
+        return null;
+    }
+
+    private static JsonElement? ResolvePropertyValue(JsonElement? values, string propertyName, int index)
+    {
+        if (values is null)
+            return null;
+
+        if (values.Value.ValueKind == JsonValueKind.Object &&
+            values.Value.TryGetProperty(propertyName, out var objectValue))
+            return objectValue;
+
+        if (values.Value.ValueKind == JsonValueKind.Array)
+        {
+            var valuesArray = values.Value;
+            return index < valuesArray.GetArrayLength() ? valuesArray[index] : null;
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> GetCandidateKeys(JsonElement schemaItem)
+    {
+        foreach (var key in new[]
+                 {
+                     GetStringProperty(schemaItem, "key"),
+                     GetStringProperty(schemaItem, "code"),
+                     GetStringProperty(schemaItem, "id"),
+                     GetStringProperty(schemaItem, "name"),
+                     GetStringProperty(schemaItem, "parameterName"),
+                     GetStringProperty(schemaItem, "nameEn"),
+                     GetStringProperty(schemaItem, "nameAr")
+                 })
+        {
+            if (!string.IsNullOrWhiteSpace(key))
+                yield return key!;
+        }
+    }
+
+    private static string? GetStringProperty(JsonElement element, string propertyName) =>
+        element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
+            ? property.GetString()
+            : null;
+
+    private static JsonElement? CloneJsonElement(JsonElement? element) =>
+        element is null
+            ? null
+            : JsonSerializer.Deserialize<JsonElement>(element.Value.GetRawText());
 
     private static Expression<Func<TestRequest, bool>>? ParseIntPredicate(
         string token,
