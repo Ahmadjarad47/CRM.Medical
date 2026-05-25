@@ -42,7 +42,7 @@ public sealed class TestRequestService(
             ["externalpatientid"] = token => ParseIntPredicate(token, value => r => r.ExternalPatientId == value)
         };
 
-    public async Task<PagedResult<TestRequestDto>> ListAsync(
+    public async Task<PagedResult<GroupedTestRequestDto>> ListAsync(
         int page,
         int pageSize,
         string? search,
@@ -94,28 +94,39 @@ public sealed class TestRequestService(
                 .Select(u => u.FullName)
                 .FirstOrDefault());
 
-        var totalCount = await query.CountAsync(cancellationToken);
         var rows = await query
             .Include(r => r.MedicalTest)
             .Include(r => r.ExternalPatient)
             .OrderByDescending(r => r.RequestDate)
-            .ApplyPagination(normalizedPage, normalizedPageSize)
             .ToListAsync(cancellationToken);
 
         var userNames = await GetUserNamesByIdsAsync(
             rows.SelectMany(row => new[] { row.DoctorId, row.LabClientId, row.DirectPatientId }),
             cancellationToken);
 
-        return new PagedResult<TestRequestDto>
+        var groupedRows = rows
+            .GroupBy(BuildGroupKey)
+            .OrderByDescending(group => group.Max(row => row.RequestDate))
+            .ThenByDescending(group => group.Key.CreatedAt)
+            .Select(group => MapGroup(group, userNames))
+            .ToList();
+
+        var totalCount = groupedRows.Count;
+        var pagedItems = groupedRows
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToList();
+
+        return new PagedResult<GroupedTestRequestDto>
         {
-            Items = rows.Select(row => Map(row, userNames)).ToList(),
+            Items = pagedItems,
             Page = normalizedPage,
             PageSize = normalizedPageSize,
             TotalCount = totalCount
         };
     }
 
-    public async Task<TestRequestDto> GetByIdAsync(int id, CancellationToken cancellationToken)
+    public async Task<GroupedTestRequestDto> GetByIdAsync(int id, CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
 
@@ -130,11 +141,31 @@ public sealed class TestRequestService(
         if (!canAccess)
             throw new ApplicationForbiddenException("You cannot access this test request.");
 
-        var userNames = await GetUserNamesByIdsAsync([entity.DoctorId, entity.LabClientId, entity.DirectPatientId], cancellationToken);
-        return Map(entity, userNames);
+        var groupedEntities = await db.TestRequests
+            .AsNoTracking()
+            .Include(r => r.MedicalTest)
+            .Include(r => r.ExternalPatient)
+            .Where(r =>
+                r.CreatedAt == entity.CreatedAt &&
+                r.CreatedByUserId == entity.CreatedByUserId &&
+                r.RequestDate == entity.RequestDate &&
+                r.Status == entity.Status &&
+                r.TotalAmount == entity.TotalAmount &&
+                r.Notes == entity.Notes &&
+                r.DoctorId == entity.DoctorId &&
+                r.LabClientId == entity.LabClientId &&
+                r.DirectPatientId == entity.DirectPatientId &&
+                r.ExternalPatientId == entity.ExternalPatientId)
+            .ToListAsync(cancellationToken);
+
+        var userNames = await GetUserNamesByIdsAsync(
+            groupedEntities.SelectMany(row => new[] { row.DoctorId, row.LabClientId, row.DirectPatientId }),
+            cancellationToken);
+
+        return MapGroup(groupedEntities, userNames);
     }
 
-    public async Task<IReadOnlyList<TestRequestDto>> CreateAsync(
+    public async Task<GroupedTestRequestDto> CreateAsync(
         IReadOnlyList<int> medicalTestIds,
         DateTime requestDate,
         string status,
@@ -194,9 +225,7 @@ public sealed class TestRequestService(
             entities.SelectMany(entity => new[] { entity.DoctorId, entity.LabClientId, entity.DirectPatientId }),
             cancellationToken);
 
-        return entities
-            .Select(entity => MapCreated(entity, medicalTestNames, externalPatientNames, userNames))
-            .ToList();
+        return MapCreatedGroup(entities, medicalTestNames, externalPatientNames, userNames);
     }
 
     public async Task UpdateAsync(
@@ -314,27 +343,6 @@ public sealed class TestRequestService(
             .ToDictionaryAsync(user => user.Id, user => user.FullName, StringComparer.Ordinal, cancellationToken);
     }
 
-    private static TestRequestDto Map(TestRequest r, IReadOnlyDictionary<string, string> userNames) =>
-        new(
-            r.Id,
-            r.MedicalTestId,
-            r.MedicalTest?.NameEn,
-            r.DoctorId,
-            ResolveUserName(userNames, r.DoctorId),
-            r.LabClientId,
-            ResolveUserName(userNames, r.LabClientId),
-            r.DirectPatientId,
-            ResolvePatientName(r, userNames),
-            r.ExternalPatientId,
-            r.ExternalPatient?.FullName,
-            r.RequestDate,
-            r.Status,
-            r.TotalAmount,
-            r.Notes,
-            MedicalWorkflowJson.ToJsonElement(r.Metadata),
-            r.CreatedAt,
-            r.UpdatedAt);
-
     private static string? ResolveUserName(IReadOnlyDictionary<string, string> userNames, string? userId) =>
         !string.IsNullOrWhiteSpace(userId) && userNames.TryGetValue(userId, out var fullName)
             ? fullName
@@ -382,37 +390,118 @@ public sealed class TestRequestService(
         return entity;
     }
 
-    private static TestRequestDto MapCreated(
-        TestRequest request,
+    private static GroupedTestRequestDto MapCreatedGroup(
+        IReadOnlyList<TestRequest> requests,
         IReadOnlyDictionary<int, string?> medicalTestNames,
         IReadOnlyDictionary<int, string?> externalPatientNames,
-        IReadOnlyDictionary<string, string> userNames) =>
-        new(
-            request.Id,
-            request.MedicalTestId,
-            medicalTestNames.TryGetValue(request.MedicalTestId, out var medicalTestName) ? medicalTestName : null,
-            request.DoctorId,
-            ResolveUserName(userNames, request.DoctorId),
-            request.LabClientId,
-            ResolveUserName(userNames, request.LabClientId),
-            request.DirectPatientId,
-            ResolveUserName(userNames, request.DirectPatientId)
-                ?? (request.ExternalPatientId.HasValue &&
-                    externalPatientNames.TryGetValue(request.ExternalPatientId.Value, out var externalPatientName)
+        IReadOnlyDictionary<string, string> userNames)
+    {
+        var primaryRequest = requests
+            .OrderBy(request => request.Id)
+            .First();
+
+        var tests = requests
+            .OrderBy(request => request.Id)
+            .Select(request => new TestRequestMedicalTestItemDto(
+                request.Id,
+                request.MedicalTestId,
+                medicalTestNames.TryGetValue(request.MedicalTestId, out var medicalTestName) ? medicalTestName : null))
+            .ToList();
+
+        return new(
+            primaryRequest.Id,
+            tests.Select(test => test.TestRequestId).ToList(),
+            tests,
+            primaryRequest.DoctorId,
+            ResolveUserName(userNames, primaryRequest.DoctorId),
+            primaryRequest.LabClientId,
+            ResolveUserName(userNames, primaryRequest.LabClientId),
+            primaryRequest.DirectPatientId,
+            ResolveUserName(userNames, primaryRequest.DirectPatientId)
+                ?? (primaryRequest.ExternalPatientId.HasValue &&
+                    externalPatientNames.TryGetValue(primaryRequest.ExternalPatientId.Value, out var externalPatientName)
                     ? externalPatientName
                     : null),
-            request.ExternalPatientId,
-            request.ExternalPatientId.HasValue &&
-            externalPatientNames.TryGetValue(request.ExternalPatientId.Value, out var fullName)
+            primaryRequest.ExternalPatientId,
+            primaryRequest.ExternalPatientId.HasValue &&
+            externalPatientNames.TryGetValue(primaryRequest.ExternalPatientId.Value, out var fullName)
                 ? fullName
                 : null,
+            primaryRequest.RequestDate,
+            primaryRequest.Status,
+            primaryRequest.TotalAmount,
+            primaryRequest.Notes,
+            MedicalWorkflowJson.ToJsonElement(primaryRequest.Metadata),
+            primaryRequest.CreatedAt,
+            primaryRequest.UpdatedAt);
+    }
+
+    private static GroupedTestRequestDto MapGroup(
+        IEnumerable<TestRequest> requests,
+        IReadOnlyDictionary<string, string> userNames)
+    {
+        var requestList = requests
+            .OrderBy(request => request.Id)
+            .ToList();
+
+        var primaryRequest = requestList[0];
+        var tests = requestList
+            .Select(request => new TestRequestMedicalTestItemDto(
+                request.Id,
+                request.MedicalTestId,
+                request.MedicalTest?.NameEn))
+            .ToList();
+
+        return new(
+            primaryRequest.Id,
+            tests.Select(test => test.TestRequestId).ToList(),
+            tests,
+            primaryRequest.DoctorId,
+            ResolveUserName(userNames, primaryRequest.DoctorId),
+            primaryRequest.LabClientId,
+            ResolveUserName(userNames, primaryRequest.LabClientId),
+            primaryRequest.DirectPatientId,
+            ResolvePatientName(primaryRequest, userNames),
+            primaryRequest.ExternalPatientId,
+            primaryRequest.ExternalPatient?.FullName,
+            primaryRequest.RequestDate,
+            primaryRequest.Status,
+            primaryRequest.TotalAmount,
+            primaryRequest.Notes,
+            MedicalWorkflowJson.ToJsonElement(primaryRequest.Metadata),
+            primaryRequest.CreatedAt,
+            requestList
+                .Where(request => request.UpdatedAt.HasValue)
+                .Select(request => request.UpdatedAt)
+                .Max());
+    }
+
+    private static TestRequestGroupKey BuildGroupKey(TestRequest request) =>
+        new(
+            request.CreatedAt,
+            request.CreatedByUserId,
             request.RequestDate,
             request.Status,
             request.TotalAmount,
             request.Notes,
-            MedicalWorkflowJson.ToJsonElement(request.Metadata),
-            request.CreatedAt,
-            request.UpdatedAt);
+            request.DoctorId,
+            request.LabClientId,
+            request.DirectPatientId,
+            request.ExternalPatientId,
+            request.Metadata?.RootElement.GetRawText());
+
+    private sealed record TestRequestGroupKey(
+        DateTime CreatedAt,
+        string? CreatedByUserId,
+        DateTime RequestDate,
+        string Status,
+        double TotalAmount,
+        string? Notes,
+        string? DoctorId,
+        string? LabClientId,
+        string? DirectPatientId,
+        int? ExternalPatientId,
+        string? MetadataJson);
 
     private static Expression<Func<TestRequest, bool>>? BuildDefaultExactPredicate(string token) =>
         ParseIntPredicate(token, value => r =>

@@ -13,8 +13,8 @@ namespace CRM.Medical.API.Controllers.Users;
 public sealed class TestRequestsController(ISender mediator) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType(typeof(PagedResult<TestRequestDto>), StatusCodes.Status200OK)]
-    public Task<PagedResult<TestRequestDto>> List(
+    [ProducesResponseType(typeof(PagedResult<GroupedTestRequestDto>), StatusCodes.Status200OK)]
+    public Task<PagedResult<GroupedTestRequestDto>> List(
         [FromQuery] PagedSearchRequest request,
         CancellationToken cancellationToken) =>
         mediator.Send(
@@ -22,13 +22,13 @@ public sealed class TestRequestsController(ISender mediator) : ControllerBase
             cancellationToken);
 
     [HttpGet("{id:int}")]
-    [ProducesResponseType(typeof(TestRequestDto), StatusCodes.Status200OK)]
-    public Task<TestRequestDto> Get(int id, CancellationToken cancellationToken) =>
+    [ProducesResponseType(typeof(GroupedTestRequestDto), StatusCodes.Status200OK)]
+    public Task<GroupedTestRequestDto> Get(int id, CancellationToken cancellationToken) =>
         mediator.Send(new GetTestRequestByIdQuery(id), cancellationToken);
 
     [HttpPost]
-    [ProducesResponseType(typeof(IReadOnlyList<TestRequestDto>), StatusCodes.Status200OK)]
-    public Task<IReadOnlyList<TestRequestDto>> Create(
+    [ProducesResponseType(typeof(GroupedTestRequestDto), StatusCodes.Status200OK)]
+    public Task<GroupedTestRequestDto> Create(
         [FromBody] CreateTestRequestRequest request,
         CancellationToken cancellationToken) =>
         mediator.Send(

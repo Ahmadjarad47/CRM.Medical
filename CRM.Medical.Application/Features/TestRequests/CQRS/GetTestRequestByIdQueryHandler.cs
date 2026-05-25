@@ -5,9 +5,9 @@ using MediatR;
 namespace CRM.Medical.Application.Features.TestRequests.CQRS;
 
 public sealed class GetTestRequestByIdQueryHandler(ITestRequestService testRequests)
-    : IRequestHandler<GetTestRequestByIdQuery, TestRequestDto>
+    : IRequestHandler<GetTestRequestByIdQuery, GroupedTestRequestDto>
 {
-    public Task<TestRequestDto> Handle(
+    public Task<GroupedTestRequestDto> Handle(
         GetTestRequestByIdQuery request,
         CancellationToken cancellationToken) =>
         testRequests.GetByIdAsync(request.Id, cancellationToken);

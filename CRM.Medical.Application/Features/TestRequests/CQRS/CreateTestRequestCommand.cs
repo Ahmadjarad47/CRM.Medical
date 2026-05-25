@@ -14,4 +14,4 @@ public sealed record CreateTestRequestCommand(
     string? DoctorId,
     string? LabClientId,
     string? DirectPatientId,
-    int? ExternalPatientId) : IRequest<IReadOnlyList<TestRequestDto>>;
+    int? ExternalPatientId) : IRequest<GroupedTestRequestDto>;

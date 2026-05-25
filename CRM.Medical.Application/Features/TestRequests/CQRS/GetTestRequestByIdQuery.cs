@@ -3,4 +3,4 @@ using MediatR;
 
 namespace CRM.Medical.Application.Features.TestRequests.CQRS;
 
-public sealed record GetTestRequestByIdQuery(int Id) : IRequest<TestRequestDto>;
+public sealed record GetTestRequestByIdQuery(int Id) : IRequest<GroupedTestRequestDto>;

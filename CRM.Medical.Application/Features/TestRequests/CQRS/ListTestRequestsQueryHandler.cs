@@ -6,9 +6,9 @@ using MediatR;
 namespace CRM.Medical.Application.Features.TestRequests.CQRS;
 
 public sealed class ListTestRequestsQueryHandler(ITestRequestService testRequests)
-    : IRequestHandler<ListTestRequestsQuery, PagedResult<TestRequestDto>>
+    : IRequestHandler<ListTestRequestsQuery, PagedResult<GroupedTestRequestDto>>
 {
-    public Task<PagedResult<TestRequestDto>> Handle(
+    public Task<PagedResult<GroupedTestRequestDto>> Handle(
         ListTestRequestsQuery request,
         CancellationToken cancellationToken) =>
         testRequests.ListAsync(request.Page, request.PageSize, request.Search, cancellationToken);

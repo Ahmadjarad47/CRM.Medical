@@ -27,6 +27,7 @@ public static class DatabaseMigrationStartupExtensions
         try
         {
             await EnsureAccessPoliciesCompatibilityColumnsAsync(db, logger);
+            await EnsureComplaintCompatibilityColumnsAsync(db, logger);
 
             if (settings.BaselineExistingDatabase)
                 await BaselineExistingSchemaIfNeededAsync(db, logger);
@@ -128,6 +129,17 @@ public static class DatabaseMigrationStartupExtensions
         await db.Database.ExecuteSqlRawAsync(convertEffectSql);
         logger.LogInformation(
             "Ensured access_policies compatibility (columns and Effect type conversion).");
+    }
+
+    private static async Task EnsureComplaintCompatibilityColumnsAsync(MedicalDbContext db, ILogger logger)
+    {
+        const string ensureColumnsSql = """
+            ALTER TABLE IF EXISTS "complaints"
+                ADD COLUMN IF NOT EXISTS "Note" character varying(4000) NULL;
+            """;
+
+        await db.Database.ExecuteSqlRawAsync(ensureColumnsSql);
+        logger.LogInformation("Ensured complaints compatibility columns.");
     }
 
     private static async Task BaselineExistingSchemaIfNeededAsync(MedicalDbContext db, ILogger logger)

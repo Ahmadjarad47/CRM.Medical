@@ -5,9 +5,9 @@ using MediatR;
 namespace CRM.Medical.Application.Features.TestRequests.CQRS;
 
 public sealed class CreateTestRequestCommandHandler(ITestRequestService testRequests)
-    : IRequestHandler<CreateTestRequestCommand, IReadOnlyList<TestRequestDto>>
+    : IRequestHandler<CreateTestRequestCommand, GroupedTestRequestDto>
 {
-    public Task<IReadOnlyList<TestRequestDto>> Handle(
+    public Task<GroupedTestRequestDto> Handle(
         CreateTestRequestCommand request,
         CancellationToken cancellationToken) =>
         testRequests.CreateAsync(
