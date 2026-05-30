@@ -531,6 +531,10 @@ public sealed class TestRequestService(
                 request.Id,
                 request.MedicalTestId,
                 medicalTests.TryGetValue(request.MedicalTestId, out var medicalTest) ? medicalTest.NameEn : null,
+                MedicalWorkflowJson.ToJsonElement(
+                    medicalTests.TryGetValue(request.MedicalTestId, out medicalTest)
+                        ? medicalTest.ParameterSchema
+                        : null),
                 BuildParameterItems(
                     medicalTests.TryGetValue(request.MedicalTestId, out medicalTest) ? medicalTest.ParameterSchema : null,
                     request.Metadata)))
@@ -578,6 +582,7 @@ public sealed class TestRequestService(
                 request.Id,
                 request.MedicalTestId,
                 request.MedicalTest?.NameEn,
+                MedicalWorkflowJson.ToJsonElement(request.MedicalTest?.ParameterSchema),
                 BuildParameterItems(request.MedicalTest?.ParameterSchema, request.Metadata)))
             .ToList();
 

@@ -46,6 +46,7 @@ public sealed class MedicalDbContext(
     public DbSet<MessageAttachment> MessageAttachments => Set<MessageAttachment>();
     public DbSet<AccessPolicy> AccessPolicies => Set<AccessPolicy>();
     public DbSet<UserDeviceToken> UserDeviceTokens => Set<UserDeviceToken>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
