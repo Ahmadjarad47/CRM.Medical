@@ -27,7 +27,7 @@
         "DB_TIMEOUT": "15",
         "DB_COMMAND_TIMEOUT": "30",
         "DB_SSL_MODE": "Disable",
-        "DB_MULTIPLEXING": "true"
+        "DB_MULTIPLEXING": "false"
       }
     },
     "https": {
@@ -48,7 +48,7 @@
         "DB_TIMEOUT": "15",
         "DB_COMMAND_TIMEOUT": "30",
         "DB_SSL_MODE": "Disable",
-        "DB_MULTIPLEXING": "true"
+        "DB_MULTIPLEXING": "false"
       }
     },
     "IIS Express": {
@@ -67,7 +67,7 @@
         "DB_TIMEOUT": "15",
         "DB_COMMAND_TIMEOUT": "30",
         "DB_SSL_MODE": "Disable",
-        "DB_MULTIPLEXING": "true"
+        "DB_MULTIPLEXING": "false"
       }
     }
   }

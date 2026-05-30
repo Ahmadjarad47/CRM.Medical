@@ -10,12 +10,8 @@ namespace CRM.Medical.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Note",
-                table: "complaints",
-                type: "character varying(4000)",
-                maxLength: 4000,
-                nullable: true);
+            migrationBuilder.Sql(
+                """ALTER TABLE IF EXISTS complaints ADD COLUMN IF NOT EXISTS "Note" character varying(4000);""");
         }
 
         /// <inheritdoc />

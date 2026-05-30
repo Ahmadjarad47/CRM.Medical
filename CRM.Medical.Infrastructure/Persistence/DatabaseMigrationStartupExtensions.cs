@@ -163,20 +163,33 @@ public static class DatabaseMigrationStartupExtensions
 
             var migration = migrationsAssembly.CreateMigration(migrationType, db.Database.ProviderName!);
             var createTableOperations = migration.UpOperations.OfType<CreateTableOperation>().ToList();
-            if (createTableOperations.Count == 0)
+            var addColumnOperations = migration.UpOperations.OfType<AddColumnOperation>().ToList();
+            if (createTableOperations.Count == 0 && addColumnOperations.Count == 0)
                 continue;
 
-            var allTablesExist = true;
+            var migrationAlreadyAppliedToSchema = true;
             foreach (var operation in createTableOperations)
             {
                 if (await TableExistsAsync(db, operation.Name, operation.Schema))
                     continue;
 
-                allTablesExist = false;
+                migrationAlreadyAppliedToSchema = false;
                 break;
             }
 
-            if (!allTablesExist)
+            if (!migrationAlreadyAppliedToSchema)
+                continue;
+
+            foreach (var operation in addColumnOperations)
+            {
+                if (await ColumnExistsAsync(db, operation.Table, operation.Name, operation.Schema))
+                    continue;
+
+                migrationAlreadyAppliedToSchema = false;
+                break;
+            }
+
+            if (!migrationAlreadyAppliedToSchema)
                 continue;
 
             await InsertMigrationHistoryRowAsync(db, migrationId, ProductInfo.GetVersion());
@@ -244,6 +257,45 @@ public static class DatabaseMigrationStartupExtensions
         tableParameter.ParameterName = "@table";
         tableParameter.Value = tableName;
         command.Parameters.Add(tableParameter);
+
+        var scalar = await command.ExecuteScalarAsync();
+        return scalar is not null;
+    }
+
+    private static async Task<bool> ColumnExistsAsync(
+        MedicalDbContext db,
+        string tableName,
+        string columnName,
+        string? schema)
+    {
+        await using var connection = db.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+            await connection.OpenAsync();
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = @schema
+              AND table_name = @table
+              AND column_name = @column
+            LIMIT 1;
+            """;
+
+        var schemaParameter = command.CreateParameter();
+        schemaParameter.ParameterName = "@schema";
+        schemaParameter.Value = schema ?? "public";
+        command.Parameters.Add(schemaParameter);
+
+        var tableParameter = command.CreateParameter();
+        tableParameter.ParameterName = "@table";
+        tableParameter.Value = tableName;
+        command.Parameters.Add(tableParameter);
+
+        var columnParameter = command.CreateParameter();
+        columnParameter.ParameterName = "@column";
+        columnParameter.Value = columnName;
+        command.Parameters.Add(columnParameter);
 
         var scalar = await command.ExecuteScalarAsync();
         return scalar is not null;
