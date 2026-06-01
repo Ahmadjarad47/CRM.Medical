@@ -5,6 +5,10 @@ using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Authorization;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Domain.Entities;
+using CRM.Medical.Domain.Entities.Accounting;
+using CRM.Medical.Domain.Entities.ServiceRequests;
+using CRM.Medical.Domain.Entities.Insurance;
+using CRM.Medical.Domain.Entities.Store;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -245,7 +249,23 @@ internal sealed class AccessPolicyMetadataProvider : IAccessPolicyMetadataProvid
         [typeof(User)] = "users",
         [typeof(Complaint)] = "complaints",
         [typeof(Banner)] = "banners",
-        [typeof(Template)] = "templates"
+        [typeof(Template)] = "templates",
+        [typeof(ServiceRequestPageSetting)] = "service_request_page_settings",
+        [typeof(VacantJob)] = "vacant_jobs",
+        [typeof(EmploymentApplicationRequest)] = "employment_application_requests",
+        [typeof(ClientJoinRequest)] = "client_join_requests",
+        [typeof(ContractServiceRequest)] = "contract_service_requests",
+        [typeof(InsuranceApprovalRequest)] = "insurance_approval_requests",
+        [typeof(ProductCategory)] = "store_product_categories",
+        [typeof(Product)] = "store_products",
+        [typeof(StoreSetting)] = "store_settings",
+        [typeof(StoreBanner)] = "store_banners",
+        [typeof(StoreSlider)] = "store_sliders",
+        [typeof(Coupon)] = "store_coupons",
+        [typeof(StoreOrder)] = "store_orders",
+        [typeof(AccountingPageSetting)] = "accounting_page_settings",
+        [typeof(LabAccountPayment)] = "lab_account_payments",
+        [typeof(LabAccountStatementFile)] = "lab_account_statement_files"
     };
 
     public string ResolveResource<TEntity>() =>

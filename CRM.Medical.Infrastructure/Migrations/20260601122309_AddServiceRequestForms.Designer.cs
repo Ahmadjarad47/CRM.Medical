@@ -4,6 +4,7 @@ using System.Text.Json;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CRM.Medical.Infrastructure.Migrations
 {
     [DbContext(typeof(MedicalDbContext))]
-    partial class MedicalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260601122309_AddServiceRequestForms")]
+    partial class AddServiceRequestForms
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -99,176 +102,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                     b.HasIndex("Resource", "Action", "IsEnabled");
 
                     b.ToTable("access_policies", (string)null);
-                });
-
-            modelBuilder.Entity("CRM.Medical.Domain.Entities.Accounting.AccountingPageSetting", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AnnouncementTextAr")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("AnnouncementTextEn")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.Property<string>("DescriptionAr")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("DescriptionEn")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<string>("TitleAr")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<string>("TitleEn")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsActive");
-
-                    b.ToTable("accounting_page_settings", (string)null);
-                });
-
-            modelBuilder.Entity("CRM.Medical.Domain.Entities.Accounting.LabAccountPayment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.Property<string>("LabClientId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<DateTime>("PaidAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PaymentMethod")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("ReferenceNumber")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("LabClientId");
-
-                    b.HasIndex("PaidAt");
-
-                    b.HasIndex("LabClientId", "PaidAt");
-
-                    b.ToTable("lab_account_payments", (string)null);
-                });
-
-            modelBuilder.Entity("CRM.Medical.Domain.Entities.Accounting.LabAccountStatementFile", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.Property<string>("FileUrl")
-                        .IsRequired()
-                        .HasMaxLength(2048)
-                        .HasColumnType("character varying(2048)");
-
-                    b.Property<string>("LabClientId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("OriginalFileName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime>("PeriodFrom")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("PeriodTo")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("LabClientId");
-
-                    b.HasIndex("LabClientId", "PeriodFrom", "PeriodTo");
-
-                    b.ToTable("lab_account_statement_files", (string)null);
                 });
 
             modelBuilder.Entity("CRM.Medical.Domain.Entities.Banner", b =>
@@ -544,90 +377,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                     b.HasIndex("LinkedDirectPatientId");
 
                     b.ToTable("external_patients", (string)null);
-                });
-
-            modelBuilder.Entity("CRM.Medical.Domain.Entities.Insurance.InsuranceApprovalRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedByUserId")
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.Property<string>("InsuranceCardImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(2048)
-                        .HasColumnType("character varying(2048)");
-
-                    b.Property<string>("InsuranceCardOriginalFileName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("InsuranceNumber")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("InsuredName")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.Property<string>("MobileNumber")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("PatientId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.Property<string>("PrescriptionImageUrl")
-                        .IsRequired()
-                        .HasMaxLength(2048)
-                        .HasColumnType("character varying(2048)");
-
-                    b.Property<string>("PrescriptionOriginalFileName")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("RejectionReason")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("InsuranceNumber");
-
-                    b.HasIndex("PatientId");
-
-                    b.HasIndex("Status");
-
-                    b.ToTable("insurance_approval_requests", (string)null);
                 });
 
             modelBuilder.Entity("CRM.Medical.Domain.Entities.MedicalTest", b =>
@@ -2540,28 +2289,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                     b.ToTable("user_tokens", (string)null);
                 });
 
-            modelBuilder.Entity("CRM.Medical.Domain.Entities.Accounting.LabAccountPayment", b =>
-                {
-                    b.HasOne("CRM.Medical.Domain.Entities.User", "LabClient")
-                        .WithMany()
-                        .HasForeignKey("LabClientId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("LabClient");
-                });
-
-            modelBuilder.Entity("CRM.Medical.Domain.Entities.Accounting.LabAccountStatementFile", b =>
-                {
-                    b.HasOne("CRM.Medical.Domain.Entities.User", "LabClient")
-                        .WithMany()
-                        .HasForeignKey("LabClientId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("LabClient");
-                });
-
             modelBuilder.Entity("CRM.Medical.Domain.Entities.Complaint", b =>
                 {
                     b.HasOne("CRM.Medical.Domain.Entities.User", "User")
@@ -2609,17 +2336,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("LinkedDirectPatientId")
                         .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("CRM.Medical.Domain.Entities.Insurance.InsuranceApprovalRequest", b =>
-                {
-                    b.HasOne("CRM.Medical.Domain.Entities.User", "Patient")
-                        .WithMany()
-                        .HasForeignKey("PatientId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Patient");
                 });
 
             modelBuilder.Entity("CRM.Medical.Domain.Entities.Message", b =>

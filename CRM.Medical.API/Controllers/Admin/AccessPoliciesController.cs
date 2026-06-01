@@ -2,6 +2,10 @@ using System.Text.Json;
 using CRM.Medical.API.Contracts.Admin.AccessPolicies;
 using CRM.Medical.Application.Authorization;
 using CRM.Medical.Domain.Entities;
+using CRM.Medical.Domain.Entities.Accounting;
+using CRM.Medical.Domain.Entities.Insurance;
+using CRM.Medical.Domain.Entities.ServiceRequests;
+using CRM.Medical.Domain.Entities.Store;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -182,6 +186,22 @@ public sealed class AccessPoliciesController(
             "complaints" => validator.Validate<Complaint>(parsed),
             "banners" => validator.Validate<Banner>(parsed),
             "templates" => validator.Validate<Template>(parsed),
+            "service_request_page_settings" => validator.Validate<ServiceRequestPageSetting>(parsed),
+            "vacant_jobs" => validator.Validate<VacantJob>(parsed),
+            "employment_application_requests" => validator.Validate<EmploymentApplicationRequest>(parsed),
+            "client_join_requests" => validator.Validate<ClientJoinRequest>(parsed),
+            "contract_service_requests" => validator.Validate<ContractServiceRequest>(parsed),
+            "insurance_approval_requests" => validator.Validate<InsuranceApprovalRequest>(parsed),
+            "store_product_categories" => validator.Validate<ProductCategory>(parsed),
+            "store_products" => validator.Validate<Product>(parsed),
+            "store_settings" => validator.Validate<StoreSetting>(parsed),
+            "store_banners" => validator.Validate<StoreBanner>(parsed),
+            "store_sliders" => validator.Validate<StoreSlider>(parsed),
+            "store_coupons" => validator.Validate<Coupon>(parsed),
+            "store_orders" => validator.Validate<StoreOrder>(parsed),
+            "accounting_page_settings" => validator.Validate<AccountingPageSetting>(parsed),
+            "lab_account_payments" => validator.Validate<LabAccountPayment>(parsed),
+            "lab_account_statement_files" => validator.Validate<LabAccountStatementFile>(parsed),
             _ => new AccessPolicyValidationResult
             {
                 Errors = { $"Unknown resource '{resource}'." }

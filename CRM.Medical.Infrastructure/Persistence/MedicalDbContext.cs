@@ -1,6 +1,10 @@
 using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Domain.Entities;
+using CRM.Medical.Domain.Entities.Accounting;
+using CRM.Medical.Domain.Entities.Insurance;
+using CRM.Medical.Domain.Entities.ServiceRequests;
+using CRM.Medical.Domain.Entities.Store;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +51,27 @@ public sealed class MedicalDbContext(
     public DbSet<AccessPolicy> AccessPolicies => Set<AccessPolicy>();
     public DbSet<UserDeviceToken> UserDeviceTokens => Set<UserDeviceToken>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<StoreSetting> StoreSettings => Set<StoreSetting>();
+    public DbSet<StoreBanner> StoreBanners => Set<StoreBanner>();
+    public DbSet<StoreSlider> StoreSliders => Set<StoreSlider>();
+    public DbSet<StoreSliderProduct> StoreSliderProducts => Set<StoreSliderProduct>();
+    public DbSet<Cart> Carts => Set<Cart>();
+    public DbSet<CartItem> CartItems => Set<CartItem>();
+    public DbSet<Coupon> Coupons => Set<Coupon>();
+    public DbSet<StoreOrder> StoreOrders => Set<StoreOrder>();
+    public DbSet<StoreOrderItem> StoreOrderItems => Set<StoreOrderItem>();
+    public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+    public DbSet<ServiceRequestPageSetting> ServiceRequestPageSettings => Set<ServiceRequestPageSetting>();
+    public DbSet<VacantJob> VacantJobs => Set<VacantJob>();
+    public DbSet<EmploymentApplicationRequest> EmploymentApplicationRequests => Set<EmploymentApplicationRequest>();
+    public DbSet<ClientJoinRequest> ClientJoinRequests => Set<ClientJoinRequest>();
+    public DbSet<ContractServiceRequest> ContractServiceRequests => Set<ContractServiceRequest>();
+    public DbSet<AccountingPageSetting> AccountingPageSettings => Set<AccountingPageSetting>();
+    public DbSet<LabAccountPayment> LabAccountPayments => Set<LabAccountPayment>();
+    public DbSet<LabAccountStatementFile> LabAccountStatementFiles => Set<LabAccountStatementFile>();
+    public DbSet<InsuranceApprovalRequest> InsuranceApprovalRequests => Set<InsuranceApprovalRequest>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
