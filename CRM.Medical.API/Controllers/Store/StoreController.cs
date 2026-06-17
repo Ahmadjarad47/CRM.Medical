@@ -3,8 +3,43 @@ using CRM.Medical.API.Contracts.Common;
 using CRM.Medical.API.Contracts.Store;
 using CRM.Medical.API.Extensions;
 using CRM.Medical.Application.Common.Responses;
-using CRM.Medical.Application.Features.Store.CQRS;
+using CRM.Medical.Application.Common.Storage;
+using CRM.Medical.Application.Exceptions;
+using CRM.Medical.Application.Features.Store.Commands.AddStoreCartItem;
+using CRM.Medical.Application.Features.Store.Commands.ApplyStoreCoupon;
+using CRM.Medical.Application.Features.Store.Commands.CreateStoreCategory;
+using CRM.Medical.Application.Features.Store.Commands.DeleteStoreBanner;
+using CRM.Medical.Application.Features.Store.Commands.DeleteStoreCategory;
+using CRM.Medical.Application.Features.Store.Commands.DeleteStoreCoupon;
+using CRM.Medical.Application.Features.Store.Commands.DeleteStoreProduct;
+using CRM.Medical.Application.Features.Store.Commands.DeleteStoreSlider;
+using CRM.Medical.Application.Features.Store.Commands.RemoveStoreCartItem;
+using CRM.Medical.Application.Features.Store.Commands.RemoveStoreCoupon;
+using CRM.Medical.Application.Features.Store.Commands.SaveStoreBanner;
+using CRM.Medical.Application.Features.Store.Commands.SaveStoreCoupon;
+using CRM.Medical.Application.Features.Store.Commands.SaveStoreProduct;
+using CRM.Medical.Application.Features.Store.Commands.SaveStoreSlider;
+using CRM.Medical.Application.Features.Store.Commands.StoreCheckout;
+using CRM.Medical.Application.Features.Store.Commands.UpdateStoreCartItem;
+using CRM.Medical.Application.Features.Store.Commands.UpdateStoreCategory;
+using CRM.Medical.Application.Features.Store.Commands.UpdateStoreOrderStatus;
+using CRM.Medical.Application.Features.Store.Commands.UpdateStoreSettings;
 using CRM.Medical.Application.Features.Store.DTOs;
+using CRM.Medical.Application.Features.Store.Queries.GetMyStoreOrder;
+using CRM.Medical.Application.Features.Store.Queries.GetStoreCart;
+using CRM.Medical.Application.Features.Store.Queries.GetStoreCategory;
+using CRM.Medical.Application.Features.Store.Queries.GetStoreCategoryPage;
+using CRM.Medical.Application.Features.Store.Queries.GetStoreHome;
+using CRM.Medical.Application.Features.Store.Queries.GetStoreOrder;
+using CRM.Medical.Application.Features.Store.Queries.GetStoreProduct;
+using CRM.Medical.Application.Features.Store.Queries.GetStoreSettings;
+using CRM.Medical.Application.Features.Store.Queries.ListMyStoreOrders;
+using CRM.Medical.Application.Features.Store.Queries.ListStoreBanners;
+using CRM.Medical.Application.Features.Store.Queries.ListStoreCategories;
+using CRM.Medical.Application.Features.Store.Queries.ListStoreCoupons;
+using CRM.Medical.Application.Features.Store.Queries.ListStoreOrders;
+using CRM.Medical.Application.Features.Store.Queries.ListStoreProducts;
+using CRM.Medical.Application.Features.Store.Queries.ListStoreSliders;
 using CRM.Medical.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -47,14 +82,19 @@ public sealed class StoreController(ISender mediator) : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("categories")]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(ProductCategoryDto), StatusCodes.Status201Created)]
-    public async Task<IActionResult> CreateCategory([FromBody] SaveProductCategoryRequest request, CancellationToken ct)
+    public async Task<IActionResult> CreateCategory(
+        [FromForm] SaveProductCategoryRequest request,
+        [FromServices] IFileStorageService fileStorage,
+        CancellationToken ct)
     {
+        var imageUrl = await ResolveOptionalImageUrlAsync(request.Image, existingUrl: null, fileStorage, ct);
         var dto = await mediator.Send(new CreateStoreCategoryCommand(
             request.NameAr,
             request.NameEn,
             request.Description,
-            request.ImageUrl,
+            imageUrl,
             request.ParentCategoryId,
             request.DisplayOrder,
             request.IsActive), ct);
@@ -63,17 +103,26 @@ public sealed class StoreController(ISender mediator) : ControllerBase
 
     [AllowAnonymous]
     [HttpPut("categories/{id:int}")]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(ProductCategoryDto), StatusCodes.Status200OK)]
-    public Task<ProductCategoryDto> UpdateCategory(int id, [FromBody] SaveProductCategoryRequest request, CancellationToken ct) =>
-        mediator.Send(new UpdateStoreCategoryCommand(
+    public async Task<ProductCategoryDto> UpdateCategory(
+        int id,
+        [FromForm] SaveProductCategoryRequest request,
+        [FromServices] IFileStorageService fileStorage,
+        CancellationToken ct)
+    {
+        var existing = await mediator.Send(new GetStoreCategoryQuery(id, ActiveOnly: false), ct);
+        var imageUrl = await ResolveOptionalImageUrlAsync(request.Image, existing.ImageUrl, fileStorage, ct);
+        return await mediator.Send(new UpdateStoreCategoryCommand(
             id,
             request.NameAr,
             request.NameEn,
             request.Description,
-            request.ImageUrl,
+            imageUrl,
             request.ParentCategoryId,
             request.DisplayOrder,
             request.IsActive), ct);
+    }
 
     [AllowAnonymous]
     [HttpDelete("categories/{id:int}")]
@@ -105,18 +154,32 @@ public sealed class StoreController(ISender mediator) : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("products")]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(ProductDetailsDto), StatusCodes.Status201Created)]
-    public async Task<IActionResult> CreateProduct([FromBody] SaveProductRequest request, CancellationToken ct)
+    public async Task<IActionResult> CreateProduct(
+        [FromForm] SaveProductRequest request,
+        [FromServices] IFileStorageService fileStorage,
+        CancellationToken ct)
     {
-        var dto = await mediator.Send(ToSaveProductCommand(null, request), ct);
+        var imageUrl = await ResolveRequiredImageUrlAsync(request.Image, existingUrl: null, fileStorage, ct);
+        var dto = await mediator.Send(ToSaveProductCommand(null, request, imageUrl), ct);
         return StatusCode(StatusCodes.Status201Created, dto);
     }
 
     [AllowAnonymous]
     [HttpPut("products/{id:int}")]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(ProductDetailsDto), StatusCodes.Status200OK)]
-    public Task<ProductDetailsDto> UpdateProduct(int id, [FromBody] SaveProductRequest request, CancellationToken ct) =>
-        mediator.Send(ToSaveProductCommand(id, request), ct);
+    public async Task<ProductDetailsDto> UpdateProduct(
+        int id,
+        [FromForm] SaveProductRequest request,
+        [FromServices] IFileStorageService fileStorage,
+        CancellationToken ct)
+    {
+        var existing = await mediator.Send(new GetStoreProductQuery(id, ActiveOnly: false), ct);
+        var imageUrl = await ResolveRequiredImageUrlAsync(request.Image, existing.ImageUrl, fileStorage, ct);
+        return await mediator.Send(ToSaveProductCommand(id, request, imageUrl), ct);
+    }
 
     [AllowAnonymous]
     [HttpDelete("products/{id:int}")]
@@ -245,18 +308,34 @@ public sealed class StoreController(ISender mediator) : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("banners")]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(StoreBannerDto), StatusCodes.Status201Created)]
-    public async Task<IActionResult> CreateBanner([FromBody] SaveStoreBannerRequest request, CancellationToken ct)
+    public async Task<IActionResult> CreateBanner(
+        [FromForm] SaveStoreBannerRequest request,
+        [FromServices] IFileStorageService fileStorage,
+        CancellationToken ct)
     {
-        var dto = await mediator.Send(ToSaveBannerCommand(null, request), ct);
+        var imageUrl = await ResolveRequiredBannerMediaUrlAsync(request.Image, existingUrl: null, fileStorage, ct);
+        var dto = await mediator.Send(ToSaveBannerCommand(null, request, imageUrl), ct);
         return StatusCode(StatusCodes.Status201Created, dto);
     }
 
     [AllowAnonymous]
     [HttpPut("banners/{id:int}")]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(StoreBannerDto), StatusCodes.Status200OK)]
-    public Task<StoreBannerDto> UpdateBanner(int id, [FromBody] SaveStoreBannerRequest request, CancellationToken ct) =>
-        mediator.Send(ToSaveBannerCommand(id, request), ct);
+    public async Task<StoreBannerDto> UpdateBanner(
+        int id,
+        [FromForm] SaveStoreBannerRequest request,
+        [FromServices] IFileStorageService fileStorage,
+        CancellationToken ct)
+    {
+        var banners = await mediator.Send(new ListStoreBannersQuery(), ct);
+        var existing = banners.FirstOrDefault(b => b.Id == id)
+            ?? throw new ApplicationNotFoundException($"Store banner '{id}' was not found.");
+        var imageUrl = await ResolveRequiredBannerMediaUrlAsync(request.Image, existing.ImageUrl, fileStorage, ct);
+        return await mediator.Send(ToSaveBannerCommand(id, request, imageUrl), ct);
+    }
 
     [AllowAnonymous]
     [HttpDelete("banners/{id:int}")]
@@ -318,14 +397,14 @@ public sealed class StoreController(ISender mediator) : ControllerBase
     public Task<StoreOrderDetailsDto> UpdateOrderStatus(int id, [FromBody] UpdateStoreOrderStatusRequest request, CancellationToken ct) =>
         mediator.Send(new UpdateStoreOrderStatusCommand(id, request.Status), ct);
 
-    private static SaveStoreProductCommand ToSaveProductCommand(int? id, SaveProductRequest request) =>
+    private static SaveStoreProductCommand ToSaveProductCommand(int? id, SaveProductRequest request, string imageUrl) =>
         new(
             id,
             request.CategoryId,
             request.NameAr,
             request.NameEn,
             request.Description,
-            request.ImageUrl,
+            imageUrl,
             request.SaleUnit,
             request.Price,
             request.DiscountPrice,
@@ -335,11 +414,11 @@ public sealed class StoreController(ISender mediator) : ControllerBase
             request.IsBestSeller,
             request.IsActive);
 
-    private static SaveStoreBannerCommand ToSaveBannerCommand(int? id, SaveStoreBannerRequest request) =>
+    private static SaveStoreBannerCommand ToSaveBannerCommand(int? id, SaveStoreBannerRequest request, string imageUrl) =>
         new(
             id,
             request.Title,
-            request.ImageUrl,
+            imageUrl,
             request.LinkUrl,
             request.Location,
             request.CategoryId,
@@ -347,6 +426,45 @@ public sealed class StoreController(ISender mediator) : ControllerBase
             request.IsActive,
             request.StartsAt,
             request.EndsAt);
+
+    private static async Task<string?> ResolveOptionalImageUrlAsync(
+        IFormFile? image,
+        string? existingUrl,
+        IFileStorageService fileStorage,
+        CancellationToken cancellationToken) =>
+        image is { Length: > 0 }
+            ? await fileStorage.UploadImageAsync(image, cancellationToken)
+            : existingUrl;
+
+    private static async Task<string> ResolveRequiredImageUrlAsync(
+        IFormFile? image,
+        string? existingUrl,
+        IFileStorageService fileStorage,
+        CancellationToken cancellationToken)
+    {
+        if (image is { Length: > 0 })
+            return await fileStorage.UploadImageAsync(image, cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(existingUrl))
+            return existingUrl.Trim();
+
+        throw new ApplicationBadRequestException("Image file is required.");
+    }
+
+    private static async Task<string> ResolveRequiredBannerMediaUrlAsync(
+        IFormFile? image,
+        string? existingUrl,
+        IFileStorageService fileStorage,
+        CancellationToken cancellationToken)
+    {
+        if (image is { Length: > 0 })
+            return await fileStorage.UploadFileAsync(image, "banners", cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(existingUrl))
+            return existingUrl.Trim();
+
+        throw new ApplicationBadRequestException("Banner image or media file is required.");
+    }
 
     private static SaveStoreCouponCommand ToSaveCouponCommand(int? id, SaveCouponRequest request) =>
         new(

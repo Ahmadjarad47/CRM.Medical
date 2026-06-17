@@ -15,6 +15,23 @@ public sealed class BannerRepository(MedicalDbContext dbContext)
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateAsync(
+        Banner entity,
+        CancellationToken cancellationToken = default)
+    {
+        dbContext.Banners.Update(entity);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeleteAsync(
+        Banner entity,
+        CancellationToken cancellationToken = default)
+    {
+        entity.VisibilityRules?.Dispose();
+        dbContext.Banners.Remove(entity);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public Task<Banner?> GetByIdAsync(
         int id,
         CancellationToken cancellationToken = default) =>

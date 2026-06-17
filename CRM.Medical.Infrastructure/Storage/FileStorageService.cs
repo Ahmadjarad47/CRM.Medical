@@ -61,7 +61,8 @@ public sealed class FileStorageService(
         var f = folder.Trim().Trim('/');
         var extSet = new HashSet<string>(GeneralAttachmentExtensions, StringComparer.OrdinalIgnoreCase);
         var mimeSet = new HashSet<string>(GeneralAttachmentContentTypes, StringComparer.OrdinalIgnoreCase);
-        if (f.Equals("banners", StringComparison.OrdinalIgnoreCase))
+        if (f.Equals("banners", StringComparison.OrdinalIgnoreCase)
+            || f.Equals("ads", StringComparison.OrdinalIgnoreCase))
         {
             extSet.UnionWith([".mp4", ".webm"]);
             mimeSet.UnionWith(["video/mp4", "video/webm"]);

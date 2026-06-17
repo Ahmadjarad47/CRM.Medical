@@ -1,6 +1,8 @@
 using CRM.Medical.API.Contracts.Admin.Banners;
 using CRM.Medical.API.Mapping;
 using CRM.Medical.Application.Features.Banners.Commands.CreateBanner;
+using CRM.Medical.Application.Features.Banners.Commands.DeleteBanner;
+using CRM.Medical.Application.Features.Banners.Commands.UpdateBanner;
 using CRM.Medical.Application.Features.Banners.DTOs;
 using CRM.Medical.Application.Features.Banners.Queries.ListWebsiteBanners;
 using MediatR;
@@ -43,5 +45,41 @@ public sealed class BannersController(ISender mediator) : AdminBaseController
 
         var dto = await mediator.Send(command, ct);
         return StatusCode(StatusCodes.Status201Created, dto);
+    }
+
+    [HttpPatch("{id:int}")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(BannerDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Update(int id, [FromForm] UpdateBannerRequest request, CancellationToken ct)
+    {
+        var visibility = JsonRequestParsing.ParseOptionalJsonElement(
+            request.VisibilityRulesJson,
+            "Invalid banner data",
+            "Visibility rules must be valid JSON.");
+
+        var command = new UpdateBannerCommand(
+            id,
+            request.Title,
+            request.Type,
+            request.Media,
+            request.InternalLink ?? string.Empty,
+            request.ExternalLink ?? string.Empty,
+            request.TargetType,
+            request.Location,
+            request.DisplayOrder,
+            request.IsActive,
+            visibility,
+            request.StartDate!.Value,
+            request.EndDate!.Value);
+
+        return Ok(await mediator.Send(command, ct));
+    }
+
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        await mediator.Send(new DeleteBannerCommand(id), ct);
+        return NoContent();
     }
 }

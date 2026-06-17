@@ -8,6 +8,10 @@ public interface IBannerRepository
 
     Task AddAsync(Banner entity, CancellationToken cancellationToken = default);
 
+    Task UpdateAsync(Banner entity, CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(Banner entity, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Banner>> ListActiveAsync(CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Banner>> ListForWebsiteAsync(DateTime nowUtc, string? location, CancellationToken cancellationToken = default);
