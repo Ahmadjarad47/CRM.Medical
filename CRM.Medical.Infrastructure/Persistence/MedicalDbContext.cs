@@ -40,6 +40,8 @@ public sealed class MedicalDbContext(
     public DbSet<ExternalPatient> ExternalPatients => Set<ExternalPatient>();
 
     public DbSet<TestResult> TestResults => Set<TestResult>();
+    public DbSet<Availability> Availabilities => Set<Availability>();
+    public DbSet<Appointment> Appointments => Set<Appointment>();
 
     public DbSet<Conversation> Conversations => Set<Conversation>();
 

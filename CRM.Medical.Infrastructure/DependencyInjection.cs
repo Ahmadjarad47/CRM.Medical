@@ -17,6 +17,8 @@ using CRM.Medical.Application.Features.MedicalTests.Services;
 using CRM.Medical.Application.Features.ExternalPatients.Services;
 using CRM.Medical.Application.Features.TestRequests.Services;
 using CRM.Medical.Application.Features.TestResults.Services;
+using CRM.Medical.Application.Features.Appointments.Services;
+using CRM.Medical.Application.Features.Availabilities.Services;
 using CRM.Medical.Application.Features.Users.Services;
 using CRM.Medical.Application.Features.Store.Services;
 using CRM.Medical.Application.Features.Accounting.Services;
@@ -102,6 +104,8 @@ public static class DependencyInjection
         services.AddScoped<ITestRequestService, TestRequestService>();
         services.AddScoped<IExternalPatientService, ExternalPatientService>();
         services.AddScoped<ITestResultService, TestResultService>();
+        services.AddScoped<IAvailabilityService, AvailabilityService>();
+        services.AddScoped<IAppointmentService, AppointmentService>();
         services.AddScoped<StoreServices>();
         services.AddScoped<IStoreHomeService>(sp => sp.GetRequiredService<StoreServices>());
         services.AddScoped<IProductCatalogService>(sp => sp.GetRequiredService<StoreServices>());

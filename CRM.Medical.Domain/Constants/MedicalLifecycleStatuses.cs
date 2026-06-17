@@ -45,3 +45,23 @@ public static class AppointmentMedicalTestCompletionStatuses
 
     public static readonly IReadOnlyList<string> All = [NotStarted, InProgress, Finished, Cancelled];
 }
+
+/// <summary>Lifecycle values for <see cref="Entities.Appointment"/>.</summary>
+public static class AppointmentStatuses
+{
+    public const string Scheduled = "Scheduled";
+    public const string Completed = "Completed";
+    public const string Cancelled = "Cancelled";
+
+    public static readonly IReadOnlyList<string> All = [Scheduled, Completed, Cancelled];
+}
+
+/// <summary>Visit location values for <see cref="Entities.Appointment"/>.</summary>
+public static class AppointmentPatientLocationTypes
+{
+    public const string Home = "Home";
+    public const string Work = "Work";
+    public const string ComeToUs = "ComeToUs";
+
+    public static readonly IReadOnlyList<string> All = [Home, Work, ComeToUs];
+}

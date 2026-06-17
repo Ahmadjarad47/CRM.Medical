@@ -4,6 +4,7 @@ using System.Text.Json;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CRM.Medical.Infrastructure.Migrations
 {
     [DbContext(typeof(MedicalDbContext))]
-    partial class MedicalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260617064511_AddAppointmentsAndAvailabilities")]
+    partial class AddAppointmentsAndAvailabilities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -342,19 +345,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<double?>("PatientLatitude")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("PatientLocationType")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasDefaultValue("ComeToUs");
-
-                    b.Property<double?>("PatientLongitude")
-                        .HasColumnType("double precision");
-
                     b.Property<string>("ProviderUserId")
                         .IsRequired()
                         .HasMaxLength(450)
@@ -388,10 +378,6 @@ namespace CRM.Medical.Infrastructure.Migrations
 
                     b.ToTable("appointments", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Appointment_PatientLatitudeRange", "\"PatientLatitude\" IS NULL OR (\"PatientLatitude\" >= -90 AND \"PatientLatitude\" <= 90)");
-
-                            t.HasCheckConstraint("CK_Appointment_PatientLongitudeRange", "\"PatientLongitude\" IS NULL OR (\"PatientLongitude\" >= -180 AND \"PatientLongitude\" <= 180)");
-
                             t.HasCheckConstraint("CK_Appointment_TimeRange", "\"StartTime\" < \"EndTime\"");
                         });
                 });
@@ -2745,26 +2731,32 @@ namespace CRM.Medical.Infrastructure.Migrations
 
             modelBuilder.Entity("CRM.Medical.Domain.Entities.Appointment", b =>
                 {
-                    b.HasOne("CRM.Medical.Domain.Entities.User", null)
+                    b.HasOne("CRM.Medical.Domain.Entities.User", "ProviderUser")
                         .WithMany()
                         .HasForeignKey("ProviderUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("CRM.Medical.Domain.Entities.TestRequest", null)
+                    b.HasOne("CRM.Medical.Domain.Entities.TestRequest", "TestRequest")
                         .WithMany()
                         .HasForeignKey("TestRequestId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("ProviderUser");
+
+                    b.Navigation("TestRequest");
                 });
 
             modelBuilder.Entity("CRM.Medical.Domain.Entities.Availability", b =>
                 {
-                    b.HasOne("CRM.Medical.Domain.Entities.User", null)
+                    b.HasOne("CRM.Medical.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CRM.Medical.Domain.Entities.Complaint", b =>
