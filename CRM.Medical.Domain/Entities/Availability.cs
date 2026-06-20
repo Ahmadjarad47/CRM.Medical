@@ -8,7 +8,7 @@ public sealed class Availability : BaseEntity
     public string UserId { get; set; } = string.Empty;
 
     /// <summary>Day of week in range [0..6], where 0 = Sunday.</summary>
-    public int DayOfWeek { get; set; }
+    public DayOfWeek DayOfWeek { get; set; }
 
     public TimeSpan StartTime { get; set; }
 

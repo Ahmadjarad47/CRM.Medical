@@ -15,7 +15,7 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.Property(e => e.Id).UseIdentityByDefaultColumn();
 
         builder.Property(e => e.AvailabilityId);
-        builder.Property(e => e.TestRequestId).IsRequired();
+        builder.Property(e => e.TestRequestId);
         builder.Property(e => e.ProviderUserId).IsRequired().HasMaxLength(450);
         builder.Property(e => e.StartTime).IsRequired();
         builder.Property(e => e.EndTime).IsRequired();

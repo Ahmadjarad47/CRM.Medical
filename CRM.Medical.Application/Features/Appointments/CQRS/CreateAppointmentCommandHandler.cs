@@ -13,7 +13,6 @@ public sealed class CreateAppointmentCommandHandler(IAppointmentService appointm
         appointments.CreateAsync(
             request.AvailabilityId,
             request.TestRequestId,
-            request.UserId,
             request.PatientLocationType,
             request.PatientLatitude,
             request.PatientLongitude,

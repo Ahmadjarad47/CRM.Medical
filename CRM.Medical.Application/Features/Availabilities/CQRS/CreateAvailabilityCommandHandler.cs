@@ -11,7 +11,6 @@ public sealed class CreateAvailabilityCommandHandler(IAvailabilityService availa
         CreateAvailabilityCommand request,
         CancellationToken cancellationToken) =>
         availabilities.CreateAsync(
-            request.UserId,
             request.DayOfWeek,
             request.StartTime,
             request.EndTime,

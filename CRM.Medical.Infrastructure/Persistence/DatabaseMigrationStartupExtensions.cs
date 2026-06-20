@@ -28,6 +28,7 @@ public static class DatabaseMigrationStartupExtensions
         {
             await EnsureAccessPoliciesCompatibilityColumnsAsync(db, logger);
             await EnsureComplaintCompatibilityColumnsAsync(db, logger);
+            await EnsureAppointmentsCompatibilityColumnsAsync(db, logger);
 
             if (settings.BaselineExistingDatabase)
                 await BaselineExistingSchemaIfNeededAsync(db, logger);
@@ -140,6 +141,71 @@ public static class DatabaseMigrationStartupExtensions
 
         await db.Database.ExecuteSqlRawAsync(ensureColumnsSql);
         logger.LogInformation("Ensured complaints compatibility columns.");
+    }
+
+    private static async Task EnsureAppointmentsCompatibilityColumnsAsync(MedicalDbContext db, ILogger logger)
+    {
+        const string ensureColumnsSql = """
+            ALTER TABLE IF EXISTS "appointments"
+                ADD COLUMN IF NOT EXISTS "AvailabilityId" integer NULL;
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureColumnsSql);
+
+        const string ensureIndexSql = """
+            CREATE INDEX IF NOT EXISTS "IX_appointments_AvailabilityId"
+                ON "appointments" ("AvailabilityId");
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureIndexSql);
+
+        const string ensureForeignKeySql = """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_name = 'appointments'
+                )
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_name = 'availabilities'
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM information_schema.table_constraints
+                    WHERE table_schema = 'public'
+                      AND table_name = 'appointments'
+                      AND constraint_name = 'FK_appointments_availabilities_AvailabilityId'
+                ) THEN
+                    ALTER TABLE "appointments"
+                        ADD CONSTRAINT "FK_appointments_availabilities_AvailabilityId"
+                        FOREIGN KEY ("AvailabilityId")
+                        REFERENCES "availabilities" ("Id")
+                        ON DELETE RESTRICT;
+                END IF;
+            END $$;
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureForeignKeySql);
+
+        const string ensureTestRequestNullableSql = """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'appointments'
+                      AND column_name = 'TestRequestId'
+                      AND is_nullable = 'NO'
+                ) THEN
+                    ALTER TABLE "appointments"
+                        ALTER COLUMN "TestRequestId" DROP NOT NULL;
+                END IF;
+            END $$;
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureTestRequestNullableSql);
+
+        logger.LogInformation("Ensured appointments compatibility columns.");
     }
 
     private static async Task BaselineExistingSchemaIfNeededAsync(MedicalDbContext db, ILogger logger)

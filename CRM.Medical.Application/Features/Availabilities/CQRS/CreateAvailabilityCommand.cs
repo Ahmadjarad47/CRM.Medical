@@ -4,8 +4,7 @@ using MediatR;
 namespace CRM.Medical.Application.Features.Availabilities.CQRS;
 
 public sealed record CreateAvailabilityCommand(
-    string? UserId,
-    int DayOfWeek,
+    DayOfWeek DayOfWeek,
     TimeSpan StartTime,
     TimeSpan EndTime,
     int SlotDuration,

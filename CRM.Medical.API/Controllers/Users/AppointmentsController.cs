@@ -47,7 +47,6 @@ public sealed class AppointmentsController(ISender mediator) : ControllerBase
             new CreateAppointmentCommand(
                 request.AvailabilityId,
                 request.TestRequestId,
-                request.UserId,
                 request.PatientLocationType,
                 request.PatientLatitude,
                 request.PatientLongitude,

@@ -12,7 +12,6 @@ public sealed class UpdateAvailabilityCommandHandler(IAvailabilityService availa
     {
         await availabilities.UpdateAsync(
             request.Id,
-            request.UserId,
             request.DayOfWeek,
             request.StartTime,
             request.EndTime,

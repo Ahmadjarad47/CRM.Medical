@@ -9,8 +9,7 @@ public interface IAvailabilityService
     Task<AvailabilityDto> GetByIdAsync(int id, CancellationToken cancellationToken);
 
     Task<AvailabilityDto> CreateAsync(
-        string? userId,
-        int dayOfWeek,
+        DayOfWeek dayOfWeek,
         TimeSpan startTime,
         TimeSpan endTime,
         int slotDuration,
@@ -19,8 +18,7 @@ public interface IAvailabilityService
 
     Task UpdateAsync(
         int id,
-        string? userId,
-        int dayOfWeek,
+        DayOfWeek dayOfWeek,
         TimeSpan startTime,
         TimeSpan endTime,
         int slotDuration,

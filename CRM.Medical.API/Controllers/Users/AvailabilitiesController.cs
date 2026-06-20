@@ -26,7 +26,6 @@ public sealed class AvailabilitiesController(ISender mediator) : ControllerBase
     {
         var dto = await mediator.Send(
             new CreateAvailabilityCommand(
-                request.UserId,
                 request.DayOfWeek,
                 request.StartTime,
                 request.EndTime,
@@ -47,7 +46,6 @@ public sealed class AvailabilitiesController(ISender mediator) : ControllerBase
         await mediator.Send(
             new UpdateAvailabilityCommand(
                 id,
-                request.UserId,
                 request.DayOfWeek,
                 request.StartTime,
                 request.EndTime,

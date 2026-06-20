@@ -86,8 +86,7 @@ public sealed class AppointmentService(
 
     public async Task<AppointmentDto> CreateAsync(
         int availabilityId,
-        int testRequestId,
-        string? userId,
+        int? testRequestId,
         string patientLocationType,
         double? patientLatitude,
         double? patientLongitude,
@@ -95,7 +94,6 @@ public sealed class AppointmentService(
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
-        EnsureAllowedSchedulingRole();
 
         ValidatePatientLocation(patientLocationType, patientLatitude, patientLongitude);
 
@@ -103,16 +101,16 @@ public sealed class AppointmentService(
         var (startTimeUtc, endTimeUtc) = ResolveAppointmentWindowFromAvailability(availability, dateTimeProvider.UtcNow);
         ValidateTimeRange(startTimeUtc, endTimeUtc);
 
-        var providerUserId = ResolveProviderUserIdFromAvailability(userId, availability);
-        var (isDoctor, isLabPartner) = await EnsureProviderRoleAsync(providerUserId);
+        var providerUserId = availability.UserId;
+        if (testRequestId.HasValue)
+        {
+            var testRequest = await db.TestRequests
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == testRequestId.Value, cancellationToken)
+                ?? throw new ApplicationNotFoundException($"Test request '{testRequestId.Value}' was not found.");
 
-        var testRequest = await db.TestRequests
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == testRequestId, cancellationToken)
-            ?? throw new ApplicationNotFoundException($"Test request '{testRequestId}' was not found.");
-
-        EnsureProviderMatchesTestRequest(testRequest, providerUserId, isDoctor, isLabPartner);
-        EnsureRequestCanBeBooked(testRequest);
+            EnsureRequestCanBeBooked(testRequest);
+        }
 
         await EnsureNoAppointmentOverlapAsync(providerUserId, startTimeUtc, endTimeUtc, null, cancellationToken);
 
@@ -227,7 +225,7 @@ public sealed class AppointmentService(
 
         var dayStart = date.Date;
         var dayEnd = dayStart.AddDays(1);
-        var dayOfWeek = (int)dayStart.DayOfWeek;
+        var dayOfWeek = dayStart.DayOfWeek;
 
         var windows = await db.Availabilities
             .AsNoTracking()
@@ -315,7 +313,7 @@ public sealed class AppointmentService(
         DateTime referenceUtc)
     {
         var referenceDate = referenceUtc.Date;
-        var daysUntil = (availability.DayOfWeek - (int)referenceDate.DayOfWeek + 7) % 7;
+        var daysUntil = ((int)availability.DayOfWeek - (int)referenceDate.DayOfWeek + 7) % 7;
         var targetDate = referenceDate.AddDays(daysUntil);
 
         var startTimeUtc = targetDate.Add(availability.StartTime);
@@ -359,8 +357,8 @@ public sealed class AppointmentService(
 
         var isDoctor = await userManager.IsInRoleAsync(provider, UserRoles.Doctor);
         var isLabPartner = await userManager.IsInRoleAsync(provider, UserRoles.LabPartner);
-        if (!isDoctor && !isLabPartner)
-            throw new ApplicationBadRequestException("Appointment provider must be Doctor or LabPartner.");
+        //if (!isDoctor && !isLabPartner)
+        //    throw new ApplicationBadRequestException("Appointment provider must be Doctor or LabPartner.");
 
         return (isDoctor, isLabPartner);
     }
@@ -434,7 +432,7 @@ public sealed class AppointmentService(
 
     private void EnsureAllowedSchedulingRole()
     {
-        if (IsAdmin() || currentUser.IsInRole(UserRoles.Doctor) || currentUser.IsInRole(UserRoles.LabPartner))
+        if (IsAdmin() || currentUser.IsInRole(UserRoles.Doctor) || currentUser.IsInRole(UserRoles.LabPartner)|| currentUser.IsInRole(UserRoles.Patient))
             return;
 
         throw new ApplicationForbiddenException("Only Admin, Doctor, or LabPartner can manage appointments.");

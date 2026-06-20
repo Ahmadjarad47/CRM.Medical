@@ -3,7 +3,7 @@ namespace CRM.Medical.Application.Features.Appointments.DTOs;
 public sealed record AppointmentDto(
     int Id,
     int? AvailabilityId,
-    int TestRequestId,
+    int? TestRequestId,
     string UserId,
     DateTime StartTime,
     DateTime EndTime,
