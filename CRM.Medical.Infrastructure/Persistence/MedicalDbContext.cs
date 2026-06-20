@@ -31,6 +31,8 @@ public sealed class MedicalDbContext(
 
     public DbSet<Ad> Ads => Set<Ad>();
 
+    public DbSet<WelcomePage> WelcomePages => Set<WelcomePage>();
+
     public DbSet<Template> Templates => Set<Template>();
 
     public DbSet<MedicalTest> MedicalTests => Set<MedicalTest>();

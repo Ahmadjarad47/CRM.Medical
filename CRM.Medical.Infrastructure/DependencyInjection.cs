@@ -10,6 +10,7 @@ using CRM.Medical.Application.Features.Complaints;
 using CRM.Medical.Application.Features.Dashboard.Queries.GetDashboard;
 using CRM.Medical.Application.Features.Banners;
 using CRM.Medical.Application.Features.Ads;
+using CRM.Medical.Application.Features.WelcomePages;
 using CRM.Medical.Application.Features.SlideCards;
 using CRM.Medical.Application.Features.SubscriptionPackages;
 using CRM.Medical.Application.Features.Templates;
@@ -96,6 +97,7 @@ public static class DependencyInjection
         services.AddScoped<ISlideCardRepository, SlideCardRepository>();
         services.AddScoped<IBannerRepository, BannerRepository>();
         services.AddScoped<IAdRepository, AdRepository>();
+        services.AddScoped<IWelcomePageRepository, WelcomePageRepository>();
         services.AddScoped<IDashboardReadService, DashboardReadService>();
         services.AddScoped<ITemplateRepository, TemplateRepository>();
         services.AddScoped<IUserManagementAccess, UserManagementAccessService>();
