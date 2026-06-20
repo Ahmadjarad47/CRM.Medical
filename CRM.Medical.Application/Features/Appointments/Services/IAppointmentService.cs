@@ -16,6 +16,8 @@ public interface IAppointmentService
     Task<AppointmentDto> CreateAsync(
         int availabilityId,
         int? testRequestId,
+        DateTime startTimeUtc,
+        DateTime endTimeUtc,
         string patientLocationType,
         double? patientLatitude,
         double? patientLongitude,

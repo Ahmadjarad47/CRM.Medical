@@ -87,6 +87,8 @@ public sealed class AppointmentService(
     public async Task<AppointmentDto> CreateAsync(
         int availabilityId,
         int? testRequestId,
+        DateTime startTimeUtc,
+        DateTime endTimeUtc,
         string patientLocationType,
         double? patientLatitude,
         double? patientLongitude,
@@ -96,10 +98,10 @@ public sealed class AppointmentService(
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
 
         ValidatePatientLocation(patientLocationType, patientLatitude, patientLongitude);
+        ValidateTimeRange(startTimeUtc, endTimeUtc);
 
         var availability = await GetAvailabilityAsync(availabilityId, cancellationToken);
-        var (startTimeUtc, endTimeUtc) = ResolveAppointmentWindowFromAvailability(availability, dateTimeProvider.UtcNow);
-        ValidateTimeRange(startTimeUtc, endTimeUtc);
+        ValidateRequestedWindowMatchesAvailability(availability, startTimeUtc, endTimeUtc);
 
         var providerUserId = availability.UserId;
         if (testRequestId.HasValue)
@@ -348,6 +350,20 @@ public sealed class AppointmentService(
 
         if (hasOverlap)
             throw new ApplicationConflictException("Provider already has an appointment in this time range.");
+    }
+
+    private static void ValidateRequestedWindowMatchesAvailability(
+        Availability availability,
+        DateTime startTimeUtc,
+        DateTime endTimeUtc)
+    {
+        if (startTimeUtc.DayOfWeek != availability.DayOfWeek)
+            throw new ApplicationBadRequestException("StartTime must match the selected availability day.");
+
+        var requestedStart = startTimeUtc.TimeOfDay;
+        var requestedEnd = endTimeUtc.TimeOfDay;
+        if (requestedStart < availability.StartTime || requestedEnd > availability.EndTime)
+            throw new ApplicationBadRequestException("StartTime/EndTime must be within the selected availability window.");
     }
 
     private async Task<(bool IsDoctor, bool IsLabPartner)> EnsureProviderRoleAsync(string providerUserId)
