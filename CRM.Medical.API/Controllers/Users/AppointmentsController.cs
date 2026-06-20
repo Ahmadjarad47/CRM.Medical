@@ -45,10 +45,9 @@ public sealed class AppointmentsController(ISender mediator) : ControllerBase
     {
         var dto = await mediator.Send(
             new CreateAppointmentCommand(
+                request.AvailabilityId,
                 request.TestRequestId,
                 request.UserId,
-                request.StartTime,
-                request.EndTime,
                 request.PatientLocationType,
                 request.PatientLatitude,
                 request.PatientLongitude,
@@ -68,10 +67,9 @@ public sealed class AppointmentsController(ISender mediator) : ControllerBase
         await mediator.Send(
             new UpdateAppointmentCommand(
                 id,
+                request.AvailabilityId,
                 request.TestRequestId,
                 request.UserId,
-                request.StartTime,
-                request.EndTime,
                 request.PatientLocationType,
                 request.PatientLatitude,
                 request.PatientLongitude,

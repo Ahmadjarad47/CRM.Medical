@@ -14,6 +14,7 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).UseIdentityByDefaultColumn();
 
+        builder.Property(e => e.AvailabilityId);
         builder.Property(e => e.TestRequestId).IsRequired();
         builder.Property(e => e.ProviderUserId).IsRequired().HasMaxLength(450);
         builder.Property(e => e.StartTime).IsRequired();
@@ -31,6 +32,7 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.ConfigureAuditColumns();
 
         builder.HasIndex(e => e.ProviderUserId);
+        builder.HasIndex(e => e.AvailabilityId);
         builder.HasIndex(e => e.TestRequestId);
         builder.HasIndex(e => e.StartTime);
         builder.HasIndex(e => e.Status);
@@ -44,6 +46,11 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.HasOne<TestRequest>()
             .WithMany()
             .HasForeignKey(e => e.TestRequestId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Availability>()
+            .WithMany()
+            .HasForeignKey(e => e.AvailabilityId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.ToTable(t => t.HasCheckConstraint(

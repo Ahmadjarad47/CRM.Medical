@@ -4,10 +4,9 @@ namespace CRM.Medical.Application.Features.Appointments.CQRS;
 
 public sealed record UpdateAppointmentCommand(
     int Id,
+    int AvailabilityId,
     int TestRequestId,
     string? UserId,
-    DateTime StartTime,
-    DateTime EndTime,
     string PatientLocationType,
     double? PatientLatitude,
     double? PatientLongitude,

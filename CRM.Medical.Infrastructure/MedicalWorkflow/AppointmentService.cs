@@ -1,4 +1,5 @@
 using CRM.Medical.Application.Abstractions;
+using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.Appointments.DTOs;
 using CRM.Medical.Application.Features.Appointments.Services;
@@ -15,7 +16,8 @@ namespace CRM.Medical.Infrastructure.MedicalWorkflow;
 public sealed class AppointmentService(
     MedicalDbContext db,
     ICurrentUserAccessor currentUser,
-    UserManager<User> userManager) : IAppointmentService
+    UserManager<User> userManager,
+    IDateTimeProvider dateTimeProvider) : IAppointmentService
 {
     public async Task<IReadOnlyList<AppointmentDto>> ListAsync(
         DateTime? fromUtc,
@@ -83,10 +85,9 @@ public sealed class AppointmentService(
     }
 
     public async Task<AppointmentDto> CreateAsync(
+        int availabilityId,
         int testRequestId,
         string? userId,
-        DateTime startTimeUtc,
-        DateTime endTimeUtc,
         string patientLocationType,
         double? patientLatitude,
         double? patientLongitude,
@@ -96,10 +97,13 @@ public sealed class AppointmentService(
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
         EnsureAllowedSchedulingRole();
 
-        ValidateTimeRange(startTimeUtc, endTimeUtc);
         ValidatePatientLocation(patientLocationType, patientLatitude, patientLongitude);
 
-        var providerUserId = ResolveProviderUserId(userId);
+        var availability = await GetAvailabilityAsync(availabilityId, cancellationToken);
+        var (startTimeUtc, endTimeUtc) = ResolveAppointmentWindowFromAvailability(availability, dateTimeProvider.UtcNow);
+        ValidateTimeRange(startTimeUtc, endTimeUtc);
+
+        var providerUserId = ResolveProviderUserIdFromAvailability(userId, availability);
         var (isDoctor, isLabPartner) = await EnsureProviderRoleAsync(providerUserId);
 
         var testRequest = await db.TestRequests
@@ -110,11 +114,11 @@ public sealed class AppointmentService(
         EnsureProviderMatchesTestRequest(testRequest, providerUserId, isDoctor, isLabPartner);
         EnsureRequestCanBeBooked(testRequest);
 
-        await EnsureAvailabilityWindowAsync(providerUserId, startTimeUtc, endTimeUtc, cancellationToken);
         await EnsureNoAppointmentOverlapAsync(providerUserId, startTimeUtc, endTimeUtc, null, cancellationToken);
 
         var entity = new Appointment
         {
+            AvailabilityId = availability.Id,
             TestRequestId = testRequestId,
             ProviderUserId = providerUserId,
             StartTime = startTimeUtc,
@@ -135,10 +139,9 @@ public sealed class AppointmentService(
 
     public async Task UpdateAsync(
         int id,
+        int availabilityId,
         int testRequestId,
         string? userId,
-        DateTime startTimeUtc,
-        DateTime endTimeUtc,
         string patientLocationType,
         double? patientLatitude,
         double? patientLongitude,
@@ -148,7 +151,6 @@ public sealed class AppointmentService(
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
         EnsureAllowedSchedulingRole();
 
-        ValidateTimeRange(startTimeUtc, endTimeUtc);
         ValidatePatientLocation(patientLocationType, patientLatitude, patientLongitude);
 
         var entity = await db.Appointments
@@ -160,7 +162,12 @@ public sealed class AppointmentService(
         if (string.Equals(entity.Status, AppointmentStatuses.Cancelled, StringComparison.Ordinal))
             throw new ApplicationBadRequestException("Cancelled appointments cannot be updated.");
 
-        var providerUserId = ResolveProviderUserIdForUpdate(userId, entity.ProviderUserId);
+        var availability = await GetAvailabilityAsync(availabilityId, cancellationToken);
+        var referenceUtc = entity.StartTime == default ? dateTimeProvider.UtcNow : entity.StartTime;
+        var (startTimeUtc, endTimeUtc) = ResolveAppointmentWindowFromAvailability(availability, referenceUtc);
+        ValidateTimeRange(startTimeUtc, endTimeUtc);
+
+        var providerUserId = ResolveProviderUserIdFromAvailability(userId, availability);
         var (isDoctor, isLabPartner) = await EnsureProviderRoleAsync(providerUserId);
 
         var testRequest = await db.TestRequests
@@ -171,9 +178,9 @@ public sealed class AppointmentService(
         EnsureProviderMatchesTestRequest(testRequest, providerUserId, isDoctor, isLabPartner);
         EnsureRequestCanBeBooked(testRequest);
 
-        await EnsureAvailabilityWindowAsync(providerUserId, startTimeUtc, endTimeUtc, cancellationToken);
         await EnsureNoAppointmentOverlapAsync(providerUserId, startTimeUtc, endTimeUtc, id, cancellationToken);
 
+        entity.AvailabilityId = availability.Id;
         entity.TestRequestId = testRequestId;
         entity.ProviderUserId = providerUserId;
         entity.StartTime = startTimeUtc;
@@ -243,6 +250,7 @@ public sealed class AppointmentService(
 
         var windowDtos = windows
             .Select(window => new AppointmentAvailabilityWindowDto(
+                window.Id,
                 dayStart.Add(window.StartTime),
                 dayStart.Add(window.EndTime),
                 window.SlotDuration))
@@ -264,6 +272,7 @@ public sealed class AppointmentService(
                     slotEnd > x.StartTime);
 
                 slots.Add(new AppointmentAvailabilitySlotDto(
+                    window.Id,
                     slotStart,
                     slotEnd,
                     window.SlotDuration,
@@ -286,46 +295,40 @@ public sealed class AppointmentService(
             totalSlots - availableSlots);
     }
 
-    private async Task EnsureAvailabilityWindowAsync(
-        string providerUserId,
-        DateTime startTimeUtc,
-        DateTime endTimeUtc,
+    private async Task<Availability> GetAvailabilityAsync(
+        int availabilityId,
         CancellationToken cancellationToken)
     {
-        var dayOfWeek = (int)startTimeUtc.DayOfWeek;
-        var startOfDay = startTimeUtc.TimeOfDay;
-        var endOfDay = endTimeUtc.TimeOfDay;
-        var duration = endTimeUtc - startTimeUtc;
-
-        var windows = await db.Availabilities
+        var availability = await db.Availabilities
             .AsNoTracking()
-            .Where(x =>
-                x.UserId == providerUserId &&
-                x.DayOfWeek == dayOfWeek &&
-                x.IsActive)
-            .OrderBy(x => x.StartTime)
-            .ToListAsync(cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == availabilityId, cancellationToken)
+            ?? throw new ApplicationNotFoundException($"Availability '{availabilityId}' was not found.");
 
-        if (windows.Count == 0)
-            throw new ApplicationBadRequestException("No active availability was found for the provider on the requested day.");
+        if (!availability.IsActive)
+            throw new ApplicationBadRequestException("The selected availability is inactive.");
 
-        foreach (var window in windows)
+        return availability;
+    }
+
+    private static (DateTime StartTimeUtc, DateTime EndTimeUtc) ResolveAppointmentWindowFromAvailability(
+        Availability availability,
+        DateTime referenceUtc)
+    {
+        var referenceDate = referenceUtc.Date;
+        var daysUntil = (availability.DayOfWeek - (int)referenceDate.DayOfWeek + 7) % 7;
+        var targetDate = referenceDate.AddDays(daysUntil);
+
+        var startTimeUtc = targetDate.Add(availability.StartTime);
+        var endTimeUtc = targetDate.Add(availability.EndTime);
+
+        if (daysUntil == 0 && startTimeUtc < referenceUtc)
         {
-            if (startOfDay < window.StartTime || endOfDay > window.EndTime)
-                continue;
-
-            var slot = TimeSpan.FromMinutes(window.SlotDuration);
-            var offset = startOfDay - window.StartTime;
-            if (offset.Ticks % slot.Ticks != 0)
-                continue;
-
-            if (duration.Ticks % slot.Ticks != 0)
-                continue;
-
-            return;
+            targetDate = targetDate.AddDays(7);
+            startTimeUtc = targetDate.Add(availability.StartTime);
+            endTimeUtc = targetDate.Add(availability.EndTime);
         }
 
-        throw new ApplicationBadRequestException("Requested appointment time is outside configured provider availability or slot boundaries.");
+        return (startTimeUtc, endTimeUtc);
     }
 
     private async Task EnsureNoAppointmentOverlapAsync(
@@ -393,24 +396,17 @@ public sealed class AppointmentService(
             throw new ApplicationBadRequestException("Appointment must start and end on the same day.");
     }
 
-    private string ResolveProviderUserId(string? userId)
+    private string ResolveProviderUserIdFromAvailability(string? userId, Availability availability)
     {
         var actorId = currentUser.GetRequiredUserId();
-        var providerUserId = string.IsNullOrWhiteSpace(userId) ? actorId : userId.Trim();
+        var providerUserId = availability.UserId;
+
+        if (!string.IsNullOrWhiteSpace(userId) &&
+            !string.Equals(userId.Trim(), providerUserId, StringComparison.Ordinal))
+            throw new ApplicationBadRequestException("UserId must match the owner of the selected availability.");
 
         if (!IsAdmin() && !string.Equals(providerUserId, actorId, StringComparison.Ordinal))
-            throw new ApplicationForbiddenException("You can only create appointments for your own account.");
-
-        return providerUserId;
-    }
-
-    private string ResolveProviderUserIdForUpdate(string? userId, string currentProviderUserId)
-    {
-        var actorId = currentUser.GetRequiredUserId();
-        var providerUserId = string.IsNullOrWhiteSpace(userId) ? currentProviderUserId : userId.Trim();
-
-        if (!IsAdmin() && !string.Equals(providerUserId, actorId, StringComparison.Ordinal))
-            throw new ApplicationForbiddenException("You can only update appointments for your own account.");
+            throw new ApplicationForbiddenException("You can only create or update appointments for your own account.");
 
         return providerUserId;
     }
@@ -481,6 +477,7 @@ public sealed class AppointmentService(
     private static AppointmentDto Map(Appointment entity) =>
         new(
             entity.Id,
+            entity.AvailabilityId,
             entity.TestRequestId,
             entity.ProviderUserId,
             entity.StartTime,

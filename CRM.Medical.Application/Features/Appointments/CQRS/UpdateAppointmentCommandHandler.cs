@@ -10,10 +10,9 @@ public sealed class UpdateAppointmentCommandHandler(IAppointmentService appointm
     {
         await appointments.UpdateAsync(
             request.Id,
+            request.AvailabilityId,
             request.TestRequestId,
             request.UserId,
-            request.StartTime,
-            request.EndTime,
             request.PatientLocationType,
             request.PatientLatitude,
             request.PatientLongitude,

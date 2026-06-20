@@ -14,10 +14,9 @@ public interface IAppointmentService
     Task<AppointmentDto> GetByIdAsync(int id, CancellationToken cancellationToken);
 
     Task<AppointmentDto> CreateAsync(
+        int availabilityId,
         int testRequestId,
         string? userId,
-        DateTime startTimeUtc,
-        DateTime endTimeUtc,
         string patientLocationType,
         double? patientLatitude,
         double? patientLongitude,
@@ -26,10 +25,9 @@ public interface IAppointmentService
 
     Task UpdateAsync(
         int id,
+        int availabilityId,
         int testRequestId,
         string? userId,
-        DateTime startTimeUtc,
-        DateTime endTimeUtc,
         string patientLocationType,
         double? patientLatitude,
         double? patientLongitude,

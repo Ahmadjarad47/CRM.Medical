@@ -6,6 +6,8 @@ public sealed class Appointment : BaseEntity
 {
     public int Id { get; set; }
 
+    public int? AvailabilityId { get; set; }
+
     public int TestRequestId { get; set; }
 
     /// <summary>Assigned provider (doctor or lab partner) identity user id.</summary>

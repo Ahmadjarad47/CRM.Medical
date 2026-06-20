@@ -11,10 +11,9 @@ public sealed class CreateAppointmentCommandHandler(IAppointmentService appointm
         CreateAppointmentCommand request,
         CancellationToken cancellationToken) =>
         appointments.CreateAsync(
+            request.AvailabilityId,
             request.TestRequestId,
             request.UserId,
-            request.StartTime,
-            request.EndTime,
             request.PatientLocationType,
             request.PatientLatitude,
             request.PatientLongitude,
