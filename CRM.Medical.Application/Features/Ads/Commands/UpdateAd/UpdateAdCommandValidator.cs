@@ -21,6 +21,22 @@ public sealed class UpdateAdCommandValidator : AbstractValidator<UpdateAdCommand
             .NotEmpty()
             .MaximumLength(4000);
 
+        RuleFor(x => x.AddressName)
+            .NotEmpty()
+            .MaximumLength(300);
+
+        RuleFor(x => x.Latitude)
+            .InclusiveBetween(-90, 90)
+            .When(x => x.Latitude.HasValue);
+
+        RuleFor(x => x.Longitude)
+            .InclusiveBetween(-180, 180)
+            .When(x => x.Longitude.HasValue);
+
+        RuleFor(x => x)
+            .Must(x => x.Latitude.HasValue == x.Longitude.HasValue)
+            .WithMessage("Latitude and longitude must both be provided together.");
+
         RuleFor(x => x.MediaType)
             .IsInEnum();
 

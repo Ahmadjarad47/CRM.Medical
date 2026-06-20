@@ -20,6 +20,9 @@ public sealed class CreateAdCommandHandler(
         {
             Name = request.Name.Trim(),
             Description = request.Description.Trim(),
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
+            AddressName = request.AddressName.Trim(),
             MediaType = request.MediaType,
             MediaUrl = mediaUrl,
             CreatedAt = dateTimeProvider.UtcNow

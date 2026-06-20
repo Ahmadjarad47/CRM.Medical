@@ -27,13 +27,19 @@ public sealed class AdsController(ISender mediator) : AdminBaseController
     [HttpPost]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(AdDto), StatusCodes.Status201Created)]
-    public async Task<IActionResult> Create([FromForm] CreateAdRequest request, CancellationToken ct)
+    public async Task<IActionResult> Create(
+        [FromForm] CreateAdRequest request,
+        CancellationToken ct)
     {
         var command = new CreateAdCommand(
             request.Name,
             request.Description,
+            request.Latitude,
+            request.Longitude,
+            request.AddressName,
             request.MediaType,
-            request.Media!);
+            request.Media!
+        );
 
         var dto = await mediator.Send(command, ct);
         return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
@@ -42,14 +48,21 @@ public sealed class AdsController(ISender mediator) : AdminBaseController
     [HttpPatch("{id:int}")]
     [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(AdDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Update(int id, [FromForm] UpdateAdRequest request, CancellationToken ct)
+    public async Task<IActionResult> Update(
+        int id,
+        [FromForm] UpdateAdRequest request,
+        CancellationToken ct)
     {
         var command = new UpdateAdCommand(
             id,
             request.Name,
             request.Description,
+            request.Latitude,
+            request.Longitude,
+            request.AddressName,
             request.MediaType,
-            request.Media);
+            request.Media
+        );
 
         return Ok(await mediator.Send(command, ct));
     }

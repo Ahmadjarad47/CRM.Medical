@@ -31,6 +31,14 @@ public sealed class AdConfiguration : IEntityTypeConfiguration<Ad>
             .IsRequired()
             .HasMaxLength(2048);
 
+        builder.Property(a => a.Latitude);
+
+        builder.Property(a => a.Longitude);
+
+        builder.Property(a => a.AddressName)
+            .IsRequired()
+            .HasMaxLength(300);
+
         builder.ConfigureAuditColumns();
 
         builder.HasIndex(a => a.MediaType);

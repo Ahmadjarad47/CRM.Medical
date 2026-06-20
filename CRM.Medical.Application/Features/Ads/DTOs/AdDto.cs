@@ -8,5 +8,8 @@ public sealed record AdDto(
     string Description,
     AdMediaType MediaType,
     string MediaUrl,
+    double? Latitude,
+    double? Longitude,
+    string AddressName,
     DateTime CreatedAt,
     DateTime? UpdatedAt);

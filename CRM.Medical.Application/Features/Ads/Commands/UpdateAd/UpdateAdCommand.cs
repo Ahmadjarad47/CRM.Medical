@@ -9,5 +9,8 @@ public sealed record UpdateAdCommand(
     int Id,
     string Name,
     string Description,
+    double? Latitude,
+    double? Longitude,
+    string AddressName,
     AdMediaType MediaType,
     IFormFile? Media) : IRequest<AdDto>;

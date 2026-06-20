@@ -13,4 +13,10 @@ public sealed class Ad : BaseEntity
     public AdMediaType MediaType { get; set; }
 
     public string MediaUrl { get; set; } = string.Empty;
+
+    public double? Latitude { get; set; }
+
+    public double? Longitude { get; set; }
+
+    public string AddressName { get; set; } = string.Empty;
 }

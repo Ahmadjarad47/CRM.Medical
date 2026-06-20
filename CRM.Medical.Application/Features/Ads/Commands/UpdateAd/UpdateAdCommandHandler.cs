@@ -22,6 +22,9 @@ public sealed class UpdateAdCommandHandler(
 
         entity.Name = request.Name.Trim();
         entity.Description = request.Description.Trim();
+        entity.Latitude = request.Latitude;
+        entity.Longitude = request.Longitude;
+        entity.AddressName = request.AddressName.Trim();
         entity.MediaType = request.MediaType;
         entity.UpdatedAt = dateTimeProvider.UtcNow;
 

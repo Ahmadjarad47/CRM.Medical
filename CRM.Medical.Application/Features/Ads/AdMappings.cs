@@ -12,6 +12,9 @@ internal static class AdMappings
             ad.Description,
             ad.MediaType,
             ad.MediaUrl,
+            ad.Latitude,
+            ad.Longitude,
+            ad.AddressName,
             ad.CreatedAt,
             ad.UpdatedAt);
 }
