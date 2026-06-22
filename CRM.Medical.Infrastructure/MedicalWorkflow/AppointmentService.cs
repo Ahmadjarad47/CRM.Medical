@@ -225,7 +225,7 @@ public sealed class AppointmentService(
         var providerUserId = ResolveProviderUserIdForRead(userId);
         await EnsureProviderRoleAsync(providerUserId);
 
-        var dayStart = date.Date;
+        var dayStart = NormalizeToUtcDayStart(date);
         var dayEnd = dayStart.AddDays(1);
         var dayOfWeek = dayStart.DayOfWeek;
 
@@ -294,6 +294,14 @@ public sealed class AppointmentService(
             availableSlots,
             totalSlots - availableSlots);
     }
+
+    private static DateTime NormalizeToUtcDayStart(DateTime value) =>
+        value.Kind switch
+        {
+            DateTimeKind.Utc => value.Date,
+            DateTimeKind.Local => value.ToUniversalTime().Date,
+            _ => DateTime.SpecifyKind(value.Date, DateTimeKind.Utc)
+        };
 
     private async Task<Availability> GetAvailabilityAsync(
         int availabilityId,

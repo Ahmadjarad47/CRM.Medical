@@ -35,7 +35,7 @@ public sealed class AppointmentsController(ISender mediator) : ControllerBase
         CancellationToken cancellationToken) =>
         mediator.Send(
             new GetDayAppointmentAvailabilityQuery(
-                request.Date,
+                DateTime.SpecifyKind(request.Date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc),
                 request.UserId),
             cancellationToken);
 

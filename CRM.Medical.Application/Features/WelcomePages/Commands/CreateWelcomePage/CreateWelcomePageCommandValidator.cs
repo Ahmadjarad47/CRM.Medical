@@ -22,8 +22,9 @@ public sealed class CreateWelcomePageCommandValidator : AbstractValidator<Create
             .IsInEnum();
 
         RuleFor(x => x.Media)
+            .Cascade(CascadeMode.Stop)
             .NotNull()
-            .Must(f => f.Length > 0)
+            .Must(f => f is { Length: > 0 })
             .WithMessage("Media file is required.");
 
         RuleFor(x => x.Media)
