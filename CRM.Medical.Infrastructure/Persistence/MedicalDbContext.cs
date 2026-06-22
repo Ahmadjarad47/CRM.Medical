@@ -33,6 +33,12 @@ public sealed class MedicalDbContext(
 
     public DbSet<WelcomePage> WelcomePages => Set<WelcomePage>();
 
+    public DbSet<Page> Pages => Set<Page>();
+    public DbSet<PageTranslation> PageTranslations => Set<PageTranslation>();
+    public DbSet<ContentBlock> ContentBlocks => Set<ContentBlock>();
+    public DbSet<BlockLocalization> BlockLocalizations => Set<BlockLocalization>();
+    public DbSet<ContentVersion> ContentVersions => Set<ContentVersion>();
+
     public DbSet<Template> Templates => Set<Template>();
 
     public DbSet<MedicalTest> MedicalTests => Set<MedicalTest>();
