@@ -7,6 +7,7 @@ namespace CRM.Medical.Infrastructure.Persistence;
 public sealed class WelcomePageRepository(MedicalDbContext dbContext) : IWelcomePageRepository
 {
     public async Task AddAsync(WelcomePage entity, CancellationToken cancellationToken = default)
+
     {
         dbContext.WelcomePages.Add(entity);
         await dbContext.SaveChangesAsync(cancellationToken);
