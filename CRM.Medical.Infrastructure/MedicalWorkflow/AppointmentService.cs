@@ -232,7 +232,7 @@ public sealed class AppointmentService(
         var windows = await db.Availabilities
             .AsNoTracking()
             .Where(x =>
-                x.UserId == providerUserId &&
+               
                 x.DayOfWeek == dayOfWeek &&
                 x.IsActive)
             .OrderBy(x => x.StartTime)
@@ -241,7 +241,7 @@ public sealed class AppointmentService(
         var appointments = await db.Appointments
             .AsNoTracking()
             .Where(x =>
-                x.ProviderUserId == providerUserId &&
+              
                 x.Status != AppointmentStatuses.Cancelled &&
                 x.StartTime < dayEnd &&
                 x.EndTime > dayStart)
