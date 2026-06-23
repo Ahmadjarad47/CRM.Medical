@@ -16,6 +16,7 @@ public sealed class WelcomePageRepository(MedicalDbContext dbContext) : IWelcome
     public async Task UpdateAsync(WelcomePage entity, CancellationToken cancellationToken = default)
     {
         dbContext.WelcomePages.Update(entity);
+
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
