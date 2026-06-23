@@ -225,6 +225,7 @@ public sealed class AppointmentService(
         var providerUserId = ResolveProviderUserIdForRead(userId);
         await EnsureProviderRoleAsync(providerUserId);
 
+
         var dayStart = NormalizeToUtcDayStart(date);
         var dayEnd = dayStart.AddDays(1);
         var dayOfWeek = dayStart.DayOfWeek;
