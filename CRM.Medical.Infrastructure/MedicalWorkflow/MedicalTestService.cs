@@ -8,6 +8,7 @@ using CRM.Medical.Application.Features.MedicalTests.Services;
 using CRM.Medical.Application.Features.MedicalWorkflow;
 using CRM.Medical.Application.Authorization;
 using CRM.Medical.Domain.Entities;
+using CRM.Medical.Domain.Enums;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
@@ -22,27 +23,37 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         {
             ["namear"] = t => t.NameAr,
             ["nameen"] = t => t.NameEn,
-            ["category"] = t => t.Category,
-            ["sample"] = t => t.SampleType,
-            ["status"] = t => t.Status
+            ["categorynamear"] = t => t.CategoryMedical.NameAr,
+            ["categorynameen"] = t => t.CategoryMedical.NameEn,
+            ["sample"] = t => t.SampleType
         };
 
     private static readonly IReadOnlyDictionary<string, Func<string, Expression<Func<MedicalTest, bool>>?>> ExactSearchFields =
         new Dictionary<string, Func<string, Expression<Func<MedicalTest, bool>>?>>(StringComparer.OrdinalIgnoreCase)
         {
-            ["id"] = token => ParseIntPredicate(token, value => t => t.Id == value)
+            ["id"] = token => ParseIntPredicate(token, value => t => t.Id == value),
+            ["categorymedicalid"] = token => ParseIntPredicate(token, value => t => t.CategoryMedicalId == value),
+            ["status"] = ParseStatusPredicate
         };
 
     public async Task<PagedResult<MedicalTestDto>> ListAsync(
         int page,
         int pageSize,
         string? search,
+        int? categoryMedicalId,
         CancellationToken cancellationToken)
     {
         //MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
 
         var (normalizedPage, normalizedPageSize) = PaginationDefaults.Normalize(page, pageSize);
-        var query = await accessPolicyEvaluator.ApplyAsync(db.MedicalTests.AsNoTracking(), "medical_tests", "read", cancellationToken);
+        var query = await accessPolicyEvaluator.ApplyAsync(
+            db.MedicalTests.AsNoTracking().Include(t => t.CategoryMedical),
+            "medical_tests",
+            "read",
+            cancellationToken);
+
+        if (categoryMedicalId is not null)
+            query = query.Where(t => t.CategoryMedicalId == categoryMedicalId.Value);
 
         query = query.ApplyAdvancedSearch(
             search,
@@ -51,9 +62,9 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
             BuildDefaultExactPredicate,
             t => t.NameAr,
             t => t.NameEn,
-            t => t.Category,
-            t => t.SampleType,
-            t => t.Status);
+            t => t.CategoryMedical.NameAr,
+            t => t.CategoryMedical.NameEn,
+            t => t.SampleType);
 
         var totalCount = await query.CountAsync(cancellationToken);
         var items = await query
@@ -74,7 +85,11 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
     {
         //MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
 
-        var entity = await (await accessPolicyEvaluator.ApplyAsync(db.MedicalTests.AsNoTracking(), "medical_tests", "read", cancellationToken))
+        var entity = await (await accessPolicyEvaluator.ApplyAsync(
+                db.MedicalTests.AsNoTracking().Include(t => t.CategoryMedical),
+                "medical_tests",
+                "read",
+                cancellationToken))
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"Medical test '{id}' was not found.");
 
@@ -85,13 +100,15 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         string nameAr,
         string nameEn,
         double price,
-        string category,
+        int categoryMedicalId,
         string sampleType,
         JsonDocument? parameterSchema,
-        string status,
+        MedicalTestStatus status,
         CancellationToken cancellationToken)
     {
         //MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
+
+        await EnsureCategoryMedicalExistsAsync(categoryMedicalId, cancellationToken);
 
         var userId = user.GetRequiredUserId();
         var entity = new MedicalTest
@@ -99,10 +116,10 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
             NameAr = nameAr.Trim(),
             NameEn = nameEn.Trim(),
             Price = price,
-            Category = category.Trim(),
+            CategoryMedicalId = categoryMedicalId,
             SampleType = sampleType.Trim(),
             ParameterSchema = parameterSchema,
-            Status = status.Trim(),
+            Status = status,
             CreatedByUserId = userId
         };
 
@@ -113,6 +130,8 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         db.MedicalTests.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
 
+        await db.Entry(entity).Reference(t => t.CategoryMedical).LoadAsync(cancellationToken);
+
         return Map(entity);
     }
 
@@ -121,15 +140,19 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         string nameAr,
         string nameEn,
         double price,
-        string category,
+        int categoryMedicalId,
         string sampleType,
         JsonDocument? parameterSchema,
-        string status,
+        MedicalTestStatus status,
         CancellationToken cancellationToken)
     {
         //MedicalWorkflowAuthorization.RequireAuthenticatedUser(user);
 
-        var entity = await db.MedicalTests.FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
+        await EnsureCategoryMedicalExistsAsync(categoryMedicalId, cancellationToken);
+
+        var entity = await db.MedicalTests
+            .Include(t => t.CategoryMedical)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
             ?? throw new ApplicationNotFoundException($"Medical test '{id}' was not found.");
         var canUpdate = await accessPolicyEvaluator.CanAccessAsync(entity, "medical_tests", "update", cancellationToken);
         if (!canUpdate)
@@ -138,12 +161,13 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         entity.NameAr = nameAr.Trim();
         entity.NameEn = nameEn.Trim();
         entity.Price = price;
-        entity.Category = category.Trim();
+        entity.CategoryMedicalId = categoryMedicalId;
         entity.SampleType = sampleType.Trim();
         entity.ParameterSchema = parameterSchema;
-        entity.Status = status.Trim();
+        entity.Status = status;
 
         await db.SaveChangesAsync(cancellationToken);
+        await db.Entry(entity).Reference(t => t.CategoryMedical).LoadAsync(cancellationToken);
     }
 
     public async Task DeleteAsync(int id, CancellationToken cancellationToken)
@@ -164,13 +188,34 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task ToggleStatusAsync(int id, MedicalTestStatus status, CancellationToken cancellationToken)
+    {
+        var entity = await db.MedicalTests.FirstOrDefaultAsync(t => t.Id == id, cancellationToken)
+            ?? throw new ApplicationNotFoundException($"Medical test '{id}' was not found.");
+        var canUpdate = await accessPolicyEvaluator.CanAccessAsync(entity, "medical_tests", "update", cancellationToken);
+        if (!canUpdate)
+            throw new ApplicationForbiddenException("You cannot update this medical test status.");
+
+        entity.Status = status;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureCategoryMedicalExistsAsync(int categoryMedicalId, CancellationToken cancellationToken)
+    {
+        var exists = await db.CategoryMedical.AnyAsync(c => c.Id == categoryMedicalId, cancellationToken);
+        if (!exists)
+            throw new ApplicationNotFoundException($"Medical category '{categoryMedicalId}' was not found.");
+    }
+
     private static MedicalTestDto Map(MedicalTest e) =>
         new(
             e.Id,
             e.NameAr,
             e.NameEn,
             e.Price,
-            e.Category,
+            e.CategoryMedicalId,
+            e.CategoryMedical.NameAr,
+            e.CategoryMedical.NameEn,
             e.SampleType,
             MedicalWorkflowJson.ToJsonElement(e.ParameterSchema),
             e.Status,
@@ -179,6 +224,11 @@ public sealed class MedicalTestService(MedicalDbContext db, ICurrentUserAccessor
 
     private static Expression<Func<MedicalTest, bool>>? BuildDefaultExactPredicate(string token) =>
         ParseIntPredicate(token, value => t => t.Id == value);
+
+    private static Expression<Func<MedicalTest, bool>>? ParseStatusPredicate(string token) =>
+        Enum.TryParse<MedicalTestStatus>(token, true, out var status)
+            ? t => t.Status == status
+            : null;
 
     private static Expression<Func<MedicalTest, bool>>? ParseIntPredicate(
         string token,

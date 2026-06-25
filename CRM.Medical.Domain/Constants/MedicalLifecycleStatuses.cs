@@ -3,12 +3,11 @@ namespace CRM.Medical.Domain.Constants;
 /// <summary>Lifecycle values for <see cref="Entities.MedicalTest"/>.</summary>
 public static class MedicalTestStatuses
 {
-    public const string Draft = "Draft";
-    public const string Active = "Active";
-    public const string Archived = "Archived";
-    public const string Cancelled = "Cancelled";
+    public const string Pending = "Pending";
+    public const string Confirm = "Confirm";
+    public const string Cancel = "Cancel";
 
-    public static readonly IReadOnlyList<string> All = [Draft, Active, Archived, Cancelled];
+    public static readonly IReadOnlyList<string> All = [Pending, Confirm, Cancel];
 }
 
 /// <summary>Lifecycle values for <see cref="Entities.TestRequest"/>.</summary>

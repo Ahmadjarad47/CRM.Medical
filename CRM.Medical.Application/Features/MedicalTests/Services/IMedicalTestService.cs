@@ -1,6 +1,7 @@
 using CRM.Medical.Application.Common.Responses;
 using System.Text.Json;
 using CRM.Medical.Application.Features.MedicalTests.DTOs;
+using CRM.Medical.Domain.Enums;
 
 namespace CRM.Medical.Application.Features.MedicalTests.Services;
 
@@ -10,6 +11,7 @@ public interface IMedicalTestService
         int page,
         int pageSize,
         string? search,
+        int? categoryMedicalId,
         CancellationToken cancellationToken);
 
     Task<MedicalTestDto> GetByIdAsync(int id, CancellationToken cancellationToken);
@@ -18,10 +20,10 @@ public interface IMedicalTestService
         string nameAr,
         string nameEn,
         double price,
-        string category,
+        int categoryMedicalId,
         string sampleType,
         JsonDocument? parameterSchema,
-        string status,
+        MedicalTestStatus status,
         CancellationToken cancellationToken);
 
     Task UpdateAsync(
@@ -29,11 +31,13 @@ public interface IMedicalTestService
         string nameAr,
         string nameEn,
         double price,
-        string category,
+        int categoryMedicalId,
         string sampleType,
         JsonDocument? parameterSchema,
-        string status,
+        MedicalTestStatus status,
         CancellationToken cancellationToken);
+
+    Task ToggleStatusAsync(int id, MedicalTestStatus status, CancellationToken cancellationToken);
 
     Task DeleteAsync(int id, CancellationToken cancellationToken);
 }

@@ -41,6 +41,8 @@ public sealed class MedicalDbContext(
 
     public DbSet<Template> Templates => Set<Template>();
 
+    public DbSet<CategoryMedical> CategoryMedical => Set<CategoryMedical>();
+
     public DbSet<MedicalTest> MedicalTests => Set<MedicalTest>();
 
     public DbSet<TestRequest> TestRequests => Set<TestRequest>();

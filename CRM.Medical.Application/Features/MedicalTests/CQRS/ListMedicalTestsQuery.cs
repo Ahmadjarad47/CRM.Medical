@@ -7,4 +7,5 @@ namespace CRM.Medical.Application.Features.MedicalTests.CQRS;
 public sealed record ListMedicalTestsQuery(
     int Page = 1,
     int PageSize = 20,
-    string? Search = null) : IRequest<PagedResult<MedicalTestDto>>;
+    string? Search = null,
+    int? CategoryMedicalId = null) : IRequest<PagedResult<MedicalTestDto>>;

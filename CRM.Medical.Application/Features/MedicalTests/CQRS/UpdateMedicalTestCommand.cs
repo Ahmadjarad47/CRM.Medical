@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CRM.Medical.Domain.Enums;
 using MediatR;
 
 namespace CRM.Medical.Application.Features.MedicalTests.CQRS;
@@ -8,7 +9,7 @@ public sealed record UpdateMedicalTestCommand(
     string NameAr,
     string NameEn,
     double Price,
-    string Category,
+    int CategoryMedicalId,
     string SampleType,
     JsonDocument? ParameterSchema,
-    string Status) : IRequest<Unit>;
+    MedicalTestStatus Status) : IRequest<Unit>;

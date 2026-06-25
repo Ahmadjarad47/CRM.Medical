@@ -15,7 +15,7 @@ public sealed class UpdateMedicalTestCommandHandler(IMedicalTestService medicalT
             request.NameAr,
             request.NameEn,
             request.Price,
-            request.Category,
+            request.CategoryMedicalId,
             request.SampleType,
             request.ParameterSchema,
             request.Status,

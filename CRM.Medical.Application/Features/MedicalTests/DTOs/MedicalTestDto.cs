@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CRM.Medical.Domain.Enums;
 
 namespace CRM.Medical.Application.Features.MedicalTests.DTOs;
 
@@ -7,9 +8,11 @@ public sealed record MedicalTestDto(
     string NameAr,
     string NameEn,
     double Price,
-    string Category,
+    int CategoryMedicalId,
+    string CategoryNameAr,
+    string CategoryNameEn,
     string SampleType,
     JsonElement? ParameterSchema,
-    string Status,
+    MedicalTestStatus Status,
     DateTime CreatedAt,
     DateTime? UpdatedAt);

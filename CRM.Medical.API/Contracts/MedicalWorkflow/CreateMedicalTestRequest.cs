@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CRM.Medical.Domain.Enums;
 
 namespace CRM.Medical.API.Contracts.MedicalWorkflow;
 
@@ -10,11 +11,11 @@ public sealed class CreateMedicalTestRequest
 
     public double Price { get; set; }
 
-    public string Category { get; set; } = string.Empty;
+    public int CategoryMedicalId { get; set; }
 
     public string SampleType { get; set; } = string.Empty;
 
     public JsonElement? ParameterSchema { get; set; }
 
-    public string Status { get; set; } = string.Empty;
+    public MedicalTestStatus Status { get; set; } = MedicalTestStatus.Pending;
 }

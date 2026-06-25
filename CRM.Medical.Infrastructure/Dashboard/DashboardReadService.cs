@@ -72,7 +72,7 @@ public sealed class DashboardReadService(MedicalDbContext dbContext, IDateTimePr
                 "Unknown",
                 cancellationToken),
             TestCategoryBreakdown: await BuildCountChart(
-                scopedMedicalTests.Select(x => x.Category),
+                scopedMedicalTests.Select(x => x.CategoryMedical.NameEn),
                 "Uncategorized",
                 cancellationToken),
             MonthlyRequests: await BuildMonthlyRequestChart(scopedTestRequests, cancellationToken),
@@ -205,7 +205,7 @@ public sealed class DashboardReadService(MedicalDbContext dbContext, IDateTimePr
 
     private IQueryable<MedicalTest> BuildScopedMedicalTestQuery(IQueryable<TestRequest> scopedTestRequests, string role)
     {
-        var query = _dbContext.MedicalTests.AsNoTracking().AsQueryable();
+        var query = _dbContext.MedicalTests.AsNoTracking().Include(x => x.CategoryMedical).AsQueryable();
         return role == UserRoles.Admin
             ? query
             : query.Where(x => scopedTestRequests.Select(r => r.MedicalTestId).Contains(x.Id));

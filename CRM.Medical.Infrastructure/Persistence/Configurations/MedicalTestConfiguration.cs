@@ -16,9 +16,10 @@ public sealed class MedicalTestConfiguration : IEntityTypeConfiguration<MedicalT
         builder.Property(e => e.NameAr).IsRequired().HasMaxLength(500);
         builder.Property(e => e.NameEn).IsRequired().HasMaxLength(500);
         builder.Property(e => e.Price).IsRequired();
-        builder.Property(e => e.Category).IsRequired().HasMaxLength(200);
         builder.Property(e => e.SampleType).IsRequired().HasMaxLength(200);
-        builder.Property(e => e.Status).IsRequired().HasMaxLength(64);
+
+        builder.HasIndex(e => e.CategoryMedicalId);
+        builder.Property(e => e.Status).HasConversion<string>().IsRequired().HasMaxLength(32);
         builder.Property(e => e.ParameterSchema).HasColumnType("jsonb");
 
         builder.ConfigureAuditColumns();

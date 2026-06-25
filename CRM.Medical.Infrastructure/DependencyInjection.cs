@@ -16,6 +16,7 @@ using CRM.Medical.Application.Features.SlideCards;
 using CRM.Medical.Application.Features.SubscriptionPackages;
 using CRM.Medical.Application.Features.Templates;
 using CRM.Medical.Application.Features.MedicalTests.Services;
+using CRM.Medical.Application.Features.CategoryMedical.Services;
 using CRM.Medical.Application.Features.ExternalPatients.Services;
 using CRM.Medical.Application.Features.TestRequests.Services;
 using CRM.Medical.Application.Features.TestResults.Services;
@@ -105,6 +106,7 @@ public static class DependencyInjection
         services.AddScoped<IUserManagementAccess, UserManagementAccessService>();
         services.AddMemoryCache();
         services.AddScoped<IMedicalTestService, MedicalTestService>();
+        services.AddScoped<ICategoryMedicalService, CategoryMedicalService>();
         services.AddScoped<ITestRequestService, TestRequestService>();
         services.AddScoped<IExternalPatientService, ExternalPatientService>();
         services.AddScoped<ITestResultService, TestResultService>();

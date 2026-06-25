@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CRM.Medical.Domain.Enums;
 
 namespace CRM.Medical.Domain.Entities;
 
@@ -12,13 +13,15 @@ public sealed class MedicalTest : BaseEntity
 
     public double Price { get; set; }
 
-    public string Category { get; set; } = string.Empty;
+    public int CategoryMedicalId { get; set; }
+
+    public CategoryMedical CategoryMedical { get; set; } = null!;
 
     public string SampleType { get; set; } = string.Empty;
 
     public JsonDocument? ParameterSchema { get; set; }
 
-    public string Status { get; set; } = string.Empty;
+    public MedicalTestStatus Status { get; set; } = MedicalTestStatus.Pending;
 
     public ICollection<TestRequest> TestRequests { get; set; } = new List<TestRequest>();
 }

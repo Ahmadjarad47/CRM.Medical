@@ -177,6 +177,7 @@ public sealed class AccessPoliciesController(
             "test_requests" => validator.Validate<TestRequest>(parsed),
             "test_results" => validator.Validate<TestResult>(parsed),
             "medical_tests" => validator.Validate<MedicalTest>(parsed),
+            "category_medical" => validator.Validate<CategoryMedical>(parsed),
             "external_patients" => validator.Validate<ExternalPatient>(parsed),
             "subscription_packages" => validator.Validate<SubscriptionPackage>(parsed),
             "conversations" => validator.Validate<Conversation>(parsed),

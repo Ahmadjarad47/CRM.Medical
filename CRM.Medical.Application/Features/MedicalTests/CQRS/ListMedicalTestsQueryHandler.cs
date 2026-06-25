@@ -11,5 +11,5 @@ public sealed class ListMedicalTestsQueryHandler(IMedicalTestService medicalTest
     public Task<PagedResult<MedicalTestDto>> Handle(
         ListMedicalTestsQuery request,
         CancellationToken cancellationToken) =>
-        medicalTests.ListAsync(request.Page, request.PageSize, request.Search, cancellationToken);
+        medicalTests.ListAsync(request.Page, request.PageSize, request.Search, request.CategoryMedicalId, cancellationToken);
 }

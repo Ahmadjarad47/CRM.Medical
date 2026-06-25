@@ -241,6 +241,7 @@ internal sealed class AccessPolicyMetadataProvider : IAccessPolicyMetadataProvid
         [typeof(TestRequest)] = "test_requests",
         [typeof(TestResult)] = "test_results",
         [typeof(MedicalTest)] = "medical_tests",
+        [typeof(CategoryMedical)] = "category_medical",
         [typeof(ExternalPatient)] = "external_patients",
         [typeof(SubscriptionPackage)] = "subscription_packages",
         [typeof(Conversation)] = "conversations",

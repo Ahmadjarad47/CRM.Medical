@@ -16,9 +16,10 @@ public sealed class MedicalTestsController(ISender mediator) : ControllerBase
     [ProducesResponseType(typeof(PagedResult<MedicalTestDto>), StatusCodes.Status200OK)]
     public Task<PagedResult<MedicalTestDto>> List(
         [FromQuery] PagedSearchRequest request,
+        [FromQuery] int? categoryMedicalId,
         CancellationToken cancellationToken) =>
         mediator.Send(
-            new ListMedicalTestsQuery(request.Page, request.PageSize, request.Search),
+            new ListMedicalTestsQuery(request.Page, request.PageSize, request.Search, categoryMedicalId),
             cancellationToken);
 
     [HttpGet("{id:int}")]
@@ -36,7 +37,7 @@ public sealed class MedicalTestsController(ISender mediator) : ControllerBase
                 request.NameAr,
                 request.NameEn,
                 request.Price,
-                request.Category,
+                request.CategoryMedicalId,
                 request.SampleType,
                 request.ParameterSchema.ToJsonDocument(),
                 request.Status),
@@ -55,7 +56,7 @@ public sealed class MedicalTestsController(ISender mediator) : ControllerBase
                 request.NameAr,
                 request.NameEn,
                 request.Price,
-                request.Category,
+                request.CategoryMedicalId,
                 request.SampleType,
                 request.ParameterSchema.ToJsonDocument(),
                 request.Status),
@@ -68,6 +69,17 @@ public sealed class MedicalTestsController(ISender mediator) : ControllerBase
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         await mediator.Send(new DeleteMedicalTestCommand(id), cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPatch("{id:int}/toggle")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Toggle(
+        int id,
+        [FromBody] ToggleMedicalTestStatusRequest request,
+        CancellationToken cancellationToken)
+    {
+        await mediator.Send(new ToggleMedicalTestStatusCommand(id, request.Status), cancellationToken);
         return NoContent();
     }
 }
