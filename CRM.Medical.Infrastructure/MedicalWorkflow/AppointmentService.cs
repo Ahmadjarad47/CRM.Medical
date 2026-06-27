@@ -25,6 +25,7 @@ public sealed class AppointmentService(
         string? userId,
         string? status,
         CancellationToken cancellationToken)
+
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
         EnsureAllowedSchedulingRole();
