@@ -36,6 +36,7 @@ public sealed class PagesController(ISender mediator) : AdminBaseController
             request.PublishedAt,
             request.IsVisibleInNav,
             request.IsActive,
+            request.VisibleToRoles,
             request.Translations.Select(MapTranslation).ToList(),
             request.ContentBlocks.Select(MapBlock).ToList(),
             request.ChangeNotes);
@@ -59,6 +60,7 @@ public sealed class PagesController(ISender mediator) : AdminBaseController
             request.PublishedAt,
             request.IsVisibleInNav,
             request.IsActive,
+            request.VisibleToRoles,
             request.Translations.Select(MapTranslation).ToList(),
             request.ContentBlocks.Select(MapBlock).ToList(),
             request.ChangeNotes);

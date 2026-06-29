@@ -12,4 +12,5 @@ public sealed record CreateAdCommand(
     double? Longitude,
     string AddressName,
     AdMediaType MediaType,
+    DisplayMode DisplayMode,
     IFormFile Media) : IRequest<AdDto>;

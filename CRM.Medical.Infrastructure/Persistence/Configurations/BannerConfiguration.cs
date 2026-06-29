@@ -20,9 +20,9 @@ public sealed class BannerConfiguration : IEntityTypeConfiguration<Banner>
             .IsRequired()
             .HasMaxLength(200);
 
-        builder.Property(b => b.Type)
+        builder.Property(b => b.DisplayMode)
             .IsRequired()
-            .HasMaxLength(100);
+            .HasConversion<int>();
 
         builder.Property(b => b.MediaUrl)
             .IsRequired()
@@ -71,6 +71,7 @@ public sealed class BannerConfiguration : IEntityTypeConfiguration<Banner>
         builder.HasIndex(b => b.StartDate);
         builder.HasIndex(b => b.EndDate);
         builder.HasIndex(b => b.DisplayOrder);
+        builder.HasIndex(b => b.DisplayMode);
         builder.HasIndex(b => b.CreatedAt);
     }
 }

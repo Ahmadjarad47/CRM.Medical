@@ -1,5 +1,6 @@
 using System.Text.Json;
 using CRM.Medical.Application.Features.Banners.DTOs;
+using CRM.Medical.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 
@@ -8,7 +9,7 @@ namespace CRM.Medical.Application.Features.Banners.Commands.UpdateBanner;
 public sealed record UpdateBannerCommand(
     int Id,
     string Title,
-    string Type,
+    DisplayMode DisplayMode,
     IFormFile? Media,
     string InternalLink,
     string ExternalLink,

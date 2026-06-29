@@ -10,7 +10,7 @@ internal static class BannerMappings
         new(
             b.Id,
             b.Title,
-            b.Type,
+            b.DisplayMode,
             b.MediaUrl,
             b.InternalLink,
             b.ExternalLink,

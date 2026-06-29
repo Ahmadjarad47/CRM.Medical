@@ -31,6 +31,7 @@ public static class DatabaseMigrationStartupExtensions
             await EnsureComplaintCompatibilityColumnsAsync(db, logger);
             await EnsureAppointmentsCompatibilityColumnsAsync(db, logger);
             await EnsureAdsCompatibilitySchemaAsync(db, logger);
+            await EnsureBannersCompatibilitySchemaAsync(db, logger);
             await EnsureWelcomePagesCompatibilitySchemaAsync(db, logger);
             await EnsureDynamicPagesCompatibilitySchemaAsync(db, logger);
             await EnsureCategoryMedicalCompatibilitySchemaAsync(db, logger);
@@ -251,6 +252,7 @@ public static class DatabaseMigrationStartupExtensions
                 "Name" character varying(200) NOT NULL,
                 "Description" character varying(4000) NOT NULL,
                 "MediaType" integer NOT NULL,
+                "DisplayMode" integer NOT NULL DEFAULT 1,
                 "MediaUrl" character varying(2048) NOT NULL,
                 "Latitude" double precision NULL,
                 "Longitude" double precision NULL,
@@ -269,6 +271,7 @@ public static class DatabaseMigrationStartupExtensions
                 ADD COLUMN IF NOT EXISTS "Latitude" double precision NULL,
                 ADD COLUMN IF NOT EXISTS "Longitude" double precision NULL,
                 ADD COLUMN IF NOT EXISTS "AddressName" character varying(300) NOT NULL DEFAULT '',
+                ADD COLUMN IF NOT EXISTS "DisplayMode" integer NOT NULL DEFAULT 1,
                 ADD COLUMN IF NOT EXISTS "UpdatedByUserId" character varying(450) NULL,
                 ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
             """;
@@ -286,10 +289,56 @@ public static class DatabaseMigrationStartupExtensions
                 ON "ads" ("CreatedAt");
             CREATE INDEX IF NOT EXISTS "IX_ads_MediaType"
                 ON "ads" ("MediaType");
+            CREATE INDEX IF NOT EXISTS "IX_ads_DisplayMode"
+                ON "ads" ("DisplayMode");
             """;
         await db.Database.ExecuteSqlRawAsync(ensureIndexesSql);
 
         logger.LogInformation("Ensured ads compatibility schema.");
+    }
+
+    private static async Task EnsureBannersCompatibilitySchemaAsync(MedicalDbContext db, ILogger logger)
+    {
+        const string ensureDisplayModeColumnSql = """
+            ALTER TABLE IF EXISTS "banners"
+                ADD COLUMN IF NOT EXISTS "DisplayMode" integer NOT NULL DEFAULT 1;
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureDisplayModeColumnSql);
+
+        const string migrateTypeToDisplayModeSql = """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'banners'
+                      AND column_name = 'Type'
+                ) THEN
+                    UPDATE "banners"
+                    SET "DisplayMode" = CASE lower(trim("Type"))
+                        WHEN 'full' THEN 1
+                        WHEN 'large' THEN 2
+                        WHEN 'larg' THEN 2
+                        WHEN 'small' THEN 3
+                        WHEN 'xsmall' THEN 4
+                        ELSE 1
+                    END
+                    WHERE "Type" IS NOT NULL AND trim("Type") <> '';
+
+                    ALTER TABLE "banners" DROP COLUMN "Type";
+                END IF;
+            END $$;
+            """;
+        await db.Database.ExecuteSqlRawAsync(migrateTypeToDisplayModeSql);
+
+        const string ensureIndexesSql = """
+            CREATE INDEX IF NOT EXISTS "IX_banners_DisplayMode"
+                ON "banners" ("DisplayMode");
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureIndexesSql);
+
+        logger.LogInformation("Ensured banners compatibility schema.");
     }
 
     private static async Task EnsureWelcomePagesCompatibilitySchemaAsync(MedicalDbContext db, ILogger logger)
@@ -363,6 +412,7 @@ public static class DatabaseMigrationStartupExtensions
                 "PublishedAt" timestamp with time zone NULL,
                 "IsVisibleInNav" boolean NOT NULL DEFAULT TRUE,
                 "IsActive" boolean NOT NULL DEFAULT TRUE,
+                visible_to_roles jsonb NOT NULL DEFAULT '[]'::jsonb,
                 "CreatedByUserId" character varying(450) NOT NULL DEFAULT '',
                 "UpdatedByUserId" character varying(450) NULL,
                 "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -381,6 +431,7 @@ public static class DatabaseMigrationStartupExtensions
                 ADD COLUMN IF NOT EXISTS "PublishedAt" timestamp with time zone NULL,
                 ADD COLUMN IF NOT EXISTS "IsVisibleInNav" boolean NOT NULL DEFAULT TRUE,
                 ADD COLUMN IF NOT EXISTS "IsActive" boolean NOT NULL DEFAULT TRUE,
+                ADD COLUMN IF NOT EXISTS visible_to_roles jsonb NOT NULL DEFAULT '[]'::jsonb,
                 ADD COLUMN IF NOT EXISTS "CreatedByUserId" character varying(450) NOT NULL DEFAULT '',
                 ADD COLUMN IF NOT EXISTS "UpdatedByUserId" character varying(450) NULL,
                 ADD COLUMN IF NOT EXISTS "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -395,6 +446,7 @@ public static class DatabaseMigrationStartupExtensions
                 "PublishStatus" = COALESCE("PublishStatus", 'Draft'),
                 "IsVisibleInNav" = COALESCE("IsVisibleInNav", TRUE),
                 "IsActive" = COALESCE("IsActive", TRUE),
+                visible_to_roles = COALESCE(visible_to_roles, '[]'::jsonb),
                 "CreatedByUserId" = COALESCE("CreatedByUserId", ''),
                 "CreatedAt" = COALESCE("CreatedAt", NOW())
             WHERE
@@ -402,6 +454,7 @@ public static class DatabaseMigrationStartupExtensions
                 OR "PublishStatus" IS NULL
                 OR "IsVisibleInNav" IS NULL
                 OR "IsActive" IS NULL
+                OR visible_to_roles IS NULL
                 OR "CreatedByUserId" IS NULL
                 OR "CreatedAt" IS NULL;
             """;

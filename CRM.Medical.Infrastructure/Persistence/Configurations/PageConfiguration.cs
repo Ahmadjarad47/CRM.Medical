@@ -1,6 +1,8 @@
+using System.Text.Json;
 using CRM.Medical.Domain.Constants;
 using CRM.Medical.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CRM.Medical.Infrastructure.Persistence.Configurations;
@@ -35,6 +37,17 @@ public sealed class PageConfiguration : IEntityTypeConfiguration<Page>
         builder.Property(p => p.IsActive)
             .IsRequired()
             .HasDefaultValue(true);
+
+        builder.Property(p => p.VisibleToRoles)
+            .HasColumnName("visible_to_roles")
+            .HasColumnType("jsonb")
+            .HasConversion(
+                roles => JsonSerializer.Serialize(roles, (JsonSerializerOptions?)null),
+                json => JsonSerializer.Deserialize<List<string>>(json, (JsonSerializerOptions?)null) ?? new List<string>())
+            .Metadata.SetValueComparer(new ValueComparer<ICollection<string>>(
+                (left, right) => left != null && right != null && left.SequenceEqual(right),
+                roles => roles.Aggregate(0, (hash, role) => HashCode.Combine(hash, role.GetHashCode())),
+                roles => roles.ToList()));
 
         builder.Property(p => p.CreatedByUserId)
             .IsRequired()

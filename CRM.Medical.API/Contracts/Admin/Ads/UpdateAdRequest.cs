@@ -27,5 +27,8 @@ public sealed class UpdateAdRequest
     [Required(ErrorMessage = "MediaType is required.")]
     public AdMediaType MediaType { get; set; }
 
+    [Required(ErrorMessage = "DisplayMode is required.")]
+    public DisplayMode DisplayMode { get; set; }
+
     public IFormFile? Media { get; set; }
 }

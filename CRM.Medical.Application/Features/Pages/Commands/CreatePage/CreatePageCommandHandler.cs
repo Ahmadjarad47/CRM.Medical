@@ -58,6 +58,7 @@ public sealed class CreatePageCommandHandler(
             PublishedAt = publishedAt,
             IsVisibleInNav = request.IsVisibleInNav,
             IsActive = request.IsActive,
+            VisibleToRoles = PageFeatureHelpers.NormalizeVisibleToRoles(request.VisibleToRoles).ToList(),
             CreatedByUserId = createdByUserId,
             CreatedAt = now,
             Translations = request.Translations.Select(MapTranslation).ToList(),

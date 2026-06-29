@@ -13,6 +13,7 @@ public sealed record UpdatePageCommand(
     DateTime? PublishedAt,
     bool IsVisibleInNav,
     bool IsActive,
+    IReadOnlyList<string> VisibleToRoles,
     IReadOnlyList<PageTranslationInput> Translations,
     IReadOnlyList<ContentBlockInput> ContentBlocks,
     string? ChangeNotes) : IRequest<PageDto>;

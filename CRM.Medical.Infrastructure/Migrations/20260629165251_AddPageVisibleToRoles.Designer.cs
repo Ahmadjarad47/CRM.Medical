@@ -4,6 +4,7 @@ using System.Text.Json;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CRM.Medical.Infrastructure.Migrations
 {
     [DbContext(typeof(MedicalDbContext))]
-    partial class MedicalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260629165251_AddPageVisibleToRoles")]
+    partial class AddPageVisibleToRoles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -296,9 +299,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<int>("DisplayMode")
-                        .HasColumnType("integer");
-
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision");
 
@@ -324,8 +324,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
-
-                    b.HasIndex("DisplayMode");
 
                     b.HasIndex("MediaType");
 
@@ -491,9 +489,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
 
-                    b.Property<int>("DisplayMode")
-                        .HasColumnType("integer");
-
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("integer");
 
@@ -538,6 +533,11 @@ namespace CRM.Medical.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -550,8 +550,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
-
-                    b.HasIndex("DisplayMode");
 
                     b.HasIndex("DisplayOrder");
 

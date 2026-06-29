@@ -13,4 +13,5 @@ public sealed record UpdateAdCommand(
     double? Longitude,
     string AddressName,
     AdMediaType MediaType,
+    DisplayMode DisplayMode,
     IFormFile? Media) : IRequest<AdDto>;

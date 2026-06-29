@@ -7,6 +7,7 @@ public sealed record AdDto(
     string Name,
     string Description,
     AdMediaType MediaType,
+    DisplayMode DisplayMode,
     string MediaUrl,
     double? Latitude,
     double? Longitude,

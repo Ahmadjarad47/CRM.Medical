@@ -1,3 +1,4 @@
+using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.Pages.DTOs;
@@ -7,7 +8,8 @@ namespace CRM.Medical.Application.Features.Pages.Queries.GetWebsitePageBySlug;
 
 public sealed class GetWebsitePageBySlugQueryHandler(
     IPageRepository pages,
-    IDateTimeProvider dateTimeProvider)
+    IDateTimeProvider dateTimeProvider,
+    ICurrentUserAccessor currentUser)
     : IRequestHandler<GetWebsitePageBySlugQuery, WebsitePageDto>
 {
     public async Task<WebsitePageDto> Handle(GetWebsitePageBySlugQuery request, CancellationToken cancellationToken)
@@ -21,7 +23,7 @@ public sealed class GetWebsitePageBySlugQueryHandler(
             dateTimeProvider.UtcNow,
             cancellationToken);
 
-        if (entity is null)
+        if (entity is null || !PageFeatureHelpers.IsVisibleToUser(entity.VisibleToRoles, currentUser.Roles))
             throw new ApplicationNotFoundException($"Published page with slug '{slug}' was not found.");
 
         return entity.ToWebsiteDto(language);

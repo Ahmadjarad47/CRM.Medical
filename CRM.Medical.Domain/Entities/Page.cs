@@ -20,6 +20,9 @@ public sealed class Page
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Role names allowed to view this page. Empty means visible to everyone.</summary>
+    public ICollection<string> VisibleToRoles { get; set; } = new List<string>();
+
     public string CreatedByUserId { get; set; } = string.Empty;
 
     public string? UpdatedByUserId { get; set; }

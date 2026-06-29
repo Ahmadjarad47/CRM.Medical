@@ -12,6 +12,8 @@ public sealed class Ad : BaseEntity
 
     public AdMediaType MediaType { get; set; }
 
+    public DisplayMode DisplayMode { get; set; }
+
     public string MediaUrl { get; set; } = string.Empty;
 
     public double? Latitude { get; set; }

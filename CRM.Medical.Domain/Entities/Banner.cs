@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CRM.Medical.Domain.Enums;
 
 namespace CRM.Medical.Domain.Entities;
 
@@ -8,7 +9,7 @@ public sealed class Banner : BaseEntity
 
     public string Title { get; set; } = string.Empty;
 
-    public string Type { get; set; } = string.Empty;
+    public DisplayMode DisplayMode { get; set; }
 
     public string MediaUrl { get; set; } = string.Empty;
 

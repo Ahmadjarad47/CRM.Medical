@@ -1,9 +1,11 @@
+using CRM.Medical.Domain.Enums;
+
 namespace CRM.Medical.Application.Features.Banners.DTOs;
 
 public sealed record BannerDto(
     int Id,
     string Title,
-    string Type,
+    DisplayMode DisplayMode,
     string MediaUrl,
     string InternalLink,
     string ExternalLink,

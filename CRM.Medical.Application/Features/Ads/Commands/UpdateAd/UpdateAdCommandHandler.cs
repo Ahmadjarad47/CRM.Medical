@@ -26,6 +26,7 @@ public sealed class UpdateAdCommandHandler(
         entity.Longitude = request.Longitude;
         entity.AddressName = request.AddressName.Trim();
         entity.MediaType = request.MediaType;
+        entity.DisplayMode = request.DisplayMode;
         entity.UpdatedAt = dateTimeProvider.UtcNow;
 
         await ads.UpdateAsync(entity, cancellationToken);
