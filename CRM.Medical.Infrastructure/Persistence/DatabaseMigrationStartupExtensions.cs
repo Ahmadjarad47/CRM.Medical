@@ -446,7 +446,10 @@ public static class DatabaseMigrationStartupExtensions
                 "PublishStatus" = COALESCE("PublishStatus", 'Draft'),
                 "IsVisibleInNav" = COALESCE("IsVisibleInNav", TRUE),
                 "IsActive" = COALESCE("IsActive", TRUE),
-                visible_to_roles = COALESCE(visible_to_roles, '[]'::jsonb),
+                visible_to_roles = CASE
+                    WHEN visible_to_roles IS NULL OR visible_to_roles::text IN ('""', '') THEN '[]'::jsonb
+                    ELSE visible_to_roles
+                END,
                 "CreatedByUserId" = COALESCE("CreatedByUserId", ''),
                 "CreatedAt" = COALESCE("CreatedAt", NOW())
             WHERE
@@ -455,6 +458,7 @@ public static class DatabaseMigrationStartupExtensions
                 OR "IsVisibleInNav" IS NULL
                 OR "IsActive" IS NULL
                 OR visible_to_roles IS NULL
+                OR visible_to_roles::text IN ('""', '')
                 OR "CreatedByUserId" IS NULL
                 OR "CreatedAt" IS NULL;
             """;

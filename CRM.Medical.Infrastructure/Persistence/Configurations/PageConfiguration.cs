@@ -41,6 +41,7 @@ public sealed class PageConfiguration : IEntityTypeConfiguration<Page>
         builder.Property(p => p.VisibleToRoles)
             .HasColumnName("visible_to_roles")
             .HasColumnType("jsonb")
+            .HasDefaultValueSql("'[]'::jsonb")
             .HasConversion(
                 roles => JsonSerializer.Serialize(roles, (JsonSerializerOptions?)null),
                 json => JsonSerializer.Deserialize<List<string>>(json, (JsonSerializerOptions?)null) ?? new List<string>())
