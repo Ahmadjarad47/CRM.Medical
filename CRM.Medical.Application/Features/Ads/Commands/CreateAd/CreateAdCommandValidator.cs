@@ -38,6 +38,9 @@ public sealed class CreateAdCommandValidator : AbstractValidator<CreateAdCommand
         RuleFor(x => x.MediaType)
             .IsInEnum();
 
+        RuleFor(x => x.DisplayMode)
+            .IsInEnum();
+
         RuleFor(x => x.Media)
             .NotNull()
             .Must(f => f.Length > 0)

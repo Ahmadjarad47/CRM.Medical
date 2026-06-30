@@ -14,9 +14,8 @@ public sealed class CreateBannerCommandValidator : AbstractValidator<CreateBanne
             .NotEmpty()
             .MaximumLength(200);
 
-        RuleFor(x => x.Type)
-            .NotEmpty()
-            .MaximumLength(100);
+        RuleFor(x => x.DisplayMode)
+            .IsInEnum();
 
         RuleFor(x => x.Media)
             .NotNull()

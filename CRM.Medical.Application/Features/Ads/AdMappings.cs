@@ -11,6 +11,7 @@ internal static class AdMappings
             ad.Name,
             ad.Description,
             ad.MediaType,
+            ad.DisplayMode,
             ad.MediaUrl,
             ad.Latitude,
             ad.Longitude,

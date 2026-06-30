@@ -27,6 +27,10 @@ public sealed class AdConfiguration : IEntityTypeConfiguration<Ad>
             .IsRequired()
             .HasConversion<int>();
 
+        builder.Property(a => a.DisplayMode)
+            .IsRequired()
+            .HasConversion<int>();
+
         builder.Property(a => a.MediaUrl)
             .IsRequired()
             .HasMaxLength(2048);
@@ -42,6 +46,7 @@ public sealed class AdConfiguration : IEntityTypeConfiguration<Ad>
         builder.ConfigureAuditColumns();
 
         builder.HasIndex(a => a.MediaType);
+        builder.HasIndex(a => a.DisplayMode);
         builder.HasIndex(a => a.CreatedAt);
     }
 }

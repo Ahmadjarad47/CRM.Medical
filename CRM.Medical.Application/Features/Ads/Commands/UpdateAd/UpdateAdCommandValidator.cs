@@ -40,6 +40,9 @@ public sealed class UpdateAdCommandValidator : AbstractValidator<UpdateAdCommand
         RuleFor(x => x.MediaType)
             .IsInEnum();
 
+        RuleFor(x => x.DisplayMode)
+            .IsInEnum();
+
         RuleFor(x => x.Media)
             .Must(f => f == null || f.Length <= maxBytes)
             .WithMessage($"Media file must not exceed {maxBytes} bytes.")

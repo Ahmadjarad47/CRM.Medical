@@ -15,7 +15,7 @@ public sealed class IdentityRoleSeedHostedService(
     {
         using var scope = services.CreateScope();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-
+         
 
         foreach (var roleName in UserRoles.All)
         {

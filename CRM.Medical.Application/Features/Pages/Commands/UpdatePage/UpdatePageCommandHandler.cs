@@ -55,6 +55,7 @@ public sealed class UpdatePageCommandHandler(
         entity.PublishedAt = publishedAt;
         entity.IsVisibleInNav = request.IsVisibleInNav;
         entity.IsActive = request.IsActive;
+        entity.VisibleToRoles = PageFeatureHelpers.NormalizeVisibleToRoles(request.VisibleToRoles).ToList();
         entity.UpdatedByUserId = string.IsNullOrWhiteSpace(currentUser.UserId) ? entity.UpdatedByUserId : currentUser.UserId!.Trim();
         entity.UpdatedAt = now;
 

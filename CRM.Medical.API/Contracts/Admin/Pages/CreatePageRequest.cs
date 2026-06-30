@@ -25,6 +25,8 @@ public sealed class CreatePageRequest
 
     public bool IsActive { get; set; } = true;
 
+    public List<string> VisibleToRoles { get; set; } = [];
+
     [Required(ErrorMessage = "At least one translation is required.")]
     [MinLength(1, ErrorMessage = "At least one translation is required.")]
     public List<PageTranslationRequest> Translations { get; set; } = [];
@@ -56,6 +58,8 @@ public sealed class UpdatePageRequest
     public bool IsVisibleInNav { get; set; } = true;
 
     public bool IsActive { get; set; } = true;
+
+    public List<string> VisibleToRoles { get; set; } = [];
 
     [Required(ErrorMessage = "At least one translation is required.")]
     [MinLength(1, ErrorMessage = "At least one translation is required.")]

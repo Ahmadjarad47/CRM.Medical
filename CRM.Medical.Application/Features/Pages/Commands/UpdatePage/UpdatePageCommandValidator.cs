@@ -1,3 +1,4 @@
+using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Domain.Constants;
 using FluentValidation;
 
@@ -39,6 +40,10 @@ public sealed class UpdatePageCommandValidator : AbstractValidator<UpdatePageCom
                 PagePublishStatuses.Scheduled,
                 StringComparison.OrdinalIgnoreCase))
             .WithMessage("PublishScheduledAt is required when PublishStatus is Scheduled.");
+
+        RuleFor(x => x.VisibleToRoles)
+            .Must(roles => roles is null || roles.All(IsKnownRole))
+            .WithMessage($"VisibleToRoles must contain only known roles: {string.Join(", ", UserRoles.All)}.");
 
         RuleFor(x => x.Translations)
             .NotNull()
@@ -124,4 +129,7 @@ public sealed class UpdatePageCommandValidator : AbstractValidator<UpdatePageCom
 
         return distinct == localizations.Count;
     }
+
+    private static bool IsKnownRole(string role) =>
+        UserRoles.All.Contains(role.Trim(), StringComparer.OrdinalIgnoreCase);
 }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Domain.Constants;
 using CRM.Medical.Domain.Entities;
 
@@ -18,6 +19,33 @@ internal static class PageFeatureHelpers
     public static string NormalizeLanguage(string language) => language.Trim();
 
     public static string NormalizeSlug(string slug) => slug.Trim().ToLowerInvariant();
+
+    public static IReadOnlyList<string> NormalizeVisibleToRoles(IReadOnlyList<string>? roles)
+    {
+        if (roles is null || roles.Count == 0)
+            return Array.Empty<string>();
+
+        return roles
+            .Select(role => role.Trim())
+            .Where(role => !string.IsNullOrEmpty(role))
+            .Select(role => UserRoles.All.FirstOrDefault(
+                knownRole => string.Equals(knownRole, role, StringComparison.OrdinalIgnoreCase)) ?? role)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public static bool IsVisibleToUser(IEnumerable<string> visibleToRoles, IReadOnlyList<string> userRoles)
+    {
+        var allowedRoles = visibleToRoles as IReadOnlyList<string> ?? visibleToRoles.ToList();
+        if (allowedRoles.Count == 0)
+            return true;
+
+        if (userRoles.Count == 0)
+            return false;
+
+        return allowedRoles.Any(role =>
+            userRoles.Contains(role, StringComparer.OrdinalIgnoreCase));
+    }
 
     public static JsonDocument? ToJsonDocument(JsonElement? value)
     {
@@ -43,6 +71,7 @@ internal static class PageFeatureHelpers
             page.PublishedAt,
             page.IsVisibleInNav,
             page.IsActive,
+            VisibleToRoles = page.VisibleToRoles.OrderBy(r => r, StringComparer.OrdinalIgnoreCase).ToList(),
             Translations = page.Translations
                 .OrderBy(t => t.Language)
                 .Select(t => new

@@ -24,6 +24,7 @@ public sealed class CreateAdCommandHandler(
             Longitude = request.Longitude,
             AddressName = request.AddressName.Trim(),
             MediaType = request.MediaType,
+            DisplayMode = request.DisplayMode,
             MediaUrl = mediaUrl,
             CreatedAt = dateTimeProvider.UtcNow
         };

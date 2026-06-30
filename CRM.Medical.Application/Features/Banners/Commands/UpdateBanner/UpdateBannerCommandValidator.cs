@@ -17,9 +17,8 @@ public sealed class UpdateBannerCommandValidator : AbstractValidator<UpdateBanne
             .NotEmpty()
             .MaximumLength(200);
 
-        RuleFor(x => x.Type)
-            .NotEmpty()
-            .MaximumLength(100);
+        RuleFor(x => x.DisplayMode)
+            .IsInEnum();
 
         RuleFor(x => x.Media)
             .Must(f => f == null || f.Length <= maxBytes)

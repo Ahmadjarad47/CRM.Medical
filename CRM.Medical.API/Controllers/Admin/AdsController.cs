@@ -38,6 +38,7 @@ public sealed class AdsController(ISender mediator) : AdminBaseController
             request.Longitude,
             request.AddressName,
             request.MediaType,
+            request.DisplayMode,
             request.Media!
         );
 
@@ -61,6 +62,7 @@ public sealed class AdsController(ISender mediator) : AdminBaseController
             request.Longitude,
             request.AddressName,
             request.MediaType,
+            request.DisplayMode,
             request.Media
         );
 

@@ -30,7 +30,7 @@ public sealed class UpdateBannerCommandHandler(
         }
 
         entity.Title = request.Title.Trim();
-        entity.Type = request.Type.Trim();
+        entity.DisplayMode = request.DisplayMode;
         entity.InternalLink = request.InternalLink?.Trim() ?? string.Empty;
         entity.ExternalLink = request.ExternalLink?.Trim() ?? string.Empty;
         entity.TargetType = request.TargetType.Trim();

@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace CRM.Medical.Infrastructure.Persistence;
 
@@ -30,19 +31,51 @@ public static class DatabaseMigrationStartupExtensions
             await EnsureComplaintCompatibilityColumnsAsync(db, logger);
             await EnsureAppointmentsCompatibilityColumnsAsync(db, logger);
             await EnsureAdsCompatibilitySchemaAsync(db, logger);
+            await EnsureBannersCompatibilitySchemaAsync(db, logger);
             await EnsureWelcomePagesCompatibilitySchemaAsync(db, logger);
             await EnsureDynamicPagesCompatibilitySchemaAsync(db, logger);
+            await EnsureCategoryMedicalCompatibilitySchemaAsync(db, logger);
 
-            if (settings.BaselineExistingDatabase)
-                await BaselineExistingSchemaIfNeededAsync(db, logger);
-
-            await db.Database.MigrateAsync();
-            logger.LogInformation("Database migration completed successfully.");
+            await MigrateWithBaselineRetryAsync(db, settings, logger);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Database migration failed. Application startup will continue without crashing.");
         }
+    }
+
+    private static async Task MigrateWithBaselineRetryAsync(
+        MedicalDbContext db,
+        DatabaseSettings settings,
+        ILogger logger)
+    {
+        const int maxAttempts = 10;
+
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                if (settings.BaselineExistingDatabase)
+                    await BaselineExistingSchemaIfNeededAsync(db, logger);
+
+                await db.Database.MigrateAsync();
+                logger.LogInformation("Database migration completed successfully.");
+                return;
+            }
+            catch (Exception ex) when (attempt < maxAttempts && settings.BaselineExistingDatabase && IsMigrationConflict(ex))
+            {
+                logger.LogWarning(
+                    ex,
+                    "Migration conflict on attempt {Attempt}, re-baselining pending migrations and retrying.",
+                    attempt);
+            }
+        }
+    }
+
+    private static bool IsMigrationConflict(Exception ex)
+    {
+        var postgres = ex as PostgresException ?? ex.InnerException as PostgresException;
+        return postgres?.SqlState is "42701" or "42P07" or "42710";
     }
 
     private static async Task EnsureAccessPoliciesCompatibilityColumnsAsync(MedicalDbContext db, ILogger logger)
@@ -219,6 +252,7 @@ public static class DatabaseMigrationStartupExtensions
                 "Name" character varying(200) NOT NULL,
                 "Description" character varying(4000) NOT NULL,
                 "MediaType" integer NOT NULL,
+                "DisplayMode" integer NOT NULL DEFAULT 1,
                 "MediaUrl" character varying(2048) NOT NULL,
                 "Latitude" double precision NULL,
                 "Longitude" double precision NULL,
@@ -237,6 +271,7 @@ public static class DatabaseMigrationStartupExtensions
                 ADD COLUMN IF NOT EXISTS "Latitude" double precision NULL,
                 ADD COLUMN IF NOT EXISTS "Longitude" double precision NULL,
                 ADD COLUMN IF NOT EXISTS "AddressName" character varying(300) NOT NULL DEFAULT '',
+                ADD COLUMN IF NOT EXISTS "DisplayMode" integer NOT NULL DEFAULT 1,
                 ADD COLUMN IF NOT EXISTS "UpdatedByUserId" character varying(450) NULL,
                 ADD COLUMN IF NOT EXISTS "DeletedAt" timestamp with time zone NULL;
             """;
@@ -254,10 +289,56 @@ public static class DatabaseMigrationStartupExtensions
                 ON "ads" ("CreatedAt");
             CREATE INDEX IF NOT EXISTS "IX_ads_MediaType"
                 ON "ads" ("MediaType");
+            CREATE INDEX IF NOT EXISTS "IX_ads_DisplayMode"
+                ON "ads" ("DisplayMode");
             """;
         await db.Database.ExecuteSqlRawAsync(ensureIndexesSql);
 
         logger.LogInformation("Ensured ads compatibility schema.");
+    }
+
+    private static async Task EnsureBannersCompatibilitySchemaAsync(MedicalDbContext db, ILogger logger)
+    {
+        const string ensureDisplayModeColumnSql = """
+            ALTER TABLE IF EXISTS "banners"
+                ADD COLUMN IF NOT EXISTS "DisplayMode" integer NOT NULL DEFAULT 1;
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureDisplayModeColumnSql);
+
+        const string migrateTypeToDisplayModeSql = """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'banners'
+                      AND column_name = 'Type'
+                ) THEN
+                    UPDATE "banners"
+                    SET "DisplayMode" = CASE lower(trim("Type"))
+                        WHEN 'full' THEN 1
+                        WHEN 'large' THEN 2
+                        WHEN 'larg' THEN 2
+                        WHEN 'small' THEN 3
+                        WHEN 'xsmall' THEN 4
+                        ELSE 1
+                    END
+                    WHERE "Type" IS NOT NULL AND trim("Type") <> '';
+
+                    ALTER TABLE "banners" DROP COLUMN "Type";
+                END IF;
+            END $$;
+            """;
+        await db.Database.ExecuteSqlRawAsync(migrateTypeToDisplayModeSql);
+
+        const string ensureIndexesSql = """
+            CREATE INDEX IF NOT EXISTS "IX_banners_DisplayMode"
+                ON "banners" ("DisplayMode");
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureIndexesSql);
+
+        logger.LogInformation("Ensured banners compatibility schema.");
     }
 
     private static async Task EnsureWelcomePagesCompatibilitySchemaAsync(MedicalDbContext db, ILogger logger)
@@ -331,6 +412,7 @@ public static class DatabaseMigrationStartupExtensions
                 "PublishedAt" timestamp with time zone NULL,
                 "IsVisibleInNav" boolean NOT NULL DEFAULT TRUE,
                 "IsActive" boolean NOT NULL DEFAULT TRUE,
+                visible_to_roles jsonb NOT NULL DEFAULT '[]'::jsonb,
                 "CreatedByUserId" character varying(450) NOT NULL DEFAULT '',
                 "UpdatedByUserId" character varying(450) NULL,
                 "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -349,6 +431,7 @@ public static class DatabaseMigrationStartupExtensions
                 ADD COLUMN IF NOT EXISTS "PublishedAt" timestamp with time zone NULL,
                 ADD COLUMN IF NOT EXISTS "IsVisibleInNav" boolean NOT NULL DEFAULT TRUE,
                 ADD COLUMN IF NOT EXISTS "IsActive" boolean NOT NULL DEFAULT TRUE,
+                ADD COLUMN IF NOT EXISTS visible_to_roles jsonb NOT NULL DEFAULT '[]'::jsonb,
                 ADD COLUMN IF NOT EXISTS "CreatedByUserId" character varying(450) NOT NULL DEFAULT '',
                 ADD COLUMN IF NOT EXISTS "UpdatedByUserId" character varying(450) NULL,
                 ADD COLUMN IF NOT EXISTS "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -363,6 +446,10 @@ public static class DatabaseMigrationStartupExtensions
                 "PublishStatus" = COALESCE("PublishStatus", 'Draft'),
                 "IsVisibleInNav" = COALESCE("IsVisibleInNav", TRUE),
                 "IsActive" = COALESCE("IsActive", TRUE),
+                visible_to_roles = CASE
+                    WHEN visible_to_roles IS NULL OR visible_to_roles::text IN ('""', '') THEN '[]'::jsonb
+                    ELSE visible_to_roles
+                END,
                 "CreatedByUserId" = COALESCE("CreatedByUserId", ''),
                 "CreatedAt" = COALESCE("CreatedAt", NOW())
             WHERE
@@ -370,6 +457,8 @@ public static class DatabaseMigrationStartupExtensions
                 OR "PublishStatus" IS NULL
                 OR "IsVisibleInNav" IS NULL
                 OR "IsActive" IS NULL
+                OR visible_to_roles IS NULL
+                OR visible_to_roles::text IN ('""', '')
                 OR "CreatedByUserId" IS NULL
                 OR "CreatedAt" IS NULL;
             """;
@@ -493,6 +582,170 @@ public static class DatabaseMigrationStartupExtensions
         logger.LogInformation("Ensured dynamic pages compatibility schema.");
     }
 
+    private static async Task EnsureCategoryMedicalCompatibilitySchemaAsync(MedicalDbContext db, ILogger logger)
+    {
+        const string ensureCategoryTableSql = """
+            CREATE TABLE IF NOT EXISTS category_medical (
+                "Id" integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+                "NameAr" character varying(500) NOT NULL,
+                "NameEn" character varying(500) NOT NULL,
+                "Description" character varying(4000) NULL,
+                "DisplayOrder" integer NOT NULL DEFAULT 0,
+                "IsActive" boolean NOT NULL DEFAULT TRUE,
+                "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
+                "UpdatedAt" timestamp with time zone NULL,
+                "CreatedByUserId" character varying(450) NULL
+            );
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureCategoryTableSql);
+
+        const string ensureCategoryIndexesSql = """
+            CREATE INDEX IF NOT EXISTS "IX_category_medical_DisplayOrder"
+                ON category_medical ("DisplayOrder");
+            CREATE INDEX IF NOT EXISTS "IX_category_medical_IsActive"
+                ON category_medical ("IsActive");
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureCategoryIndexesSql);
+
+        const string ensureCategoryMedicalIdColumnSql = """
+            ALTER TABLE IF EXISTS medical_tests
+                ADD COLUMN IF NOT EXISTS "CategoryMedicalId" integer NULL;
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureCategoryMedicalIdColumnSql);
+
+        const string migrateCategoryDataSql = """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'medical_tests'
+                      AND column_name = 'Category'
+                ) THEN
+                    INSERT INTO category_medical ("NameAr", "NameEn", "DisplayOrder", "IsActive", "CreatedAt")
+                    SELECT DISTINCT
+                        NULLIF(BTRIM("Category"), ''),
+                        NULLIF(BTRIM("Category"), ''),
+                        0,
+                        TRUE,
+                        NOW() AT TIME ZONE 'UTC'
+                    FROM medical_tests
+                    WHERE "Category" IS NOT NULL
+                      AND BTRIM("Category") <> ''
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM category_medical cm
+                          WHERE cm."NameEn" = BTRIM(medical_tests."Category")
+                      );
+
+                    INSERT INTO category_medical ("NameAr", "NameEn", "DisplayOrder", "IsActive", "CreatedAt")
+                    SELECT 'غير مصنف', 'Uncategorized', 0, TRUE, NOW() AT TIME ZONE 'UTC'
+                    WHERE NOT EXISTS (SELECT 1 FROM category_medical);
+
+                    UPDATE medical_tests mt
+                    SET "CategoryMedicalId" = cm."Id"
+                    FROM category_medical cm
+                    WHERE mt."CategoryMedicalId" IS NULL
+                      AND BTRIM(mt."Category") <> ''
+                      AND cm."NameEn" = BTRIM(mt."Category");
+
+                    UPDATE medical_tests
+                    SET "CategoryMedicalId" = (SELECT "Id" FROM category_medical ORDER BY "Id" LIMIT 1)
+                    WHERE "CategoryMedicalId" IS NULL;
+
+                    ALTER TABLE medical_tests DROP COLUMN "Category";
+                END IF;
+            END $$;
+            """;
+        await db.Database.ExecuteSqlRawAsync(migrateCategoryDataSql);
+
+        const string ensureCategoryMedicalIdNotNullSql = """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'medical_tests'
+                      AND column_name = 'CategoryMedicalId'
+                      AND is_nullable = 'YES'
+                ) THEN
+                    UPDATE medical_tests
+                    SET "CategoryMedicalId" = (SELECT "Id" FROM category_medical ORDER BY "Id" LIMIT 1)
+                    WHERE "CategoryMedicalId" IS NULL;
+
+                    ALTER TABLE medical_tests
+                        ALTER COLUMN "CategoryMedicalId" SET NOT NULL;
+                END IF;
+            END $$;
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureCategoryMedicalIdNotNullSql);
+
+        const string ensureMedicalTestCategoryIndexesAndFkSql = """
+            CREATE INDEX IF NOT EXISTS "IX_medical_tests_CategoryMedicalId"
+                ON medical_tests ("CategoryMedicalId");
+
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'medical_tests'
+                      AND column_name = 'CategoryMedicalId'
+                )
+                AND EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name = 'category_medical'
+                )
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM information_schema.table_constraints
+                    WHERE table_schema = 'public'
+                      AND table_name = 'medical_tests'
+                      AND constraint_name = 'FK_medical_tests_category_medical_CategoryMedicalId'
+                ) THEN
+                    ALTER TABLE medical_tests
+                        ADD CONSTRAINT "FK_medical_tests_category_medical_CategoryMedicalId"
+                        FOREIGN KEY ("CategoryMedicalId")
+                        REFERENCES category_medical ("Id")
+                        ON DELETE RESTRICT;
+                END IF;
+            END $$;
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureMedicalTestCategoryIndexesAndFkSql);
+
+        const string normalizeMedicalTestStatusSql = """
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'medical_tests'
+                      AND column_name = 'Status'
+                      AND character_maximum_length = 64
+                ) THEN
+                    UPDATE medical_tests
+                    SET "Status" = CASE
+                        WHEN LOWER(BTRIM("Status")) IN ('confirm', 'confirmed', 'active') THEN 'Confirm'
+                        WHEN LOWER(BTRIM("Status")) IN ('cancel', 'cancelled', 'canceled', 'archived') THEN 'Cancel'
+                        ELSE 'Pending'
+                    END;
+
+                    ALTER TABLE medical_tests
+                        ALTER COLUMN "Status" TYPE character varying(32);
+                END IF;
+            END $$;
+            """;
+        await db.Database.ExecuteSqlRawAsync(normalizeMedicalTestStatusSql);
+
+        logger.LogInformation("Ensured category_medical compatibility schema.");
+    }
+
     private static async Task BaselineExistingSchemaIfNeededAsync(MedicalDbContext db, ILogger logger)
     {
         var pendingMigrations = (await db.Database.GetPendingMigrationsAsync()).ToList();
@@ -515,7 +768,10 @@ public static class DatabaseMigrationStartupExtensions
             var migration = migrationsAssembly.CreateMigration(migrationType, db.Database.ProviderName!);
             var createTableOperations = migration.UpOperations.OfType<CreateTableOperation>().ToList();
             var addColumnOperations = migration.UpOperations.OfType<AddColumnOperation>().ToList();
-            if (createTableOperations.Count == 0 && addColumnOperations.Count == 0)
+            var alterColumnOperations = migration.UpOperations.OfType<AlterColumnOperation>().ToList();
+            if (createTableOperations.Count == 0
+                && addColumnOperations.Count == 0
+                && alterColumnOperations.Count == 0)
                 continue;
 
             var migrationAlreadyAppliedToSchema = true;
@@ -534,6 +790,19 @@ public static class DatabaseMigrationStartupExtensions
             foreach (var operation in addColumnOperations)
             {
                 if (await ColumnExistsAsync(db, operation.Table, operation.Name, operation.Schema))
+                    continue;
+
+                migrationAlreadyAppliedToSchema = false;
+                break;
+            }
+
+            if (!migrationAlreadyAppliedToSchema)
+                continue;
+
+            foreach (var operation in alterColumnOperations)
+            {
+                var isNullable = await ColumnIsNullableAsync(db, operation.Table, operation.Name, operation.Schema);
+                if (isNullable is not null && isNullable == operation.IsNullable)
                     continue;
 
                 migrationAlreadyAppliedToSchema = false;
@@ -650,6 +919,48 @@ public static class DatabaseMigrationStartupExtensions
 
         var scalar = await command.ExecuteScalarAsync();
         return scalar is not null;
+    }
+
+    private static async Task<bool?> ColumnIsNullableAsync(
+        MedicalDbContext db,
+        string tableName,
+        string columnName,
+        string? schema)
+    {
+        await using var connection = db.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+            await connection.OpenAsync();
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = @schema
+              AND table_name = @table
+              AND column_name = @column
+            LIMIT 1;
+            """;
+
+        var schemaParameter = command.CreateParameter();
+        schemaParameter.ParameterName = "@schema";
+        schemaParameter.Value = schema ?? "public";
+        command.Parameters.Add(schemaParameter);
+
+        var tableParameter = command.CreateParameter();
+        tableParameter.ParameterName = "@table";
+        tableParameter.Value = tableName;
+        command.Parameters.Add(tableParameter);
+
+        var columnParameter = command.CreateParameter();
+        columnParameter.ParameterName = "@column";
+        columnParameter.Value = columnName;
+        command.Parameters.Add(columnParameter);
+
+        var scalar = await command.ExecuteScalarAsync();
+        if (scalar is null || scalar is DBNull)
+            return null;
+
+        return string.Equals(scalar.ToString(), "YES", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task InsertMigrationHistoryRowAsync(MedicalDbContext db, string migrationId, string productVersion)

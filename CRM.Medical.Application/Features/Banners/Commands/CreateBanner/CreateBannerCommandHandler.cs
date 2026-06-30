@@ -29,7 +29,7 @@ public sealed class CreateBannerCommandHandler(
         var entity = new Banner
         {
             Title = request.Title.Trim(),
-            Type = request.Type.Trim(),
+            DisplayMode = request.DisplayMode,
             MediaUrl = mediaUrl,
             InternalLink = request.InternalLink?.Trim() ?? string.Empty,
             ExternalLink = request.ExternalLink?.Trim() ?? string.Empty,

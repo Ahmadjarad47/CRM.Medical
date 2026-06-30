@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CRM.Medical.Domain.Enums;
 using Microsoft.AspNetCore.Http;
 
 namespace CRM.Medical.API.Contracts.Admin.Banners;
@@ -9,9 +10,8 @@ public sealed class CreateBannerRequest
     [StringLength(200, MinimumLength = 1, ErrorMessage = "Title is required.")]
     public string Title { get; set; } = default!;
 
-    [Required(ErrorMessage = "Type is required.")]
-    [StringLength(100, MinimumLength = 1, ErrorMessage = "Type is required.")]
-    public string Type { get; set; } = default!;
+    [Required(ErrorMessage = "DisplayMode is required.")]
+    public DisplayMode DisplayMode { get; set; }
 
     public string? InternalLink { get; set; }
 

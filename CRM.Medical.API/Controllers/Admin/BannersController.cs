@@ -31,7 +31,7 @@ public sealed class BannersController(ISender mediator) : AdminBaseController
 
         var command = new CreateBannerCommand(
             request.Title,
-            request.Type,
+            request.DisplayMode,
             request.Media!,
             request.InternalLink ?? string.Empty,
             request.ExternalLink ?? string.Empty,
@@ -60,7 +60,7 @@ public sealed class BannersController(ISender mediator) : AdminBaseController
         var command = new UpdateBannerCommand(
             id,
             request.Title,
-            request.Type,
+            request.DisplayMode,
             request.Media,
             request.InternalLink ?? string.Empty,
             request.ExternalLink ?? string.Empty,
