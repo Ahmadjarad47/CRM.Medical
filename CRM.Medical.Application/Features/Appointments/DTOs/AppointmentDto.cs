@@ -9,6 +9,8 @@ public sealed record AppointmentDto(
     DateTime EndTime,
     string Status,
     string PatientLocationType,
+    int? Age,
+    string? Gender,
     double? PatientLatitude,
     double? PatientLongitude,
     string? Notes,

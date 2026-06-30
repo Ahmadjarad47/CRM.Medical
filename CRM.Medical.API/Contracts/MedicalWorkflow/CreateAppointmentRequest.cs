@@ -13,6 +13,10 @@ public sealed class CreateAppointmentRequest
     /// <summary>Home, Work, or ComeToUs.</summary>
     public string PatientLocationType { get; set; } = string.Empty;
 
+    public int? Age { get; set; }
+
+    public string? Gender { get; set; }
+
     /// <summary>Required for Home/Work visits.</summary>
     public double? PatientLatitude { get; set; }
 

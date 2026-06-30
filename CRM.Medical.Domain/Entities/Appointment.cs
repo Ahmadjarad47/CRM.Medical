@@ -21,6 +21,10 @@ public sealed class Appointment : BaseEntity
 
     public string PatientLocationType { get; set; } = AppointmentPatientLocationTypes.ComeToUs;
 
+    public int? Age { get; set; }
+
+    public string? Gender { get; set; }
+
     public double? PatientLatitude { get; set; }
 
     public double? PatientLongitude { get; set; }

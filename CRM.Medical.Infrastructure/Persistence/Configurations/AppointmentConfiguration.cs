@@ -24,6 +24,8 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
             .IsRequired()
             .HasMaxLength(32)
             .HasDefaultValue(AppointmentPatientLocationTypes.ComeToUs);
+        builder.Property(e => e.Age);
+        builder.Property(e => e.Gender).HasMaxLength(64);
         builder.Property(e => e.PatientLatitude);
         builder.Property(e => e.PatientLongitude);
         builder.Property(e => e.Notes).HasMaxLength(4000);
