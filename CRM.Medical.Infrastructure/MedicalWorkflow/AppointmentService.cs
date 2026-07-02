@@ -95,6 +95,8 @@ public sealed class AppointmentService(
         DateTime startTimeUtc,
         DateTime endTimeUtc,
         string patientLocationType,
+        int? age,
+        string? gender,
         double? patientLatitude,
         double? patientLongitude,
         string? notes,
@@ -135,6 +137,8 @@ public sealed class AppointmentService(
             EndTime = endTimeUtc,
             Status = AppointmentStatuses.Scheduled,
             PatientLocationType = NormalizePatientLocationType(patientLocationType),
+            Age = age,
+            Gender = string.IsNullOrWhiteSpace(gender) ? null : gender.Trim(),
             PatientLatitude = patientLatitude,
             PatientLongitude = patientLongitude,
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
@@ -154,6 +158,8 @@ public sealed class AppointmentService(
         int testRequestId,
         string? userId,
         string patientLocationType,
+        int? age,
+        string? gender,
         double? patientLatitude,
         double? patientLongitude,
         string? notes,
@@ -198,6 +204,8 @@ public sealed class AppointmentService(
         entity.StartTime = startTimeUtc;
         entity.EndTime = endTimeUtc;
         entity.PatientLocationType = NormalizePatientLocationType(patientLocationType);
+        entity.Age = age;
+        entity.Gender = string.IsNullOrWhiteSpace(gender) ? null : gender.Trim();
         entity.PatientLatitude = patientLatitude;
         entity.PatientLongitude = patientLongitude;
         entity.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
@@ -522,6 +530,8 @@ public sealed class AppointmentService(
             entity.EndTime,
             entity.Status,
             entity.PatientLocationType,
+            entity.Age,
+            entity.Gender,
             entity.PatientLatitude,
             entity.PatientLongitude,
             entity.Notes,

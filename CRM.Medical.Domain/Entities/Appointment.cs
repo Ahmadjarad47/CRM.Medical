@@ -9,6 +9,7 @@ public sealed class Appointment : BaseEntity
     public int? AvailabilityId { get; set; }
 
     public int? TestRequestId { get; set; }
+    
 
     /// <summary>Assigned provider (doctor or lab partner) identity user id.</summary>
     public string ProviderUserId { get; set; } = string.Empty;
@@ -20,6 +21,10 @@ public sealed class Appointment : BaseEntity
     public string Status { get; set; } = AppointmentStatuses.Scheduled;
 
     public string PatientLocationType { get; set; } = AppointmentPatientLocationTypes.ComeToUs;
+
+    public int? Age { get; set; }
+
+    public string? Gender { get; set; }
 
     public double? PatientLatitude { get; set; }
 

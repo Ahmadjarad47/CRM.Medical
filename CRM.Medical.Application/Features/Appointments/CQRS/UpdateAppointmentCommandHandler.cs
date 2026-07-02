@@ -14,6 +14,8 @@ public sealed class UpdateAppointmentCommandHandler(IAppointmentService appointm
             request.TestRequestId,
             request.UserId,
             request.PatientLocationType,
+            request.Age,
+            request.Gender,
             request.PatientLatitude,
             request.PatientLongitude,
             request.Notes,

@@ -16,6 +16,8 @@ public sealed class CreateAppointmentCommandHandler(IAppointmentService appointm
             request.StartTime,
             request.EndTime,
             request.PatientLocationType,
+            request.Age,
+            request.Gender,
             request.PatientLatitude,
             request.PatientLongitude,
             request.Notes,

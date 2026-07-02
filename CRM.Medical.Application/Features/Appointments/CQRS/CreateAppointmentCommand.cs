@@ -10,6 +10,8 @@ public sealed record CreateAppointmentCommand(
     DateTime StartTime,
     DateTime EndTime,
     string PatientLocationType,
+    int? Age,
+    string? Gender,
     double? PatientLatitude,
     double? PatientLongitude,
     string? Notes,

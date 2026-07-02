@@ -4,6 +4,7 @@ using System.Text.Json;
 using CRM.Medical.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CRM.Medical.Infrastructure.Migrations
 {
     [DbContext(typeof(MedicalDbContext))]
-    partial class MedicalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260630075446_AddAppointmentPatientDemographics")]
+    partial class AddAppointmentPatientDemographics
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -296,9 +299,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<int>("DisplayMode")
-                        .HasColumnType("integer");
-
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision");
 
@@ -325,8 +325,6 @@ namespace CRM.Medical.Infrastructure.Migrations
 
                     b.HasIndex("CreatedAt");
 
-                    b.HasIndex("DisplayMode");
-
                     b.HasIndex("MediaType");
 
                     b.ToTable("ads", (string)null);
@@ -340,9 +338,8 @@ namespace CRM.Medical.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AttachmentUrl")
-                        .HasMaxLength(2048)
-                        .HasColumnType("character varying(2048)");
+                    b.Property<int?>("Age")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("AvailabilityId")
                         .HasColumnType("integer");
@@ -503,9 +500,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
 
-                    b.Property<int>("DisplayMode")
-                        .HasColumnType("integer");
-
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("integer");
 
@@ -550,6 +544,11 @@ namespace CRM.Medical.Infrastructure.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -562,8 +561,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
-
-                    b.HasIndex("DisplayMode");
 
                     b.HasIndex("DisplayOrder");
 
@@ -1299,13 +1296,6 @@ namespace CRM.Medical.Infrastructure.Migrations
                     b.Property<string>("UpdatedByUserId")
                         .HasMaxLength(450)
                         .HasColumnType("character varying(450)");
-
-                    b.Property<string>("VisibleToRoles")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("visible_to_roles")
-                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.HasKey("Id");
 

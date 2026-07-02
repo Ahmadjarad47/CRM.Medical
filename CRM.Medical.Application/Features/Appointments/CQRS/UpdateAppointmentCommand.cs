@@ -9,6 +9,8 @@ public sealed record UpdateAppointmentCommand(
     int TestRequestId,
     string? UserId,
     string PatientLocationType,
+    int? Age,
+    string? Gender,
     double? PatientLatitude,
     double? PatientLongitude,
     string? Notes,
