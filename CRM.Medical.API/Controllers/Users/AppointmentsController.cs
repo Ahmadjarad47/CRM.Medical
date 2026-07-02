@@ -40,8 +40,9 @@ public sealed class AppointmentsController(ISender mediator) : ControllerBase
             cancellationToken);
 
     [HttpPost]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(AppointmentDto), StatusCodes.Status201Created)]
-    public async Task<IActionResult> Create([FromBody] CreateAppointmentRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Create([FromForm] CreateAppointmentRequest request, CancellationToken cancellationToken)
     {
         var dto = await mediator.Send(
             new CreateAppointmentCommand(
@@ -52,17 +53,19 @@ public sealed class AppointmentsController(ISender mediator) : ControllerBase
                 request.PatientLocationType,
                 request.PatientLatitude,
                 request.PatientLongitude,
-                request.Notes),
+                request.Notes,
+                request.Attachment),
             cancellationToken);
 
         return CreatedAtAction(nameof(Get), new { id = dto.Id }, dto);
     }
 
     [HttpPut("{id:int}")]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Update(
         int id,
-        [FromBody] UpdateAppointmentRequest request,
+        [FromForm] UpdateAppointmentRequest request,
         CancellationToken cancellationToken)
     {
         await mediator.Send(
@@ -74,7 +77,8 @@ public sealed class AppointmentsController(ISender mediator) : ControllerBase
                 request.PatientLocationType,
                 request.PatientLatitude,
                 request.PatientLongitude,
-                request.Notes),
+                request.Notes,
+                request.Attachment),
             cancellationToken);
 
         return NoContent();

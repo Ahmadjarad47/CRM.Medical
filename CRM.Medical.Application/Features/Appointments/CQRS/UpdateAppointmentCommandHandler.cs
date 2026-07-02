@@ -17,6 +17,7 @@ public sealed class UpdateAppointmentCommandHandler(IAppointmentService appointm
             request.PatientLatitude,
             request.PatientLongitude,
             request.Notes,
+            request.Attachment,
             cancellationToken);
 
         return Unit.Value;

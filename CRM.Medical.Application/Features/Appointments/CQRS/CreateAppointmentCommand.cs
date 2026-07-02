@@ -1,5 +1,6 @@
 using CRM.Medical.Application.Features.Appointments.DTOs;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 
 namespace CRM.Medical.Application.Features.Appointments.CQRS;
 
@@ -11,4 +12,5 @@ public sealed record CreateAppointmentCommand(
     string PatientLocationType,
     double? PatientLatitude,
     double? PatientLongitude,
-    string? Notes) : IRequest<AppointmentDto>;
+    string? Notes,
+    IFormFile? Attachment) : IRequest<AppointmentDto>;

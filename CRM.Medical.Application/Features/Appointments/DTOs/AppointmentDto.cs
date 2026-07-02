@@ -12,6 +12,7 @@ public sealed record AppointmentDto(
     double? PatientLatitude,
     double? PatientLongitude,
     string? Notes,
+    string? AttachmentUrl,
     string? CreatedByUserId,
     DateTime CreatedAt,
     DateTime? UpdatedAt);

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 namespace CRM.Medical.API.Contracts.MedicalWorkflow;
 
 public sealed class CreateAppointmentRequest
@@ -20,4 +22,6 @@ public sealed class CreateAppointmentRequest
     public double? PatientLongitude { get; set; }
 
     public string? Notes { get; set; }
+
+    public IFormFile? Attachment { get; set; }
 }

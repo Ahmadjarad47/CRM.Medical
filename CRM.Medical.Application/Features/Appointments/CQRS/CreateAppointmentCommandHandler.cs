@@ -19,5 +19,6 @@ public sealed class CreateAppointmentCommandHandler(IAppointmentService appointm
             request.PatientLatitude,
             request.PatientLongitude,
             request.Notes,
+            request.Attachment,
             cancellationToken);
 }

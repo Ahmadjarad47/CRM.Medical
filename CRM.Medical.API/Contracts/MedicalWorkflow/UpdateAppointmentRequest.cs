@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 namespace CRM.Medical.API.Contracts.MedicalWorkflow;
 
 public sealed class UpdateAppointmentRequest
@@ -19,4 +21,6 @@ public sealed class UpdateAppointmentRequest
     public double? PatientLongitude { get; set; }
 
     public string? Notes { get; set; }
+
+    public IFormFile? Attachment { get; set; }
 }

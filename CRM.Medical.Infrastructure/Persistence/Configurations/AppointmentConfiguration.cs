@@ -27,6 +27,7 @@ public sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appointm
         builder.Property(e => e.PatientLatitude);
         builder.Property(e => e.PatientLongitude);
         builder.Property(e => e.Notes).HasMaxLength(4000);
+        builder.Property(e => e.AttachmentUrl).HasMaxLength(2048);
         builder.Property(e => e.MedicalTestCompletionStatus).HasMaxLength(64);
 
         builder.ConfigureAuditColumns();

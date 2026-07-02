@@ -1,4 +1,5 @@
 using CRM.Medical.Application.Features.Appointments.DTOs;
+using Microsoft.AspNetCore.Http;
 
 namespace CRM.Medical.Application.Features.Appointments.Services;
 
@@ -22,6 +23,7 @@ public interface IAppointmentService
         double? patientLatitude,
         double? patientLongitude,
         string? notes,
+        IFormFile? attachment,
         CancellationToken cancellationToken);
 
     Task UpdateAsync(
@@ -33,6 +35,7 @@ public interface IAppointmentService
         double? patientLatitude,
         double? patientLongitude,
         string? notes,
+        IFormFile? attachment,
         CancellationToken cancellationToken);
 
     Task CancelAsync(int id, CancellationToken cancellationToken);

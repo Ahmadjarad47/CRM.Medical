@@ -27,5 +27,7 @@ public sealed class Appointment : BaseEntity
 
     public string? Notes { get; set; }
 
+    public string? AttachmentUrl { get; set; }
+
     public string? MedicalTestCompletionStatus { get; set; }
 }

@@ -1,4 +1,5 @@
 using CRM.Medical.Application.Abstractions;
+using CRM.Medical.Application.Common.Storage;
 using CRM.Medical.Application.Common.Time;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.Appointments.DTOs;
@@ -8,6 +9,7 @@ using CRM.Medical.Application.Features.Users.Constants;
 using CRM.Medical.Domain.Constants;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,8 +19,10 @@ public sealed class AppointmentService(
     MedicalDbContext db,
     ICurrentUserAccessor currentUser,
     UserManager<User> userManager,
-    IDateTimeProvider dateTimeProvider) : IAppointmentService
+    IDateTimeProvider dateTimeProvider,
+    IFileStorageService fileStorage) : IAppointmentService
 {
+    private const string AttachmentFolder = "appointments";
     public async Task<IReadOnlyList<AppointmentDto>> ListAsync(
         DateTime? fromUtc,
         DateTime? toUtc,
@@ -94,6 +98,7 @@ public sealed class AppointmentService(
         double? patientLatitude,
         double? patientLongitude,
         string? notes,
+        IFormFile? attachment,
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
@@ -117,6 +122,10 @@ public sealed class AppointmentService(
 
         await EnsureNoAppointmentOverlapAsync(providerUserId, startTimeUtc, endTimeUtc, null, cancellationToken);
 
+        string? attachmentUrl = null;
+        if (attachment is { Length: > 0 })
+            attachmentUrl = await fileStorage.UploadFileAsync(attachment, AttachmentFolder, cancellationToken);
+
         var entity = new Appointment
         {
             AvailabilityId = availability.Id,
@@ -129,6 +138,7 @@ public sealed class AppointmentService(
             PatientLatitude = patientLatitude,
             PatientLongitude = patientLongitude,
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
+            AttachmentUrl = attachmentUrl,
             CreatedByUserId = currentUser.GetRequiredUserId()
         };
 
@@ -147,6 +157,7 @@ public sealed class AppointmentService(
         double? patientLatitude,
         double? patientLongitude,
         string? notes,
+        IFormFile? attachment,
         CancellationToken cancellationToken)
     {
         MedicalWorkflowAuthorization.RequireAuthenticatedUser(currentUser);
@@ -190,6 +201,9 @@ public sealed class AppointmentService(
         entity.PatientLatitude = patientLatitude;
         entity.PatientLongitude = patientLongitude;
         entity.Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+
+        if (attachment is { Length: > 0 })
+            entity.AttachmentUrl = await fileStorage.UploadFileAsync(attachment, AttachmentFolder, cancellationToken);
 
         await db.SaveChangesAsync(cancellationToken);
     }
@@ -511,6 +525,7 @@ public sealed class AppointmentService(
             entity.PatientLatitude,
             entity.PatientLongitude,
             entity.Notes,
+            entity.AttachmentUrl,
             entity.CreatedByUserId,
             entity.CreatedAt,
             entity.UpdatedAt);
