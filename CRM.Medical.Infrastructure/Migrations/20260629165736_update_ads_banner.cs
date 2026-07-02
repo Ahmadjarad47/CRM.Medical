@@ -7,6 +7,7 @@ namespace CRM.Medical.Infrastructure.Migrations
     /// <inheritdoc />
     public partial class update_ads_banner : Migration
     {
+
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
