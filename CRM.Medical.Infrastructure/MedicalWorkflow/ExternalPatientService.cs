@@ -86,6 +86,7 @@ public sealed class ExternalPatientService(
         return Map(entity);
     }
 
+
     public async Task<ExternalPatientDto> CreateAsync(
         string fullName,
         int? age,
