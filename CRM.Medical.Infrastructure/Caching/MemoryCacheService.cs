@@ -1,70 +1,70 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
 using CRM.Medical.Application.Common.Caching;
-using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace CRM.Medical.Infrastructure.Caching;
 
-public sealed class RedisCacheService(
-    IDistributedCache cache,
-    ILogger<RedisCacheService> logger)
+public sealed class MemoryCacheService(
+    IMemoryCache cache,
+    ILogger<MemoryCacheService> logger)
     : ICacheService
 {
     private readonly ConcurrentDictionary<string, byte> keys = new(StringComparer.Ordinal);
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false
-    };
-
-    public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
+    public Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
     {
         try
         {
-            var bytes = await cache.GetAsync(key, ct);
-            return bytes is null or { Length: 0 }
-                ? null
-                : JsonSerializer.Deserialize<T>(bytes, JsonOptions);
+            return Task.FromResult(cache.TryGetValue<T>(key, out var value) ? value : null);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Cache GET failed for key '{Key}'. Returning null.", key);
-            return null;
+            logger.LogWarning(ex, "Memory cache GET failed for key '{Key}'. Returning null.", key);
+            return Task.FromResult<T?>(null);
         }
     }
 
-    public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken ct = default)
+    public Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken ct = default)
         where T : class
     {
         try
         {
-            var bytes = JsonSerializer.SerializeToUtf8Bytes(value, JsonOptions);
-            var entryOptions = new DistributedCacheEntryOptions
+            var options = new MemoryCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = expiration ?? TimeSpan.FromMinutes(10)
             };
-            await cache.SetAsync(key, bytes, entryOptions, ct);
+
+            options.RegisterPostEvictionCallback(static (evictedKey, _, _, state) =>
+            {
+                if (evictedKey is string key && state is ConcurrentDictionary<string, byte> trackedKeys)
+                    trackedKeys.TryRemove(key, out _);
+            }, keys);
+
             keys.TryAdd(key, 0);
+            cache.Set(key, value, options);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Cache SET failed for key '{Key}'. Continuing without cache.", key);
+            logger.LogWarning(ex, "Memory cache SET failed for key '{Key}'. Continuing without cache.", key);
         }
+
+        return Task.CompletedTask;
     }
 
-    public async Task RemoveAsync(string key, CancellationToken ct = default)
+    public Task RemoveAsync(string key, CancellationToken ct = default)
     {
         try
         {
-            await cache.RemoveAsync(key, ct);
+            cache.Remove(key);
             keys.TryRemove(key, out _);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Cache REMOVE failed for key '{Key}'.", key);
+            logger.LogWarning(ex, "Memory cache REMOVE failed for key '{Key}'.", key);
         }
+
+        return Task.CompletedTask;
     }
 
     public async Task RemoveManyAsync(IEnumerable<string> keys, CancellationToken ct = default)

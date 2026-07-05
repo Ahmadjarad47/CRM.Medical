@@ -195,7 +195,7 @@ public static class DependencyInjection
             // Fallback to in-memory cache when Redis is not configured (local dev without Docker)
             services.AddDistributedMemoryCache();
         }
-        services.AddSingleton<ICacheService, RedisCacheService>();
+        services.AddSingleton<ICacheService, MemoryCacheService>();
 
         // ── DB health diagnostics ─────────────────────────────────────────────
         services.AddSingleton<DatabaseConnectionReport>();

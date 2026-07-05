@@ -1,4 +1,5 @@
 using System.Reflection;
+using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Behaviors;
 using CRM.Medical.Application.Common.Time;
 using FluentValidation;
@@ -6,6 +7,7 @@ using Mapster;
 using MapsterMapper;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace CRM.Medical.Application;
 
@@ -33,6 +35,7 @@ public static class DependencyInjection
         services.AddSingleton(typeAdapterConfig);
         services.AddScoped<IMapper, ServiceMapper>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
+        services.TryAddScoped<ICurrentUserAccessor, AnonymousCurrentUserAccessor>();
 
         services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
@@ -44,6 +47,8 @@ public static class DependencyInjection
             cfg.AddOpenBehavior(typeof(LoggingPipelineBehavior<,>), ServiceLifetime.Transient);
             cfg.AddOpenBehavior(typeof(ActivityTaggingPipelineBehavior<,>), ServiceLifetime.Transient);
             cfg.AddOpenBehavior(typeof(ValidationPipelineBehavior<,>), ServiceLifetime.Transient);
+            cfg.AddOpenBehavior(typeof(QueryCachingPipelineBehavior<,>), ServiceLifetime.Transient);
+            cfg.AddOpenBehavior(typeof(CacheInvalidationPipelineBehavior<,>), ServiceLifetime.Transient);
         });
 
         return services;
