@@ -15,6 +15,14 @@ public sealed class SlideCardRepository(MedicalDbContext dbContext)
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateAsync(
+        SlideCard entity,
+        CancellationToken cancellationToken = default)
+    {
+        dbContext.SlideCards.Update(entity);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public Task<SlideCard?> GetByIdAsync(
         int id,
         CancellationToken cancellationToken = default) =>

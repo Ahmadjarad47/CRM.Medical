@@ -14,6 +14,7 @@ public sealed class CreateCategoryMedicalCommandHandler(ICategoryMedicalService 
             request.NameAr,
             request.NameEn,
             request.Description,
+            request.Image,
             request.DisplayOrder,
             request.IsActive,
             cancellationToken);

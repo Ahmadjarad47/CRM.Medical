@@ -26,8 +26,8 @@ public sealed class InsuranceApprovalRequestsController(ISender mediator) : Cont
             request.InsuredName,
             request.InsuranceNumber,
             request.MobileNumber,
-            request.InsuranceCardImage,
-            request.PrescriptionImage), ct);
+            request.InsuranceCardImage!,
+            request.PrescriptionImage!), ct);
 
     [Authorize]
     [HttpGet("my")]

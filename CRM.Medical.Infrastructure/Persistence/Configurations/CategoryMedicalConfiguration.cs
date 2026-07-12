@@ -16,6 +16,7 @@ public sealed class CategoryMedicalConfiguration : IEntityTypeConfiguration<Cate
         builder.Property(e => e.NameAr).IsRequired().HasMaxLength(500);
         builder.Property(e => e.NameEn).IsRequired().HasMaxLength(500);
         builder.Property(e => e.Description).HasMaxLength(4000);
+        builder.Property(e => e.ImageUrl).HasMaxLength(2048);
         builder.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
 
         builder.ConfigureAuditColumns();

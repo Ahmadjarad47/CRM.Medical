@@ -5,6 +5,7 @@ public sealed record CategoryMedicalDto(
     string NameAr,
     string NameEn,
     string? Description,
+    string? ImageUrl,
     int DisplayOrder,
     bool IsActive,
     DateTime CreatedAt,

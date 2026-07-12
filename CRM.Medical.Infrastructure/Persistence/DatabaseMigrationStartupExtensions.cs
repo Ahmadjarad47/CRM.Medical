@@ -825,6 +825,7 @@ public static class DatabaseMigrationStartupExtensions
                 "NameAr" character varying(500) NOT NULL,
                 "NameEn" character varying(500) NOT NULL,
                 "Description" character varying(4000) NULL,
+                "ImageUrl" character varying(2048) NULL,
                 "DisplayOrder" integer NOT NULL DEFAULT 0,
                 "IsActive" boolean NOT NULL DEFAULT TRUE,
                 "CreatedAt" timestamp with time zone NOT NULL DEFAULT NOW(),
@@ -833,6 +834,12 @@ public static class DatabaseMigrationStartupExtensions
             );
             """;
         await db.Database.ExecuteSqlRawAsync(ensureCategoryTableSql);
+
+        const string ensureCategoryImageUrlColumnSql = """
+            ALTER TABLE IF EXISTS category_medical
+                ADD COLUMN IF NOT EXISTS "ImageUrl" character varying(2048) NULL;
+            """;
+        await db.Database.ExecuteSqlRawAsync(ensureCategoryImageUrlColumnSql);
 
         const string ensureCategoryIndexesSql = """
             CREATE INDEX IF NOT EXISTS "IX_category_medical_DisplayOrder"

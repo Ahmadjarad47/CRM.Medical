@@ -1,5 +1,6 @@
 using CRM.Medical.Application.Common.Responses;
 using CRM.Medical.Application.Features.CategoryMedical.DTOs;
+using Microsoft.AspNetCore.Http;
 
 namespace CRM.Medical.Application.Features.CategoryMedical.Services;
 
@@ -22,6 +23,7 @@ public interface ICategoryMedicalService
         string nameAr,
         string nameEn,
         string? description,
+        IFormFile? image,
         int displayOrder,
         bool isActive,
         CancellationToken cancellationToken);
@@ -31,6 +33,7 @@ public interface ICategoryMedicalService
         string nameAr,
         string nameEn,
         string? description,
+        IFormFile? image,
         int displayOrder,
         bool isActive,
         CancellationToken cancellationToken);

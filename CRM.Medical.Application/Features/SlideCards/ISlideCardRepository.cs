@@ -8,6 +8,8 @@ public interface ISlideCardRepository
 
     Task AddAsync(SlideCard entity, CancellationToken cancellationToken = default);
 
+    Task UpdateAsync(SlideCard entity, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<SlideCard>> ListActiveAsync(CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<SlideCard>> ListForWebsiteAsync(DateTime nowUtc, CancellationToken cancellationToken = default);

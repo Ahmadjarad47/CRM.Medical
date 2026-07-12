@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 namespace CRM.Medical.API.Contracts.MedicalWorkflow;
 
 public sealed class SaveCategoryMedicalRequest
@@ -7,6 +9,8 @@ public sealed class SaveCategoryMedicalRequest
     public string NameEn { get; set; } = string.Empty;
 
     public string? Description { get; set; }
+
+    public IFormFile? Image { get; set; }
 
     public int DisplayOrder { get; set; }
 

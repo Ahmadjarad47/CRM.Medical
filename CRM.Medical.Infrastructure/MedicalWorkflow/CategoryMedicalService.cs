@@ -1,12 +1,14 @@
 using CRM.Medical.Application.Abstractions;
 using CRM.Medical.Application.Common.Queries;
 using CRM.Medical.Application.Common.Responses;
+using CRM.Medical.Application.Common.Storage;
 using CRM.Medical.Application.Exceptions;
 using CRM.Medical.Application.Features.CategoryMedical.DTOs;
 using CRM.Medical.Application.Features.CategoryMedical.Services;
 using CRM.Medical.Application.Authorization;
 using CRM.Medical.Domain.Entities;
 using CRM.Medical.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
@@ -15,7 +17,8 @@ namespace CRM.Medical.Infrastructure.MedicalWorkflow;
 public sealed class CategoryMedicalService(
     MedicalDbContext db,
     ICurrentUserAccessor user,
-    IAccessPolicyEvaluator accessPolicyEvaluator)
+    IAccessPolicyEvaluator accessPolicyEvaluator,
+    IFileStorageService fileStorage)
     : ICategoryMedicalService
 {
     private static readonly IReadOnlyDictionary<string, Expression<Func<CategoryMedical, string?>>> SearchFields =
@@ -112,6 +115,7 @@ public sealed class CategoryMedicalService(
         string nameAr,
         string nameEn,
         string? description,
+        IFormFile? image,
         int displayOrder,
         bool isActive,
         CancellationToken cancellationToken)
@@ -131,6 +135,9 @@ public sealed class CategoryMedicalService(
         if (!canCreate)
             throw new ApplicationForbiddenException("You cannot create this medical category.");
 
+        if (image is { Length: > 0 })
+            entity.ImageUrl = await fileStorage.UploadImageAsync(image, cancellationToken);
+
         db.CategoryMedical.Add(entity);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -142,6 +149,7 @@ public sealed class CategoryMedicalService(
         string nameAr,
         string nameEn,
         string? description,
+        IFormFile? image,
         int displayOrder,
         bool isActive,
         CancellationToken cancellationToken)
@@ -156,6 +164,9 @@ public sealed class CategoryMedicalService(
         entity.NameAr = nameAr.Trim();
         entity.NameEn = nameEn.Trim();
         entity.Description = description?.Trim();
+        if (image is { Length: > 0 })
+            entity.ImageUrl = await fileStorage.UploadImageAsync(image, cancellationToken);
+
         entity.DisplayOrder = displayOrder;
         entity.IsActive = isActive;
 
@@ -185,6 +196,7 @@ public sealed class CategoryMedicalService(
             e.NameAr,
             e.NameEn,
             e.Description,
+            e.ImageUrl,
             e.DisplayOrder,
             e.IsActive,
             e.CreatedAt,

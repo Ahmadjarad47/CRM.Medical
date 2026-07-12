@@ -13,6 +13,7 @@ public sealed class UpdateCategoryMedicalCommandHandler(ICategoryMedicalService 
             request.NameAr,
             request.NameEn,
             request.Description,
+            request.Image,
             request.DisplayOrder,
             request.IsActive,
             cancellationToken);

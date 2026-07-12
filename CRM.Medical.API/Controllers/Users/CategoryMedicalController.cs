@@ -35,24 +35,27 @@ public sealed class CategoryMedicalController(ISender mediator) : ControllerBase
         mediator.Send(new GetCategoryMedicalByIdQuery(id), cancellationToken);
 
     [HttpPost]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(typeof(CategoryMedicalDto), StatusCodes.Status200OK)]
     public Task<CategoryMedicalDto> Create(
-        [FromBody] SaveCategoryMedicalRequest request,
+        [FromForm] SaveCategoryMedicalRequest request,
         CancellationToken cancellationToken) =>
         mediator.Send(
             new CreateCategoryMedicalCommand(
                 request.NameAr,
                 request.NameEn,
                 request.Description,
+                request.Image,
                 request.DisplayOrder,
                 request.IsActive),
             cancellationToken);
 
     [HttpPut("{id:int}")]
+    [Consumes("multipart/form-data")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> Update(
         int id,
-        [FromBody] SaveCategoryMedicalRequest request,
+        [FromForm] SaveCategoryMedicalRequest request,
         CancellationToken cancellationToken)
     {
         await mediator.Send(
@@ -61,6 +64,7 @@ public sealed class CategoryMedicalController(ISender mediator) : ControllerBase
                 request.NameAr,
                 request.NameEn,
                 request.Description,
+                request.Image,
                 request.DisplayOrder,
                 request.IsActive),
             cancellationToken);
